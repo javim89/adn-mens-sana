@@ -1,0 +1,301 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Disciplina {
+  FUTBOL
+  FUTSAL
+  BASQUET
+  VOLEY
+  HANDBALL
+  NATACION
+  ATLETISMO
+  HOCKEY
+  RUGBY
+  TENIS
+  GIMNASIA
+  GIMNASIA_ARTISTICA
+  PATIN
+  ARTES_MARCIALES
+  COMBATE
+  INICIACION_DEPORTIVA
+  POWER_CHAIR
+  TIADE
+  AJEDREZ
+  BOXEO
+  OTRO
+}
+
+enum Categoria {
+  SUB_12
+  SUB_14
+  SUB_16
+  SUB_18
+  NOVENA
+  OCTAVA
+  SEPTIMA
+  SEXTA
+  QUINTA
+  CUARTA
+  RESERVA
+  DIVISION_DE_HONOR
+  PRIMERA
+  SENIOR
+  VETERANOS
+}
+
+enum EstadoDeportista {
+  ACTIVO
+  INACTIVO
+  LESIONADO
+  SUSPENDIDO
+}
+
+enum Genero {
+  MASCULINO
+  FEMENINO
+  NO_BINARIO
+  PREFIERO_NO_DECIR
+}
+
+enum ActividadComplementaria {
+  GIMNASIO
+  TECNICA_INDIVIDUAL
+  AMBAS
+  NINGUNA
+}
+
+enum NivelEstudio {
+  PRIMARIO_INCOMPLETO
+  PRIMARIO_EN_CURSO
+  PRIMARIO_COMPLETO
+  SECUNDARIO_INCOMPLETO
+  SECUNDARIO_EN_CURSO
+  SECUNDARIO_COMPLETO
+  TERCIARIO_INCOMPLETO
+  TERCIARIO_EN_CURSO
+  TERCIARIO_COMPLETO
+}
+
+enum SituacionLaboral {
+  ALGUIEN_TRABAJA
+  NADIE_TRABAJA
+  SIN_DATO
+}
+
+enum MedioTransporte {
+  TRANSPORTE_PUBLICO
+  TRANSPORTE_FAMILIAR
+  TRANSPORTE_DEL_CLUB
+  OTRO
+}
+
+enum CondicionVivienda {
+  PROPIA
+  CEDIDA
+  ALQUILADA
+  OTRO
+}
+
+enum DificultadAlimentacion {
+  NUNCA
+  A_VECES
+  FRECUENTEMENTE
+}
+
+enum TipoApoyo {
+  ECONOMICO
+  ALIMENTACION
+  TRANSPORTE
+  EDUCATIVO
+  PSICOLOGICO
+  NINGUNO
+  OTRO
+}
+
+enum Servicio {
+  LUZ
+  GAS
+  AGUA_CORRIENTE
+  TELEFONO
+  CABLE
+  INTERNET
+  SEGURIDAD
+  ALARMA
+  NINGUNA
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model Deportista {
+  id                      String                   @id @default(cuid())
+  apellido                String
+  nombre                  String
+  dni                     String                   @unique
+  fechaNacimiento         DateTime                 @map("fecha_nacimiento")
+  provincia               String?
+  ciudad                  String?
+  genero                  Genero?
+  telefono                String?
+  email                   String?                  @unique
+  domicilioActual         String?                  @map("domicilio_actual")
+  nacionalidad            String?
+  contactoEmergencia      String?                  @map("contacto_emergencia")
+  vivePensionClub         Boolean                  @default(false) @map("vive_pension_club")
+  vivePensionExterna      Boolean                  @default(false) @map("vive_pension_externa")
+  observaciones           String?
+
+  // Sport fields (scalar — single discipline per athlete)
+  disciplina              Disciplina?
+  categoria               Categoria?
+  posicion                String?
+  estado                  EstadoDeportista         @default(ACTIVO)
+  actividadComplementaria ActividadComplementaria? @map("actividad_complementaria")
+  fechaIngreso            DateTime?                @map("fecha_ingreso")
+  esRepresentante         Boolean                  @default(false) @map("es_representante")
+
+  // 1:N relations
+  clubesAnteriores        ClubAnterior[]
+  historiaDeportiva       HistoriaDeportiva[]
+
+  // 1:1 satellite models
+  datosEscolares          DatosEscolares?
+  datosSociales           DatosSociales?
+  viviendaFamiliar        ViviendaFamiliar?
+  datosFamiliares         DatosFamiliares?
+  necesidadesApoyo        NecesidadesApoyo?
+
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+
+  @@map("deportistas")
+}
+
+model ClubAnterior {
+  id           String     @id @default(cuid())
+  deportistaId String     @map("deportista_id")
+  nombre       String
+  periodo      String?
+
+  deportista   Deportista @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@map("clubes_anteriores")
+}
+
+model HistoriaDeportiva {
+  id           String     @id @default(cuid())
+  deportistaId String     @map("deportista_id")
+  descripcion  String
+  fecha        DateTime   @default(now())
+
+  deportista   Deportista @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@map("historia_deportiva")
+}
+
+model DatosEscolares {
+  id                String        @id @default(cuid())
+  deportistaId      String        @unique @map("deportista_id")
+  nivelEstudio      NivelEstudio? @map("nivel_estudio")
+  nombreColegio     String?       @map("nombre_colegio")
+  anoCursa          Int?          @map("ano_cursa")
+  materiasAdeudadas String?       @map("materias_adeudadas")
+
+  deportista        Deportista    @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@map("datos_escolares")
+}
+
+model DatosSociales {
+  id                       String            @id @default(cuid())
+  deportistaId             String            @unique @map("deportista_id")
+  trabaja                  Boolean?
+  situacionLaboralHogar    SituacionLaboral? @map("situacion_laboral_hogar")
+  conQuienVive             String?           @map("con_quien_vive")
+  composicionGrupoFamiliar String?           @map("composicion_grupo_familiar")
+
+  deportista               Deportista        @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@map("datos_sociales")
+}
+
+model DatosFamiliares {
+  id                String     @id @default(cuid())
+  deportistaId      String     @unique @map("deportista_id")
+
+  padreNombre       String?    @map("padre_nombre")
+  padreApellido     String?    @map("padre_apellido")
+  padreNacionalidad String?    @map("padre_nacionalidad")
+  padreOcupacion    String?    @map("padre_ocupacion")
+
+  madreNombre       String?    @map("madre_nombre")
+  madreApellido     String?    @map("madre_apellido")
+  madreNacionalidad String?    @map("madre_nacionalidad")
+  madreOcupacion    String?    @map("madre_ocupacion")
+
+  deportista        Deportista @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@map("datos_familiares")
+}
+
+model ViviendaFamiliar {
+  id                    String             @id @default(cuid())
+  deportistaId          String             @unique @map("deportista_id")
+  personasDependientes  Int?               @map("personas_dependientes")
+  medioTransporte       MedioTransporte?   @map("medio_transporte")
+  condicionVivienda     CondicionVivienda? @map("condicion_vivienda")
+  cuentaConHabitaciones Boolean?           @map("cuenta_con_habitaciones")
+
+  servicios             ServicioVivienda[]
+
+  deportista            Deportista         @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@map("vivienda_familiar")
+}
+
+model ServicioVivienda {
+  id                 String           @id @default(cuid())
+  viviendaFamiliarId String           @map("vivienda_familiar_id")
+  servicio           Servicio
+
+  viviendaFamiliar   ViviendaFamiliar @relation(fields: [viviendaFamiliarId], references: [id], onDelete: Cascade)
+
+  @@unique([viviendaFamiliarId, servicio])
+  @@map("servicios_vivienda")
+}
+
+model NecesidadesApoyo {
+  id                     String                  @id @default(cuid())
+  deportistaId           String                  @unique @map("deportista_id")
+  dificultadAlimentacion DificultadAlimentacion? @map("dificultad_alimentacion")
+  recibeVianda           Boolean                 @default(false) @map("recibe_vianda")
+  esSocio                Boolean                 @default(false) @map("es_socio")
+
+  apoyosRequeridos       ApoyoRequerido[]
+
+  deportista             Deportista              @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@map("necesidades_apoyo")
+}
+
+model ApoyoRequerido {
+  id                 String           @id @default(cuid())
+  necesidadesApoyoId String           @map("necesidades_apoyo_id")
+  tipo               TipoApoyo
+
+  necesidadesApoyo   NecesidadesApoyo @relation(fields: [necesidadesApoyoId], references: [id], onDelete: Cascade)
+
+  @@unique([necesidadesApoyoId, tipo])
+  @@map("apoyos_requeridos")
+}
