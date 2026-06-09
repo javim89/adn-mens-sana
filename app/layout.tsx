@@ -1,7 +1,7 @@
+import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
 import { Oswald, Inter } from 'next/font/google';
 import './globals.css';
-import Sidebar from './components/Sidebar';
 
 const oswald = Oswald({
   variable: '--font-oswald',
@@ -25,10 +25,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${oswald.variable} ${inter.variable} h-full`}>
       <body className="flex h-full bg-[#F3F4F6] text-[#1C1C1C] font-[family-name:var(--font-inter)]">
-        <Sidebar />
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+        <ClerkProvider>{children}</ClerkProvider>
       </body>
     </html>
   );

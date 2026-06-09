@@ -4,15 +4,22 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Users, CalendarDays, UserCog } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import type { NavItem, IconKey } from '../../lib/roles';
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/deportistas', label: 'Deportistas', icon: Users },
-  { href: '/turnos', label: 'Turnos', icon: CalendarDays },
-  { href: '/usuarios', label: 'Usuarios', icon: UserCog },
-];
+const ICON_MAP: Record<IconKey, LucideIcon> = {
+  LayoutDashboard,
+  Users,
+  CalendarDays,
+  UserCog,
+};
 
-export default function Sidebar() {
+interface SidebarProps {
+  navItems: NavItem[];
+}
+
+export default function Sidebar({ navItems }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -41,8 +48,9 @@ export default function Sidebar() {
 
       {/* Navegación */}
       <nav className="flex-1 px-3 py-6 space-y-1">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/');
+          const Icon = ICON_MAP[icon];
           return (
             <Link
               key={href}
@@ -60,6 +68,36 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Auth controls */}
+      <div className="px-4 py-4 border-t border-white/10">
+        <Show when="signed-out">
+          <div className="flex flex-col gap-2">
+            <SignInButton>
+              <button className="w-full px-4 py-2 text-sm font-medium text-white bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+                Iniciar sesión
+              </button>
+            </SignInButton>
+            <SignUpButton>
+              <button className="w-full px-4 py-2 text-sm font-medium text-[#121A61] bg-white rounded-lg hover:bg-white/90 transition-colors">
+                Registrarse
+              </button>
+            </SignUpButton>
+          </div>
+        </Show>
+        <Show when="signed-in">
+          <div className="flex items-center gap-3">
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: 'w-8 h-8',
+                },
+              }}
+            />
+            <span className="text-xs text-white/60">Mi cuenta</span>
+          </div>
+        </Show>
+      </div>
     </aside>
   );
 }
