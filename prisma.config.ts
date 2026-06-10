@@ -1,9 +1,15 @@
-import { config } from "dotenv";
 import { defineConfig } from "prisma/config";
 
-// Load .env.local (Next.js convention) for Prisma CLI commands.
-// Must use override: false so production env vars are not overwritten.
-config({ path: ".env.local" });
+// In local dev, load .env.local so Prisma CLI picks up Next.js env vars.
+// In production (Netlify/CI), env vars are already set by the platform.
+if (process.env.NODE_ENV !== "production") {
+  try {
+    const { config } = await import("dotenv");
+    config({ path: ".env.local", override: false });
+  } catch {
+    // dotenv not installed — skip
+  }
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
