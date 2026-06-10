@@ -25,16 +25,19 @@ export async function getUsuarios(): Promise<Usuario[]> {
     client.invitations.getInvitationList({ status: 'pending', limit: 100 }),
   ]);
 
-  const activos: UsuarioActivo[] = usersResponse.data.map((u) => ({
+  const activos: UsuarioActivo[] = usersResponse.data.map((u) => {
+    const meta = (u.publicMetadata ?? {}) as Record<string, unknown>;
+    return {
     id: u.id,
-    firstName: u.firstName ?? '',
-    lastName: u.lastName ?? '',
+    firstName: u.firstName || String(meta.firstName ?? ''),
+    lastName: u.lastName || String(meta.lastName ?? ''),
     email: u.emailAddresses[0]?.emailAddress ?? '',
-    rol: String((u.publicMetadata as Record<string, unknown>)?.role ?? ''),
+    rol: String(meta.role ?? ''),
     lastSignInAt: u.lastSignInAt != null ? new Date(u.lastSignInAt) : null,
     createdAt: new Date(u.createdAt),
     status: 'activo' as const,
-  }));
+  };
+  });
 
   const pendientes: UsuarioPendiente[] = invitationsResponse.data.map((inv) => {
     const meta = (inv.publicMetadata ?? {}) as Record<string, unknown>;
