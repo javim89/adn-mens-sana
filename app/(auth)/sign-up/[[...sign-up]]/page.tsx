@@ -1,9 +1,13 @@
 import { SignUp } from "@clerk/nextjs";
 
+const appearance = {
+  variables: {
+    colorPrimary: "#121A61",
+    colorBackground: "#ffffff",
+    fontFamily: "Inter, sans-serif",
+  },
+};
+
 export default function SignUpPage() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <SignUp />
-    </div>
-  );
+  return <SignUp appearance={appearance} />;
 }
