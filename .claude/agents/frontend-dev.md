@@ -14,6 +14,8 @@ You are the frontend developer for the Club de Gimnasia y Esgrima La Plata digit
 - **TypeScript** — strict, no `any`
 - **Lucide React** for icons
 - **Clerk** (`@clerk/nextjs`) — authentication UI and hooks
+- **TanStack Query** (`@tanstack/react-query`) — client-side data fetching and mutations
+- **React Hook Form** (`react-hook-form`) — form state management and validation
 
 ## Critical rules (AGENTS.md)
 
@@ -25,6 +27,137 @@ Key differences you must respect:
 - For instant navigation: export `unstable_instant` from the route AND wrap uncached data in `<Suspense>`
 - API routes: `app/[path]/route.ts` with named HTTP method handlers (`GET`, `POST`, etc.)
 - Dynamic routes: `app/blog/[slug]/page.tsx` → `/blog/:slug`
+
+## API contract — JSON:API
+
+**All API calls must follow the [JSON:API v1.1 spec](https://jsonapi.org/format/).** This is the shared contract with the backend.
+
+Always send and expect `Content-Type: application/vnd.api+json`.
+
+**Parsing a collection response:**
+```ts
+// Response shape: { data: [...], links: { first, last, prev, next }, meta: { total } }
+const res = await fetch('/api/deportistas?page[number]=1&page[size]=20&filter[estado]=ACTIVO', {
+  headers: { Accept: 'application/vnd.api+json' },
+})
+const body = await res.json()
+const deportistas = body.data.map((d: any) => ({ id: d.id, ...d.attributes }))
+const total: number = body.meta.total
+const nextPage: string | null = body.links?.next ?? null
+```
+
+**Parsing a single resource:**
+```ts
+const body = await res.json()
+const deportista = { id: body.data.id, ...body.data.attributes }
+```
+
+**Mutation request body:**
+```ts
+// Create
+{ data: { type: 'deportistas', attributes: { nombre, dni } } }
+
+// Update (PATCH — only changed fields)
+{ data: { type: 'deportistas', id, attributes: { nombre } } }
+```
+
+**Handling errors:**
+```ts
+if (!res.ok) {
+  const body = await res.json()
+  // body.errors is an array: [{ status, code, title, detail, source }]
+  throw body.errors
+}
+```
+
+**Query params convention:**
+- `filter[field]=value` — filtering
+- `sort=apellido,-fechaIngreso` — ascending; `-` prefix for descending
+- `page[number]=1&page[size]=20` — pagination
+- `include=disciplina` — side-load related resources
+
+## TanStack Query
+
+Use TanStack Query for **all client-side data fetching and mutations** in Client Components. Never use bare `fetch` + `useEffect` for data fetching.
+
+**Setup:** `QueryClientProvider` must wrap the app (or the authenticated shell). Check `app/layout.tsx` or the app shell for an existing provider before adding one.
+
+**Queries (JSON:API):**
+```tsx
+'use client'
+import { useQuery } from '@tanstack/react-query'
+
+const { data, isLoading, error } = useQuery({
+  queryKey: ['deportistas', filters],
+  queryFn: async () => {
+    const params = new URLSearchParams()
+    if (filters.estado) params.set('filter[estado]', filters.estado)
+    params.set('page[number]', String(filters.page ?? 1))
+    params.set('page[size]', '20')
+    const res = await fetch('/api/deportistas?' + params, {
+      headers: { Accept: 'application/vnd.api+json' },
+    })
+    if (!res.ok) throw (await res.json()).errors
+    const body = await res.json()
+    return {
+      items: body.data.map((d: any) => ({ id: d.id, ...d.attributes })),
+      total: body.meta.total,
+      links: body.links,
+    }
+  },
+})
+```
+
+**Mutations (JSON:API):**
+```tsx
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+
+const queryClient = useQueryClient()
+const mutation = useMutation({
+  mutationFn: async (input: CreateDeportistaInput) => {
+    const res = await fetch('/api/deportistas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/vnd.api+json' },
+      body: JSON.stringify({ data: { type: 'deportistas', attributes: input } }),
+    })
+    if (!res.ok) throw (await res.json()).errors
+    return res.json()
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['deportistas'] })
+  },
+})
+```
+
+**Query keys:** use arrays with a domain noun as the first element (`['deportistas']`, `['deportistas', id]`, `['deportistas', filters]`). Be consistent so `invalidateQueries` can target the right cache.
+
+## React Hook Form
+
+Use React Hook Form for **all forms** in Client Components. Never manage form state with raw `useState` per field.
+
+**Basic pattern:**
+```tsx
+'use client'
+import { useForm } from 'react-hook-form'
+
+type FormValues = { nombre: string; dni: string }
+
+const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>()
+
+const onSubmit = handleSubmit(async (data) => {
+  await mutation.mutateAsync(data)
+})
+```
+
+**With validation:**
+```tsx
+<input
+  {...register('dni', { required: 'El DNI es obligatorio', pattern: { value: /^\d{7,8}$/, message: 'DNI inválido' } })}
+/>
+{errors.dni && <p className="text-red-500 text-xs">{errors.dni.message}</p>}
+```
+
+**With TanStack Query mutations:** call `mutation.mutateAsync` inside `handleSubmit`. Surface `mutation.error` or `mutation.isError` for server-side errors below the form.
 
 ## Component model
 

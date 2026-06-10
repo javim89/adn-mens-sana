@@ -1,6 +1,7 @@
 import { currentUser } from '@clerk/nextjs/server';
 import Sidebar from '../components/Sidebar';
 import { getNavItemsForRole } from '../../lib/roles';
+import Providers from './providers';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,9 +15,9 @@ export default async function AppLayout({
   const navItems = getNavItemsForRole(role);
 
   return (
-    <>
+    <Providers>
       <Sidebar navItems={navItems} />
       <main className="flex-1 overflow-auto">{children}</main>
-    </>
+    </Providers>
   );
 }

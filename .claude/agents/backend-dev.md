@@ -15,7 +15,91 @@ You are the backend developer for the Club de Gimnasia y Esgrima La Plata digita
 - **Prisma** — ORM, schema at `prisma/schema.prisma`, client at `lib/db.ts`
 - Runtime: Node.js (not Edge unless explicitly required)
 
-## API routes
+## API contract — JSON:API
+
+**All API routes must follow the [JSON:API v1.1 spec](https://jsonapi.org/format/).** This is the shared contract with the frontend.
+
+### Content-Type
+
+Always set and accept `application/vnd.api+json`:
+```ts
+const HEADERS = { 'Content-Type': 'application/vnd.api+json' }
+```
+
+### Response shapes
+
+**Single resource:**
+```json
+{
+  "data": {
+    "type": "deportistas",
+    "id": "abc123",
+    "attributes": { "nombre": "Juan", "dni": "12345678" },
+    "relationships": {
+      "disciplina": { "data": { "type": "disciplinas", "id": "futbol" } }
+    }
+  }
+}
+```
+
+**Collection (with pagination):**
+```json
+{
+  "data": [ { "type": "deportistas", "id": "1", "attributes": { ... } } ],
+  "links": {
+    "self":  "/api/deportistas?page[number]=2&page[size]=20",
+    "first": "/api/deportistas?page[number]=1&page[size]=20",
+    "last":  "/api/deportistas?page[number]=5&page[size]=20",
+    "prev":  "/api/deportistas?page[number]=1&page[size]=20",
+    "next":  "/api/deportistas?page[number]=3&page[size]=20"
+  },
+  "meta": { "total": 87 }
+}
+```
+
+**Errors (`data` and `errors` are mutually exclusive):**
+```json
+{
+  "errors": [{
+    "status": "422",
+    "code":   "validation_error",
+    "title":  "Atributo inválido",
+    "detail": "El DNI no puede estar en blanco",
+    "source": { "pointer": "/data/attributes/dni" }
+  }]
+}
+```
+
+### HTTP status codes
+
+| Operation | Success | Errors |
+|-----------|---------|--------|
+| GET       | `200 OK` | `404`, `400` |
+| POST      | `201 Created` + `Location` header | `422`, `409`, `403` |
+| PATCH     | `200 OK` (modified) · `204 No Content` (unchanged) | `404`, `422`, `409` |
+| DELETE    | `204 No Content` | `404` |
+
+### Request body for mutations
+
+**Create (POST):**
+```json
+{ "data": { "type": "deportistas", "attributes": { "nombre": "Juan", "dni": "12345678" } } }
+```
+
+**Update (PATCH):** only include attributes to change; missing ones are preserved.
+```json
+{ "data": { "type": "deportistas", "id": "abc123", "attributes": { "nombre": "Juan Carlos" } } }
+```
+
+### Query parameters
+
+- `filter[field]=value` — filtering (e.g. `filter[estado]=ACTIVO`)
+- `sort=apellido,-fechaIngreso` — ascending; prefix `-` for descending
+- `page[number]=2&page[size]=20` — pagination
+- `include=disciplina,categoria` — side-load related resources into `included`
+- `fields[deportistas]=nombre,dni` — sparse fieldsets
+
+### Route handlers
 
 Create at `app/[path]/route.ts`. Export named HTTP method handlers:
 
@@ -24,7 +108,7 @@ export async function GET(request: Request) { ... }
 export async function POST(request: Request) { ... }
 ```
 
-For dynamic segments: `app/api/players/[id]/route.ts`. Remember `params` is a **Promise** in Next.js 16:
+For dynamic segments: `app/api/deportistas/[id]/route.ts`. Remember `params` is a **Promise** in Next.js 16:
 ```ts
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -40,10 +124,42 @@ For mutations triggered from forms or Client Components, prefer Server Actions o
 export async function createEntry(formData: FormData) { ... }
 ```
 
-## Data fetching
+## Data fetching & caching
 
-- In Server Components, `fetch` is extended by Next.js with caching. Use `{ cache: 'no-store' }` for dynamic data, `{ next: { revalidate: 60 } }` for ISR patterns
-- For data shared across a request, use `cache()` from React to deduplicate
+Next.js 16 provides several caching layers. Choose based on how stale the data can be:
+
+**Per-request deduplication** (`cache` from React): for data fetched multiple times in a single render tree. Runs once per request, not persisted.
+```ts
+import { cache } from 'react'
+export const getDeportista = cache(async (id: string) => {
+  return db.deportista.findUnique({ where: { id } })
+})
+```
+
+**Cross-request cache** (`unstable_cache` from `next/cache`): for data that can be shared across requests and revalidated on a schedule or on-demand. Use for queries that are expensive and don't need to be real-time.
+```ts
+import { unstable_cache } from 'next/cache'
+
+export const getDeportistas = unstable_cache(
+  async (filters: DeportistaFilters) => {
+    return db.deportista.findMany({ where: buildWhere(filters) })
+  },
+  ['deportistas-list'],          // cache key parts
+  { revalidate: 60, tags: ['deportistas'] }  // 60s TTL + tag for manual invalidation
+)
+```
+
+**On-demand revalidation**: call after a mutation to invalidate the cache immediately.
+```ts
+import { revalidateTag, revalidatePath } from 'next/cache'
+
+// After create/update/delete:
+revalidateTag('deportistas')        // invalidates all caches tagged 'deportistas'
+revalidatePath('/deportistas')      // invalidates the cached page
+```
+
+**When NOT to cache**: user-specific data (e.g. profile, permissions), data that must always be real-time, or anything behind a mutation that needs immediate consistency — use `{ cache: 'no-store' }` or skip `unstable_cache` entirely.
+
 - Wrap dynamic (uncached) data in `<Suspense>` on the page level
 
 ## Authentication — Clerk

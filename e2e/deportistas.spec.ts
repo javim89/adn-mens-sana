@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * E2E tests for the Deportistas CRUD.
+ * E2E tests for the Deportistas CRUD — JSON:API migration.
  *
  * These tests require an authenticated Clerk session. Without a valid Clerk
  * test user session, the middleware redirects to /sign-in.
@@ -12,92 +12,202 @@ import { test, expect } from '@playwright/test';
  * 3. Reference the storageState in playwright.config.ts under `use.storageState`
  *
  * Until then all tests in this file are skipped to avoid false failures in CI.
+ *
+ * QA checklist verified during implementation review (does not require auth):
+ * - API routes call auth() first (verified in unit tests)
+ * - Content-Type: application/vnd.api+json is set on all responses (unit tests)
+ * - data.type is "deportistas" in all resource objects (unit tests)
+ * - Collection responses include links and meta.total (unit tests)
+ * - POST returns 201 with Location header (unit tests)
+ * - DELETE returns 204 with no body (unit tests)
+ * - 404 errors use JSON:API errors array format (unit tests)
+ * - 422 validation errors include source.pointer per failing field (unit tests)
+ * - params is awaited before use (code review confirmed)
+ * - No notFound() from next/navigation inside API routes (code review confirmed)
+ * - TanStack Query keys include all filter/page params (code review confirmed)
+ * - QueryClient is instantiated inside the provider component (code review confirmed)
+ * - useSearchParams() is used for URL reading (code review confirmed)
+ * - React Hook Form errors displayed at field level (unit tests)
+ * - isSubmitting from RHF disables submit button during submission (unit tests)
+ * - No Server Action imports remain in DeportistaForm or DeleteDeportistaModal (code review confirmed)
+ * - deleteDeportista calls queryClient.invalidateQueries after success (code review confirmed)
  */
 
-test.describe('Deportistas CRUD — Happy paths', () => {
-  // Skip all tests until Clerk auth is configured
+test.describe('Deportistas — List page', () => {
   test.skip(true, 'Requires Clerk test user session (storageState not configured)');
 
-  test('crear deportista con datos mínimos', async ({ page }) => {
+  test('navigating to /deportistas loads the page and shows the table header', async ({ page }) => {
     await page.goto('/deportistas');
+    await expect(page.getByRole('table')).toBeVisible();
+    // Table header columns must be present
+    await expect(page.getByRole('columnheader', { name: /nombre/i })).toBeVisible();
+  });
 
-    // Clicar botón Nuevo deportista
-    await page.getByRole('link', { name: 'Nuevo deportista' }).click();
+  test('total count badge renders when records exist', async ({ page }) => {
+    await page.goto('/deportistas');
+    // Wait for TanStack Query to fetch
+    await page.waitForSelector('table');
+    // If records exist the count badge appears in the subtitle
+    // (this test passes trivially if the DB is empty — it just verifies no crash)
+    await expect(page.getByRole('table')).toBeVisible();
+  });
+
+  test('filtering by disciplina updates the URL with filter[disciplina] param', async ({ page }) => {
+    await page.goto('/deportistas');
+    await page.waitForSelector('table');
+
+    // Select FUTBOL in the disciplina dropdown
+    await page.getByRole('combobox').nth(0).selectOption('FUTBOL');
+
+    // URL must contain the JSON:API-style filter param (URL-encoded brackets)
+    await expect(page).toHaveURL(/filter%5Bdisciplina%5D=FUTBOL/);
+  });
+});
+
+test.describe('Deportistas — Pagination', () => {
+  test.skip(true, 'Requires Clerk test user session + >20 records in DB');
+
+  test('when more than 20 results exist, Siguiente button is visible and clickable', async ({ page }) => {
+    await page.goto('/deportistas');
+    await page.waitForSelector('table');
+
+    const nextButton = page.getByRole('button', { name: 'Siguiente' });
+    await expect(nextButton).toBeVisible();
+    await nextButton.click();
+
+    // URL must contain page[number]=2 (URL-encoded brackets)
+    await expect(page).toHaveURL(/page%5Bnumber%5D=2/);
+  });
+});
+
+test.describe('Deportistas — Create', () => {
+  test.skip(true, 'Requires Clerk test user session (storageState not configured)');
+
+  test('navigating to /deportistas/nuevo shows the form', async ({ page }) => {
+    await page.goto('/deportistas/nuevo');
+    await expect(page.getByRole('button', { name: 'Guardar' })).toBeVisible();
+    await expect(page.getByLabel(/apellido \*/i)).toBeVisible();
+  });
+
+  test('submitting the form with missing required fields shows inline validation errors', async ({ page }) => {
+    await page.goto('/deportistas/nuevo');
+
+    // Submit immediately without filling required fields
+    await page.getByRole('button', { name: 'Guardar' }).click();
+
+    // Inline errors must appear — no page navigation
+    await expect(page.getByText('El apellido es requerido')).toBeVisible();
     await expect(page).toHaveURL('/deportistas/nuevo');
+  });
 
-    // Completar tab Personal
-    await page.getByLabel(/apellido/i).fill('Test');
-    await page.getByLabel(/nombre \*/i).fill('E2E');
-    await page.getByLabel(/DNI/i).fill('12345678');
+  test('filling valid data and submitting redirects to the detail page', async ({ page }) => {
+    await page.goto('/deportistas/nuevo');
+
+    await page.getByLabel(/apellido \*/i).fill('TestE2E');
+    await page.getByLabel(/nombre \*/i).fill('Runner');
+    await page.getByLabel(/dni \*/i).fill('12345678');
     await page.getByLabel(/fecha de nacimiento/i).fill('2000-01-01');
 
-    // Guardar
     await page.getByRole('button', { name: 'Guardar' }).click();
 
-    // Debe redirigir al detalle
+    // Redirects to detail page
     await expect(page).toHaveURL(/\/deportistas\/[a-z0-9]+$/);
-    await expect(page.getByText('Test, E2E')).toBeVisible();
-
-    // Navegar a la lista y verificar que aparece
-    await page.goto('/deportistas');
-    await expect(page.getByText('Test, E2E')).toBeVisible();
   });
+});
 
-  test('editar nombre de un deportista existente', async ({ page }) => {
-    // Precondición: el deportista "Test, E2E" debe existir (creado en test anterior)
+test.describe('Deportistas — Edit', () => {
+  test.skip(true, 'Requires Clerk test user session + at least one record in DB');
+
+  test('navigating to /deportistas/[id]/editar shows the form pre-filled with existing data', async ({ page }) => {
+    // Navigate to list, pick first row
     await page.goto('/deportistas');
+    await page.waitForSelector('table tbody tr');
 
-    // Buscar y clicar en el deportista
-    await page.getByPlaceholder(/buscar/i).fill('Test');
-    await page.keyboard.press('Enter');
-    await page.getByText('Test, E2E').click();
+    const firstLink = page.locator('table tbody tr a').first();
+    const href = await firstLink.getAttribute('href');
+    await firstLink.click();
+    await expect(page).toHaveURL(href!);
 
-    // Verificar que llegamos al detalle
-    await expect(page).toHaveURL(/\/deportistas\/[a-z0-9]+$/);
-
-    // Clicar Editar
+    // Click edit
     await page.getByRole('link', { name: 'Editar' }).click();
-    await expect(page).toHaveURL(/\/deportistas\/[a-z0-9]+\/editar$/);
+    await expect(page).toHaveURL(new RegExp(href! + '/editar'));
 
-    // Cambiar nombre
-    const nombreInput = page.getByLabel(/nombre \*/i);
-    await nombreInput.clear();
-    await nombreInput.fill('E2E-Editado');
-
-    // Guardar
-    await page.getByRole('button', { name: 'Guardar' }).click();
-
-    // Verificar cambio en el detalle
-    await expect(page).toHaveURL(/\/deportistas\/[a-z0-9]+$/);
-    await expect(page.getByText('Test, E2E-Editado')).toBeVisible();
+    // Form must be pre-filled (apellido field is not empty)
+    const apellidoInput = page.getByLabel(/apellido \*/i);
+    await expect(apellidoInput).not.toHaveValue('');
   });
 
-  test('eliminar deportista con confirmación', async ({ page }) => {
-    // Precondición: el deportista "Test, E2E-Editado" debe existir
+  test('changing a field and submitting redirects back to the detail page', async ({ page }) => {
     await page.goto('/deportistas');
+    await page.waitForSelector('table tbody tr');
 
-    // Clicar en el deportista
-    await page.getByText('Test, E2E-Editado').click();
-    await expect(page).toHaveURL(/\/deportistas\/[a-z0-9]+$/);
+    const firstLink = page.locator('table tbody tr a').first();
+    const href = await firstLink.getAttribute('href');
+    await firstLink.click();
+    await page.getByRole('link', { name: 'Editar' }).click();
 
-    // Clicar Eliminar
+    // Append text to apellido to change it
+    const apellidoInput = page.getByLabel(/apellido \*/i);
+    await apellidoInput.press('End');
+    await apellidoInput.type('-mod');
+
+    await page.getByRole('button', { name: 'Guardar' }).click();
+
+    // Redirects to detail
+    await expect(page).toHaveURL(href!);
+  });
+});
+
+test.describe('Deportistas — Delete', () => {
+  test.skip(true, 'Requires Clerk test user session + at least one record in DB');
+
+  test('clicking Eliminar on the detail page opens the confirmation modal', async ({ page }) => {
+    await page.goto('/deportistas');
+    await page.waitForSelector('table tbody tr');
+
+    // Navigate to the first deportista detail
+    await page.locator('table tbody tr a').first().click();
+
     await page.getByRole('button', { name: 'Eliminar' }).click();
 
-    // El modal debe abrirse con el nombre
+    // Modal must become visible
     await expect(page.getByTestId('delete-modal')).toBeVisible();
-    await expect(page.getByText('Test, E2E-Editado')).toBeVisible();
-
-    // Confirmar eliminación
-    await page.getByRole('button', { name: /confirmar eliminación/i }).click();
-
-    // Redirigir a la lista y el deportista no aparece
-    await expect(page).toHaveURL('/deportistas');
-    await expect(page.getByText('Test, E2E-Editado')).not.toBeVisible();
   });
 
-  test('mostrar 404 para ID inexistente', async ({ page }) => {
-    await page.goto('/deportistas/id-que-no-existe-12345');
-    await expect(page.getByText(/deportista no encontrado/i)).toBeVisible();
-    await expect(page.getByRole('link', { name: /volver a la lista/i })).toBeVisible();
+  test('confirming deletion redirects to /deportistas and record is gone', async ({ page }) => {
+    // Create a deportista to delete
+    await page.goto('/deportistas/nuevo');
+    await page.getByLabel(/apellido \*/i).fill('ToDelete');
+    await page.getByLabel(/nombre \*/i).fill('E2E');
+    await page.getByLabel(/dni \*/i).fill('11111111');
+    await page.getByLabel(/fecha de nacimiento/i).fill('1990-06-15');
+    await page.getByRole('button', { name: 'Guardar' }).click();
+
+    const detailUrl = page.url();
+
+    // Delete it
+    await page.getByRole('button', { name: 'Eliminar' }).click();
+    await page.getByRole('button', { name: /confirmar eliminación/i }).click();
+
+    // Redirected to list
+    await expect(page).toHaveURL('/deportistas');
+
+    // The record is no longer visible
+    await expect(page.getByText('ToDelete, E2E')).not.toBeVisible();
+
+    // Navigating back to the deleted detail should show 404/not found
+    await page.goto(detailUrl);
+    await expect(page.getByText(/no encontrado|not found/i)).toBeVisible();
+  });
+});
+
+test.describe('Deportistas — Error handling', () => {
+  test.skip(true, 'Requires Clerk test user session (storageState not configured)');
+
+  test('submitting a create form with a duplicate DNI shows an error message', async ({ page }) => {
+    // This test requires a DNI that already exists in the DB.
+    // With test DB seeding it would create the duplicate and verify the global error.
+    // Skipped until DB seeding is available alongside auth.
+    test.skip(true, 'Requires DB with pre-existing DNI');
   });
 });

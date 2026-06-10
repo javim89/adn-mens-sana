@@ -1,9 +1,10 @@
 'use client';
 
-import { useTransition, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Trash2 } from 'lucide-react';
-import { deleteDeportista } from '@/lib/actions/deportistas';
+import { deleteDeportista } from '@/lib/api/deportistas';
 
 interface DeleteDeportistaModalProps {
   deportistaId: string;
@@ -15,20 +16,19 @@ export default function DeleteDeportistaModal({
   deportistaNombre,
 }: DeleteDeportistaModalProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+
+  const { mutate, isPending, error } = useMutation({
+    mutationFn: () => deleteDeportista(deportistaId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deportistas'] });
+      router.push('/deportistas');
+    },
+  });
 
   function handleConfirm() {
-    setError(null);
-    startTransition(async () => {
-      const result = await deleteDeportista(deportistaId);
-      if (result.success) {
-        router.push('/deportistas');
-      } else {
-        setError(result.error);
-      }
-    });
+    mutate();
   }
 
   return (
@@ -66,7 +66,7 @@ export default function DeleteDeportistaModal({
 
           {error && (
             <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-              {error}
+              {error instanceof Error ? error.message : 'Error al eliminar'}
             </div>
           )}
 

@@ -1,20 +1,43 @@
 'use client';
 
-import { useState, useTransition, FormEvent } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import DeportistaFormTabs, { type TabId } from './DeportistaFormTabs';
 import TabPersonal from './tabs/TabPersonal';
 import TabDeportivo from './tabs/TabDeportivo';
 import TabEscolar from './tabs/TabEscolar';
 import TabSocial from './tabs/TabSocial';
-import { createDeportista, updateDeportista } from '@/lib/actions/deportistas';
+import { createDeportista, updateDeportista } from '@/lib/api/deportistas';
 import type { DeportistaFormData, DeportistaWithRelations } from '@/lib/types/deportistas';
 
-interface DeportistaFormProps {
-  mode: 'create' | 'edit';
-  initialData?: DeportistaWithRelations;
-}
+// ---------------------------------------------------------------------------
+// Zod schema for client-side validation (partial — only required fields validated)
+// ---------------------------------------------------------------------------
+
+const formSchema = z
+  .object({
+    apellido: z.string().min(1, 'El apellido es requerido'),
+    nombre: z.string().min(1, 'El nombre es requerido'),
+    dni: z
+      .string()
+      .min(1, 'El DNI es requerido')
+      .regex(/^\d{7,8}$/, 'El DNI debe tener 7 u 8 dígitos'),
+    fechaNacimiento: z
+      .string()
+      .min(1, 'La fecha de nacimiento es requerida')
+      .refine((v) => !v || new Date(v) <= new Date(), {
+        message: 'La fecha no puede ser futura',
+      }),
+  })
+  .passthrough();
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function toDateString(d: Date | null | undefined): string {
   if (!d) return '';
@@ -115,44 +138,44 @@ function buildInitialData(d?: DeportistaWithRelations): DeportistaFormData {
   };
 }
 
-type FieldErrors = Partial<Record<string, string>>;
-
-function validate(data: DeportistaFormData): FieldErrors {
-  const errors: FieldErrors = {};
-
-  if (!data.apellido?.trim()) errors.apellido = 'El apellido es requerido';
-  if (!data.nombre?.trim()) errors.nombre = 'El nombre es requerido';
-  if (!data.dni?.trim()) {
-    errors.dni = 'El DNI es requerido';
-  } else if (!/^\d{7,8}$/.test(data.dni.trim())) {
-    errors.dni = 'El DNI debe tener 7 u 8 dígitos';
-  }
-  if (!data.fechaNacimiento) {
-    errors.fechaNacimiento = 'La fecha de nacimiento es requerida';
-  } else if (new Date(data.fechaNacimiento) > new Date()) {
-    errors.fechaNacimiento = 'La fecha no puede ser futura';
-  }
-
-  return errors;
+interface DeportistaFormProps {
+  mode: 'create' | 'edit';
+  initialData?: DeportistaWithRelations;
 }
 
 const PERSONAL_FIELDS = ['apellido', 'nombre', 'dni', 'fechaNacimiento'];
 
 export default function DeportistaForm({ mode, initialData }: DeportistaFormProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<TabId>('personal');
-  const [formData, setFormData] = useState<DeportistaFormData>(() =>
-    buildInitialData(initialData),
-  );
-  const [errors, setErrors] = useState<FieldErrors>({});
   const [globalError, setGlobalError] = useState<string | null>(null);
 
+  // React Hook Form — only validates the required personal fields via Zod.
+  // The rest of the deeply nested data is managed via watchedData / patchData.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const resolver = zodResolver(formSchema) as any;
+  const {
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+    setValue,
+  } = useForm<DeportistaFormData>({
+    defaultValues: buildInitialData(initialData),
+    resolver,
+  });
+
+  // Watch the full form to pass into tab sub-components
+  const watchedData = watch();
+
   function patch(update: Partial<DeportistaFormData>) {
-    setFormData((prev) => ({ ...prev, ...update }));
+    for (const [key, value] of Object.entries(update)) {
+      setValue(key as keyof DeportistaFormData, value as DeportistaFormData[keyof DeportistaFormData]);
+    }
   }
 
-  function getTabsWithErrors(errs: FieldErrors): Partial<Record<TabId, boolean>> {
+  function getTabsWithErrors(
+    errs: typeof errors,
+  ): Partial<Record<TabId, boolean>> {
     const result: Partial<Record<TabId, boolean>> = {};
     for (const key of Object.keys(errs)) {
       if (PERSONAL_FIELDS.includes(key)) {
@@ -162,38 +185,33 @@ export default function DeportistaForm({ mode, initialData }: DeportistaFormProp
     return result;
   }
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    const validationErrors = validate(formData);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      // Switch to the first tab with errors
-      const tabs = getTabsWithErrors(validationErrors);
-      if (tabs.personal) setActiveTab('personal');
-      return;
-    }
-    setErrors({});
+  const onSubmit = handleSubmit(async (data) => {
     setGlobalError(null);
-
-    startTransition(async () => {
-      const result =
-        mode === 'create'
-          ? await createDeportista(formData)
-          : await updateDeportista(initialData!.id, formData);
-
-      if (result.success) {
-        const id = (result as { success: true; id: string }).id ?? initialData?.id;
-        router.push('/deportistas/' + id);
+    try {
+      if (mode === 'create') {
+        const result = await createDeportista(data);
+        router.push('/deportistas/' + result.data.id);
       } else {
-        setGlobalError((result as { success: false; error: string }).error);
+        await updateDeportista(initialData!.id, data);
+        router.push('/deportistas/' + initialData!.id);
       }
-    });
-  }
+    } catch (err) {
+      setGlobalError(err instanceof Error ? err.message : 'Error al guardar');
+    }
+  });
 
   const tabsWithErrors = getTabsWithErrors(errors);
 
+  // Build a flat errors object for passing to tab components (backwards-compatible)
+  const flatErrors: Partial<Record<string, string>> = {};
+  for (const [key, err] of Object.entries(errors)) {
+    if (err && typeof err === 'object' && 'message' in err) {
+      flatErrors[key] = err.message as string;
+    }
+  }
+
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form onSubmit={onSubmit} noValidate>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 pt-4">
           <DeportistaFormTabs
@@ -205,16 +223,16 @@ export default function DeportistaForm({ mode, initialData }: DeportistaFormProp
 
         <div className="px-6 pb-6">
           {activeTab === 'personal' && (
-            <TabPersonal data={formData} errors={errors} onChange={patch} />
+            <TabPersonal data={watchedData} errors={flatErrors} onChange={patch} />
           )}
           {activeTab === 'deportivo' && (
-            <TabDeportivo data={formData} errors={errors} onChange={patch} />
+            <TabDeportivo data={watchedData} errors={flatErrors} onChange={patch} />
           )}
           {activeTab === 'escolar' && (
-            <TabEscolar data={formData} onChange={patch} />
+            <TabEscolar data={watchedData} onChange={patch} />
           )}
           {activeTab === 'social' && (
-            <TabSocial data={formData} onChange={patch} />
+            <TabSocial data={watchedData} onChange={patch} />
           )}
         </div>
 
@@ -228,7 +246,7 @@ export default function DeportistaForm({ mode, initialData }: DeportistaFormProp
           <button
             type="button"
             onClick={() => router.push('/deportistas')}
-            disabled={isPending}
+            disabled={isSubmitting}
             className="text-sm text-[#6B7280] hover:text-[#1C1C1C] border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
           >
             Cancelar
@@ -236,10 +254,10 @@ export default function DeportistaForm({ mode, initialData }: DeportistaFormProp
 
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isSubmitting}
             className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {isPending ? (
+            {isSubmitting ? (
               <>
                 <Loader2 size={15} className="animate-spin" />
                 Guardando...

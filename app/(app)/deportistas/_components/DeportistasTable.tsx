@@ -1,10 +1,12 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Plus, ChevronRight, X } from 'lucide-react';
 import { useCallback, useState, useTransition } from 'react';
-import type { DeportistaListItem } from '@/lib/types/deportistas';
+import { useQuery } from '@tanstack/react-query';
+import { fetchDeportistas } from '@/lib/api/deportistas';
+import type { FetchDeportistasParams } from '@/lib/api/deportistas';
 import {
   DISCIPLINA_LABELS,
   CATEGORIA_LABELS,
@@ -17,26 +19,13 @@ import {
 } from '@/lib/generated/prisma/enums';
 import type { Disciplina as DisciplinaType, Categoria as CategoriaType, EstadoDeportista as EstadoType } from '@/lib/generated/prisma/enums';
 
-interface DeportistasTableProps {
-  deportistas: DeportistaListItem[];
-  total: number;
-  page: number;
-  pageSize: number;
-  filters: {
-    search?: string;
-    disciplina?: string;
-    categoria?: string;
-    estado?: string;
-  };
-}
-
-function formatDate(date: Date | null | undefined): string {
-  if (!date) return '—';
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—';
   return new Intl.DateTimeFormat('es-AR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(new Date(date));
+  }).format(new Date(dateStr));
 }
 
 const ESTADO_BADGE: Record<string, string> = {
@@ -46,40 +35,73 @@ const ESTADO_BADGE: Record<string, string> = {
   SUSPENDIDO: 'bg-red-100 text-red-700',
 };
 
-export default function DeportistasTable({
-  deportistas,
-  total,
-  page,
-  pageSize,
-  filters,
-}: DeportistasTableProps) {
+export default function DeportistasTable() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const [localSearch, setLocalSearch] = useState(filters.search ?? '');
+  const pageNumber = Number(searchParams.get('page[number]') ?? '1');
+  const pageSize = Number(searchParams.get('page[size]') ?? '20');
+  const filterSearch = searchParams.get('filter[search]') ?? '';
+  const filterDisciplina = searchParams.get('filter[disciplina]') ?? '';
+  const filterCategoria = searchParams.get('filter[categoria]') ?? '';
+  const filterEstado = searchParams.get('filter[estado]') ?? '';
 
-  const hasFilters = Object.values(filters).some(Boolean);
-  const totalPages = Math.ceil(total / pageSize);
+  const [localSearch, setLocalSearch] = useState(filterSearch);
+
+  const queryParams: FetchDeportistasParams = {
+    'page[number]': pageNumber,
+    'page[size]': pageSize,
+    ...(filterSearch ? { 'filter[search]': filterSearch } : {}),
+    ...(filterDisciplina ? { 'filter[disciplina]': filterDisciplina } : {}),
+    ...(filterCategoria ? { 'filter[categoria]': filterCategoria } : {}),
+    ...(filterEstado ? { 'filter[estado]': filterEstado } : {}),
+  };
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['deportistas', queryParams],
+    queryFn: () => fetchDeportistas(queryParams),
+  });
+
+  const deportistas = data?.data ?? [];
+  const total = data?.meta.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const hasFilters = !!(filterSearch || filterDisciplina || filterCategoria || filterEstado);
 
   const pushFilters = useCallback(
-    (overrides: Partial<typeof filters> & { page?: string }) => {
+    (overrides: {
+      'filter[search]'?: string;
+      'filter[disciplina]'?: string;
+      'filter[categoria]'?: string;
+      'filter[estado]'?: string;
+      'page[number]'?: string;
+    }) => {
       const params = new URLSearchParams();
-      const merged = { ...filters, ...overrides };
-      if (merged.search) params.set('search', merged.search);
-      if (merged.disciplina) params.set('disciplina', merged.disciplina);
-      if (merged.categoria) params.set('categoria', merged.categoria);
-      if (merged.estado) params.set('estado', merged.estado);
-      if (overrides.page) params.set('page', overrides.page);
+      const merged = {
+        'filter[search]': filterSearch,
+        'filter[disciplina]': filterDisciplina,
+        'filter[categoria]': filterCategoria,
+        'filter[estado]': filterEstado,
+        'page[number]': String(pageNumber),
+        ...overrides,
+      };
+      if (merged['filter[search]']) params.set('filter[search]', merged['filter[search]']);
+      if (merged['filter[disciplina]']) params.set('filter[disciplina]', merged['filter[disciplina]']);
+      if (merged['filter[categoria]']) params.set('filter[categoria]', merged['filter[categoria]']);
+      if (merged['filter[estado]']) params.set('filter[estado]', merged['filter[estado]']);
+      params.set('page[number]', merged['page[number]'] ?? '1');
+      params.set('page[size]', String(pageSize));
       startTransition(() => {
         router.push('/deportistas?' + params.toString());
       });
     },
-    [filters, router],
+    [filterSearch, filterDisciplina, filterCategoria, filterEstado, pageNumber, pageSize, router],
   );
 
   function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
-      pushFilters({ search: localSearch, page: '1' });
+      pushFilters({ 'filter[search]': localSearch, 'page[number]': '1' });
     }
   }
 
@@ -91,7 +113,7 @@ export default function DeportistasTable({
   }
 
   return (
-    <div className={isPending ? 'opacity-60 pointer-events-none' : ''}>
+    <div className={isPending || isLoading ? 'opacity-60 pointer-events-none' : ''}>
       {/* Header */}
       <div className="flex items-center justify-between mb-1">
         <h1
@@ -138,8 +160,8 @@ export default function DeportistasTable({
 
           {/* Disciplina */}
           <select
-            value={filters.disciplina ?? ''}
-            onChange={(e) => pushFilters({ disciplina: e.target.value || undefined, page: '1' })}
+            value={filterDisciplina}
+            onChange={(e) => pushFilters({ 'filter[disciplina]': e.target.value || undefined, 'page[number]': '1' })}
             className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 text-[#1C1C1C]"
           >
             <option value="">Todas las disciplinas</option>
@@ -152,8 +174,8 @@ export default function DeportistasTable({
 
           {/* Categoria */}
           <select
-            value={filters.categoria ?? ''}
-            onChange={(e) => pushFilters({ categoria: e.target.value || undefined, page: '1' })}
+            value={filterCategoria}
+            onChange={(e) => pushFilters({ 'filter[categoria]': e.target.value || undefined, 'page[number]': '1' })}
             className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 text-[#1C1C1C]"
           >
             <option value="">Todas las categorías</option>
@@ -166,8 +188,8 @@ export default function DeportistasTable({
 
           {/* Estado */}
           <select
-            value={filters.estado ?? ''}
-            onChange={(e) => pushFilters({ estado: e.target.value || undefined, page: '1' })}
+            value={filterEstado}
+            onChange={(e) => pushFilters({ 'filter[estado]': e.target.value || undefined, 'page[number]': '1' })}
             className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 text-[#1C1C1C]"
           >
             <option value="">Todos los estados</option>
@@ -190,101 +212,114 @@ export default function DeportistasTable({
           )}
         </div>
 
+        {/* Error state */}
+        {isError && (
+          <div className="px-5 py-6 text-sm text-center text-red-600">
+            Error al cargar los deportistas. Por favor, intentá de nuevo.
+          </div>
+        )}
+
         {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-xs uppercase text-[#6B7280] bg-[#F3F4F6] border-b border-gray-100">
-                <th className="px-5 py-3 text-left">Nombre</th>
-                <th className="px-5 py-3 text-left">DNI</th>
-                <th className="px-5 py-3 text-left">Disciplina</th>
-                <th className="px-5 py-3 text-left">Categoría</th>
-                <th className="px-5 py-3 text-left">Estado</th>
-                <th className="px-5 py-3 text-left">Fecha Ingreso</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {deportistas.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-5 py-12 text-center text-sm text-[#6B7280]"
-                  >
-                    No se encontraron deportistas
-                    {hasFilters && (
-                      <button
-                        onClick={handleClear}
-                        className="ml-2 text-[#121A61] underline hover:no-underline"
-                      >
-                        Limpiar filtros
-                      </button>
-                    )}
-                  </td>
+        {!isError && (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-xs uppercase text-[#6B7280] bg-[#F3F4F6] border-b border-gray-100">
+                  <th className="px-5 py-3 text-left">Nombre</th>
+                  <th className="px-5 py-3 text-left">DNI</th>
+                  <th className="px-5 py-3 text-left">Disciplina</th>
+                  <th className="px-5 py-3 text-left">Categoría</th>
+                  <th className="px-5 py-3 text-left">Estado</th>
+                  <th className="px-5 py-3 text-left">Fecha Ingreso</th>
+                  <th className="px-5 py-3" />
                 </tr>
-              ) : (
-                deportistas.map((d) => (
-                  <tr
-                    key={d.id}
-                    className="border-b border-gray-50 hover:bg-[#F3F4F6] transition-colors cursor-pointer"
-                  >
-                    <td className="px-5 py-3.5 text-sm font-medium text-[#1C1C1C]">
-                      <Link
-                        href={`/deportistas/${d.id}`}
-                        className="hover:text-[#121A61] hover:underline"
-                      >
-                        {d.apellido}, {d.nombre}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-[#6B7280]">{d.dni}</td>
-                    <td className="px-5 py-3.5 text-sm text-[#6B7280]">
-                      {d.disciplina ? DISCIPLINA_LABELS[d.disciplina as DisciplinaType] : '—'}
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-[#6B7280]">
-                      {d.categoria ? CATEGORIA_LABELS[d.categoria as CategoriaType] : '—'}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={[
-                          'text-xs font-medium px-2.5 py-1 rounded-full',
-                          ESTADO_BADGE[d.estado as EstadoType] ?? 'bg-gray-100 text-[#6B7280]',
-                        ].join(' ')}
-                      >
-                        {ESTADO_LABELS[d.estado as EstadoType]}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-[#6B7280]">
-                      {formatDate(d.fechaIngreso)}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <Link href={`/deportistas/${d.id}`}>
-                        <ChevronRight size={16} className="text-[#6B7280] ml-auto" />
-                      </Link>
+              </thead>
+              <tbody>
+                {deportistas.length === 0 && !isLoading ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-5 py-12 text-center text-sm text-[#6B7280]"
+                    >
+                      No se encontraron deportistas
+                      {hasFilters && (
+                        <button
+                          onClick={handleClear}
+                          className="ml-2 text-[#121A61] underline hover:no-underline"
+                        >
+                          Limpiar filtros
+                        </button>
+                      )}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  deportistas.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="border-b border-gray-50 hover:bg-[#F3F4F6] transition-colors cursor-pointer"
+                    >
+                      <td className="px-5 py-3.5 text-sm font-medium text-[#1C1C1C]">
+                        <Link
+                          href={`/deportistas/${item.id}`}
+                          className="hover:text-[#121A61] hover:underline"
+                        >
+                          {item.attributes.apellido}, {item.attributes.nombre}
+                        </Link>
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-[#6B7280]">{item.attributes.dni}</td>
+                      <td className="px-5 py-3.5 text-sm text-[#6B7280]">
+                        {item.attributes.disciplina
+                          ? DISCIPLINA_LABELS[item.attributes.disciplina as DisciplinaType]
+                          : '—'}
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-[#6B7280]">
+                        {item.attributes.categoria
+                          ? CATEGORIA_LABELS[item.attributes.categoria as CategoriaType]
+                          : '—'}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={[
+                            'text-xs font-medium px-2.5 py-1 rounded-full',
+                            ESTADO_BADGE[item.attributes.estado as EstadoType] ?? 'bg-gray-100 text-[#6B7280]',
+                          ].join(' ')}
+                        >
+                          {ESTADO_LABELS[item.attributes.estado as EstadoType]}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-[#6B7280]">
+                        {formatDate(item.attributes.fechaIngreso)}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <Link href={`/deportistas/${item.id}`}>
+                          <ChevronRight size={16} className="text-[#6B7280] ml-auto" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
             <span className="text-sm text-[#6B7280]">
-              Página {page} de {totalPages} ({total} deportistas)
+              Página {pageNumber} de {totalPages} ({total} deportistas)
             </span>
             <div className="flex gap-2">
               <button
-                disabled={page <= 1}
-                onClick={() => pushFilters({ page: String(page - 1) })}
+                disabled={pageNumber <= 1}
+                onClick={() => pushFilters({ 'page[number]': String(pageNumber - 1) })}
                 className="text-sm px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white transition-colors"
               >
                 Anterior
               </button>
               <button
-                disabled={page >= totalPages}
-                onClick={() => pushFilters({ page: String(page + 1) })}
+                disabled={pageNumber >= totalPages}
+                onClick={() => pushFilters({ 'page[number]': String(pageNumber + 1) })}
                 className="text-sm px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white transition-colors"
               >
                 Siguiente

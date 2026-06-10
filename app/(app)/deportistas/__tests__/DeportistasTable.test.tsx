@@ -1,12 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DeportistasTable from '../_components/DeportistasTable';
-import type { DeportistaListItem } from '@/lib/types/deportistas';
+import type { JsonApiCollection } from '@/lib/types/jsonapi';
+import type { DeportistaListAttributes } from '@/lib/api/deportistas';
 
 // Mock next/navigation
+const mockRouterPush = vi.fn();
+const mockSearchParamsGet = vi.fn();
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
-  useSearchParams: () => ({ get: vi.fn() }),
+  useRouter: () => ({ push: mockRouterPush }),
+  useSearchParams: () => ({ get: mockSearchParamsGet }),
 }));
 
 // Mock next/link
@@ -16,110 +21,186 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-const mockDeportistas: DeportistaListItem[] = [
-  {
-    id: '1',
-    nombre: 'Juan',
-    apellido: 'García',
-    dni: '12345678',
-    disciplina: 'FUTBOL',
-    categoria: 'PRIMERA',
-    estado: 'ACTIVO',
-    fechaIngreso: new Date('2022-01-01'),
-  },
-  {
-    id: '2',
-    nombre: 'María',
-    apellido: 'López',
-    dni: '87654321',
-    disciplina: 'BASQUET',
-    categoria: 'RESERVA',
-    estado: 'INACTIVO',
-    fechaIngreso: null,
-  },
-];
+// Mock the fetch helper
+vi.mock('@/lib/api/deportistas', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/lib/api/deportistas')>();
+  return {
+    ...original,
+    fetchDeportistas: vi.fn(),
+  };
+});
+
+import { fetchDeportistas } from '@/lib/api/deportistas';
+
+// ---------------------------------------------------------------------------
+// Helper
+// ---------------------------------------------------------------------------
+
+function makeCollection(
+  items: Array<{ id: string; attrs: DeportistaListAttributes }>,
+  total: number = items.length,
+): JsonApiCollection<DeportistaListAttributes> {
+  return {
+    data: items.map((i) => ({ type: 'deportistas', id: i.id, attributes: i.attrs })),
+    links: { self: '', first: '', last: '', prev: null, next: null },
+    meta: { total },
+  };
+}
+
+function wrapper({ children }: { children: React.ReactNode }) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+}
+
+const mockItem1: DeportistaListAttributes = {
+  nombre: 'Juan',
+  apellido: 'García',
+  dni: '12345678',
+  disciplina: 'FUTBOL',
+  categoria: 'PRIMERA',
+  estado: 'ACTIVO',
+  fechaIngreso: '2022-01-01T00:00:00.000Z',
+};
+
+const mockItem2: DeportistaListAttributes = {
+  nombre: 'María',
+  apellido: 'López',
+  dni: '87654321',
+  disciplina: 'BASQUET',
+  categoria: 'RESERVA',
+  estado: 'INACTIVO',
+  fechaIngreso: null,
+};
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe('DeportistasTable', () => {
-  const defaultProps = {
-    deportistas: mockDeportistas,
-    total: 2,
-    page: 1,
-    pageSize: 20,
-    filters: {},
-  };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: no URL params
+    mockSearchParamsGet.mockReturnValue(null);
+  });
 
-  test('renderiza la lista de deportistas en la tabla', () => {
-    render(<DeportistasTable {...defaultProps} />);
-    expect(screen.getByText('García, Juan')).toBeInTheDocument();
+  test('renderiza la lista de deportistas obtenida de la API', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([
+        { id: '1', attrs: mockItem1 },
+        { id: '2', attrs: mockItem2 },
+      ]),
+    );
+
+    render(<DeportistasTable />, { wrapper });
+    // Data appears after async query resolves
+    expect(await screen.findByText('García, Juan')).toBeInTheDocument();
     expect(screen.getByText('López, María')).toBeInTheDocument();
   });
 
-  test('muestra el nombre completo como "Apellido, Nombre"', () => {
-    render(<DeportistasTable {...defaultProps} />);
-    expect(screen.getByText('García, Juan')).toBeInTheDocument();
-  });
+  test('muestra badge de estado Activo con clase verde', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '1', attrs: mockItem1 }]),
+    );
 
-  test('muestra badge de estado Activo con clase verde', () => {
-    render(<DeportistasTable {...defaultProps} />);
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByText('García, Juan');
+
     const badges = screen.getAllByText('Activo');
-    // The first badge (row badge, not the select option)
     const badge = badges.find((el) => el.tagName.toLowerCase() === 'span');
     expect(badge).toHaveClass('bg-green-100');
   });
 
-  test('muestra badge de estado Inactivo con clase gris', () => {
-    render(<DeportistasTable {...defaultProps} />);
+  test('muestra badge de estado Inactivo con clase gris', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '2', attrs: mockItem2 }]),
+    );
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByText('López, María');
+
     const badges = screen.getAllByText('Inactivo');
     const badge = badges.find((el) => el.tagName.toLowerCase() === 'span');
     expect(badge).toHaveClass('bg-gray-100');
   });
 
-  test('input de búsqueda existe en el DOM', () => {
-    render(<DeportistasTable {...defaultProps} />);
+  test('input de búsqueda existe en el DOM', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
     expect(screen.getByPlaceholderText(/buscar por nombre/i)).toBeInTheDocument();
   });
 
-  test('selects de filtro están presentes', () => {
-    render(<DeportistasTable {...defaultProps} />);
+  test('selects de filtro están presentes', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
     expect(screen.getByDisplayValue('Todas las disciplinas')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Todas las categorías')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Todos los estados')).toBeInTheDocument();
   });
 
-  test('muestra mensaje cuando la lista está vacía', () => {
-    render(<DeportistasTable {...defaultProps} deportistas={[]} total={0} />);
-    expect(screen.getByText(/no se encontraron deportistas/i)).toBeInTheDocument();
+  test('muestra mensaje cuando la lista está vacía', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([], 0));
+
+    render(<DeportistasTable />, { wrapper });
+    // Wait for query to settle
+    await screen.findByText(/no se encontraron deportistas/i);
   });
 
-  test('NO renderiza paginación cuando total <= pageSize', () => {
-    render(<DeportistasTable {...defaultProps} total={2} pageSize={20} />);
+  test('NO renderiza paginación cuando total <= pageSize', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([], 2));
+
+    render(<DeportistasTable />, { wrapper });
+    // allow render
+    await screen.findByPlaceholderText(/buscar/i);
     expect(screen.queryByText('Anterior')).not.toBeInTheDocument();
   });
 
-  test('renderiza paginación cuando total > pageSize', () => {
-    render(<DeportistasTable {...defaultProps} total={25} pageSize={20} />);
-    expect(screen.getByText('Anterior')).toBeInTheDocument();
+  test('renderiza paginación cuando total > pageSize', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([], 25));
+
+    render(<DeportistasTable />, { wrapper });
+    expect(await screen.findByText('Anterior')).toBeInTheDocument();
     expect(screen.getByText('Siguiente')).toBeInTheDocument();
   });
 
-  test('botón Nuevo deportista tiene href correcto', () => {
-    render(<DeportistasTable {...defaultProps} />);
+  test('botón Nuevo deportista tiene href correcto', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
     const link = screen.getByText('Nuevo deportista').closest('a');
     expect(link).toHaveAttribute('href', '/deportistas/nuevo');
   });
 
-  test('muestra botón Limpiar cuando hay filtros activos', () => {
-    render(
-      <DeportistasTable
-        {...defaultProps}
-        filters={{ search: 'García' }}
-      />,
+  test('pasa filter[disciplina] en los params de la query cuando está en la URL', async () => {
+    mockSearchParamsGet.mockImplementation((key: string) => {
+      if (key === 'filter[disciplina]') return 'FUTBOL';
+      return null;
+    });
+
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    expect(fetchDeportistas).toHaveBeenCalledWith(
+      expect.objectContaining({ 'filter[disciplina]': 'FUTBOL' }),
     );
-    expect(screen.getByText('Limpiar')).toBeInTheDocument();
   });
 
-  test('no muestra botón Limpiar cuando no hay filtros', () => {
-    render(<DeportistasTable {...defaultProps} filters={{}} />);
-    expect(screen.queryByText('Limpiar')).not.toBeInTheDocument();
+  test('pasa page[number] en los params de la query cuando está en la URL', async () => {
+    mockSearchParamsGet.mockImplementation((key: string) => {
+      if (key === 'page[number]') return '2';
+      return null;
+    });
+
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([], 50));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    expect(fetchDeportistas).toHaveBeenCalledWith(
+      expect.objectContaining({ 'page[number]': 2 }),
+    );
   });
 });
