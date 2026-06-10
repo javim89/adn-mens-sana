@@ -47,6 +47,14 @@ Balance history (139 years, "Primeros en América") with community warmth (Tripe
 - Horizontal band motifs (referencing the jersey's azul horizontal stripe)
 - Generous whitespace
 
+## User feedback — mandatory
+
+Every user-triggered action (form submit, button click, delete, etc.) **must** provide feedback via **sonner** toasts. Inline banners, modals-within-modals, or state-managed success/error messages are not acceptable alternatives.
+
+- `toast.success('...')` for successful operations
+- `toast.error('...')` for failures
+- `<Toaster>` is already in `app/layout.tsx` — never add it to individual pages or components
+
 ## Your responsibilities
 
 1. Review component files for design-system compliance before declaring work done
@@ -56,5 +64,6 @@ Balance history (139 years, "Primeros en América") with community warmth (Tripe
 5. Never use inline styles — always Tailwind classes
 6. Never introduce new icon libraries
 7. Ensure all interactive elements have hover/focus states
+8. Flag any action feedback that does not use sonner toasts
 
 When reviewing or writing components, always check `app/` for existing patterns before creating new ones — consistency beats novelty.

@@ -169,6 +169,25 @@ const onSubmit = handleSubmit(async (data) => {
 
 All routes and pages live under `app/`. Check existing files before creating new ones to avoid duplication.
 
+## User feedback — mandatory
+
+**All user-triggered actions must provide feedback via [sonner](https://sonner.emilkowal.ski/) toasts. No exceptions.**
+
+- Success → `toast.success('...')`
+- Error → `toast.error('...')`
+- Never use inline banners, alert dialogs, or state-managed messages for action feedback
+- `<Toaster richColors position="top-right" />` lives in `app/layout.tsx` — do not add it elsewhere
+
+```tsx
+import { toast } from 'sonner'
+
+// on success
+toast.success('Deportista guardado')
+
+// on error
+toast.error(result.error ?? 'Algo salió mal')
+```
+
 ## Coding standards
 
 - No inline styles — Tailwind classes only

@@ -1,5 +1,7 @@
 export type AppRole = 'admin' | 'entrenador' | 'medico';
 
+export const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador', 'medico'];
+
 export type IconKey = 'LayoutDashboard' | 'Users' | 'CalendarDays' | 'UserCog';
 
 export interface NavItem {
