@@ -6,6 +6,9 @@ const appearance = {
     colorBackground: "#ffffff",
     fontFamily: "Inter, sans-serif",
   },
+  elements: {
+    footerAction: { display: "none" },
+  },
 };
 
 export default function SignInPage() {
