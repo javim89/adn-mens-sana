@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Loader2, Ban, ShieldCheck, Trash2 } from 'lucide-react';
+import { Mail, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUser } from '@clerk/nextjs';
 import { reenviarInvitacion, cambiarRol, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
 import { ROLES_PERMITIDOS } from '@/lib/roles';
 import type { Usuario } from '@/lib/types/usuarios';
 import ConfirmarAccionModal from './ConfirmarAccionModal';
+
 
 function formatLastSignIn(date: Date | null): string {
   if (!date) return '—';
@@ -43,13 +44,62 @@ function RolBadge({ rol }: { rol: string }) {
   );
 }
 
-function ResendButton({ invitationId }: { invitationId: string }) {
+interface UsuarioAccionesProps {
+  usuario: Usuario;
+  isAdmin: boolean;
+  currentUserId: string | undefined;
+  openConfirm: (action: 'deshabilitar' | 'reactivar' | 'eliminar', usuario: Usuario) => void;
+}
+
+function UsuarioAcciones({ usuario, isAdmin, currentUserId, openConfirm }: UsuarioAccionesProps) {
+  const [open, setOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  function handleToggle() {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setOpen((v) => !v);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent | KeyboardEvent) {
+      if (e instanceof KeyboardEvent) {
+        if (e.key === 'Escape') setOpen(false);
+        return;
+      }
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleScroll() { setOpen(false); }
+    document.addEventListener('mousedown', handle);
+    document.addEventListener('keydown', handle);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', handle);
+      document.removeEventListener('keydown', handle);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [open]);
+
+  if (!isAdmin) return null;
+
+  const showReenviar = usuario.status === 'pendiente';
+  const showDeshabilitar =
+    usuario.status === 'activo' && !usuario.disabled && usuario.id !== currentUserId;
+  const showReactivar = usuario.status === 'activo' && usuario.disabled;
 
   function handleResend() {
+    setOpen(false);
     startTransition(async () => {
-      const result = await reenviarInvitacion(invitationId);
+      const result = await reenviarInvitacion(usuario.id);
       if (result.ok) {
         toast.success('Invitación reenviada');
         router.refresh();
@@ -59,20 +109,73 @@ function ResendButton({ invitationId }: { invitationId: string }) {
     });
   }
 
+  const ITEM_BASE =
+    'flex items-center gap-2 w-full px-4 py-2 text-sm text-left text-[#1C1C1C] hover:bg-[#F3F4F6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
+  const ITEM_DESTRUCTIVE =
+    'flex items-center gap-2 w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
+
   return (
-    <button
-      onClick={handleResend}
-      disabled={isPending}
-      title="Reenviar invitación"
-      className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#121A61] border border-gray-200 rounded-lg px-2.5 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {isPending ? (
-        <Loader2 size={13} className="animate-spin" />
-      ) : (
-        <Mail size={13} />
+    <div ref={containerRef} className="relative inline-block">
+      <button
+        ref={triggerRef}
+        onClick={handleToggle}
+        disabled={isPending}
+        aria-haspopup="true"
+        aria-expanded={open}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border rounded-lg bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3346CC]/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${open ? 'border-[#121A61]' : 'border-gray-200'}`}
+      >
+        Acciones
+        {isPending ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : (
+          <ChevronDown
+            size={16}
+            className={`transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+          />
+        )}
+      </button>
+
+      {open && (
+        <div
+          style={{ top: dropdownPos.top, right: dropdownPos.right }}
+          className="fixed z-50 w-44 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
+        >
+          {showReenviar && (
+            <button
+              onClick={handleResend}
+              disabled={isPending}
+              className={ITEM_BASE}
+            >
+              <Mail size={14} />
+              Reenviar invitación
+            </button>
+          )}
+          {showDeshabilitar && (
+            <button
+              onClick={() => { setOpen(false); openConfirm('deshabilitar', usuario); }}
+              className={ITEM_BASE}
+            >
+              Deshabilitar
+            </button>
+          )}
+          {showReactivar && (
+            <button
+              onClick={() => { setOpen(false); openConfirm('reactivar', usuario); }}
+              className={ITEM_BASE}
+            >
+              Reactivar
+            </button>
+          )}
+          <div className="border-t border-gray-100" />
+          <button
+            onClick={() => { setOpen(false); openConfirm('eliminar', usuario); }}
+            className={ITEM_DESTRUCTIVE}
+          >
+            Eliminar
+          </button>
+        </div>
       )}
-      Reenviar
-    </button>
+    </div>
   );
 }
 
@@ -225,7 +328,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
     <>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+        <table className="w-full">
             <thead>
               <tr className="text-xs uppercase text-[#6B7280] bg-[#F3F4F6] border-b border-gray-100">
                 <th className="px-5 py-3 text-left">Nombre</th>
@@ -292,41 +395,12 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                         </td>
                       )}
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {isAdmin && usuario.status === 'pendiente' && (
-                            <ResendButton invitationId={usuario.id} />
-                          )}
-                          {isAdmin && usuario.status === 'activo' && !usuario.disabled && usuario.id !== currentUserId && (
-                            <button
-                              onClick={() => openConfirm('deshabilitar', usuario)}
-                              title="Deshabilitar usuario"
-                              className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#121A61] border border-gray-200 rounded-lg px-2.5 py-1.5 transition-colors"
-                            >
-                              <Ban size={13} />
-                              Deshabilitar
-                            </button>
-                          )}
-                          {isAdmin && usuario.status === 'activo' && usuario.disabled && (
-                            <button
-                              onClick={() => openConfirm('reactivar', usuario)}
-                              title="Reactivar usuario"
-                              className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 border border-green-200 hover:border-green-300 rounded-lg px-2.5 py-1.5 transition-colors"
-                            >
-                              <ShieldCheck size={13} />
-                              Reactivar
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button
-                              onClick={() => openConfirm('eliminar', usuario)}
-                              title="Eliminar"
-                              className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-lg px-2.5 py-1.5 transition-colors"
-                            >
-                              <Trash2 size={13} />
-                              Eliminar
-                            </button>
-                          )}
-                        </div>
+                        <UsuarioAcciones
+                          usuario={usuario}
+                          isAdmin={!!isAdmin}
+                          currentUserId={currentUserId}
+                          openConfirm={openConfirm}
+                        />
                       </td>
                     </tr>
                   );

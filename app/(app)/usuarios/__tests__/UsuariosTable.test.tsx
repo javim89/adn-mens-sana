@@ -104,6 +104,7 @@ describe('UsuariosTable', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockPendiente]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     expect(screen.getByRole('button', { name: /reenviar/i })).toBeInTheDocument();
   });
 
@@ -125,6 +126,7 @@ describe('UsuariosTable', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockPendiente]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /reenviar/i }));
 
     await waitFor(() => {
@@ -187,6 +189,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     expect(screen.getByRole('button', { name: /deshabilitar/i })).toBeInTheDocument();
   });
 
@@ -194,6 +197,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     expect(screen.queryByRole('button', { name: /deshabilitar/i })).not.toBeInTheDocument();
   });
 
@@ -201,6 +205,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     expect(screen.getByRole('button', { name: /reactivar/i })).toBeInTheDocument();
   });
 
@@ -208,6 +213,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     expect(screen.queryByRole('button', { name: /reactivar/i })).not.toBeInTheDocument();
   });
 
@@ -215,6 +221,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     expect(screen.getByRole('button', { name: /eliminar/i })).toBeInTheDocument();
   });
 
@@ -222,6 +229,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockPendiente]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     expect(screen.getByRole('button', { name: /eliminar/i })).toBeInTheDocument();
   });
 
@@ -250,6 +258,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /deshabilitar/i }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -260,6 +269,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /reactivar/i }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -270,6 +280,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /eliminar/i }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -280,9 +291,8 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /deshabilitar/i }));
-    // After modal opens, two buttons match "deshabilitar": the row button and the modal confirm.
-    // The modal confirm button is inside the dialog.
     const dialog = screen.getByRole('dialog');
     const confirmBtn = dialog.querySelector('button:last-child') as HTMLElement;
     fireEvent.click(confirmBtn);
@@ -296,6 +306,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /reactivar/i }));
     const dialog = screen.getByRole('dialog');
     const confirmBtn = dialog.querySelector('button:last-child') as HTMLElement;
@@ -310,6 +321,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /eliminar/i }));
     const dialog = screen.getByRole('dialog');
     const confirmBtn = dialog.querySelector('button:last-child') as HTMLElement;
@@ -324,6 +336,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockPendiente]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /eliminar/i }));
     const dialog = screen.getByRole('dialog');
     const confirmBtn = dialog.querySelector('button:last-child') as HTMLElement;
@@ -338,6 +351,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /deshabilitar/i }));
     const dialog = screen.getByRole('dialog');
     fireEvent.click(dialog.querySelector('button:first-child') as HTMLElement);
@@ -371,11 +385,32 @@ describe('UsuariosTable — acciones admin', () => {
     expect(screen.queryByText('Deshabilitado')).not.toBeInTheDocument();
   });
 
+  test('el trigger "Acciones" abre el dropdown al hacer click', () => {
+    asAdmin();
+    render(<UsuariosTable usuarios={[mockActivo]} />);
+
+    expect(screen.queryByRole('button', { name: /deshabilitar/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
+    expect(screen.getByRole('button', { name: /deshabilitar/i })).toBeInTheDocument();
+  });
+
+  test('el dropdown muestra solo las acciones aplicables para cada estado', () => {
+    asAdmin();
+    render(<UsuariosTable usuarios={[mockPendiente]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
+    expect(screen.getByRole('button', { name: /reenviar/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /deshabilitar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /reactivar/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /eliminar/i })).toBeInTheDocument();
+  });
+
   test('admin NO ve botón "Deshabilitar" para su propia fila', () => {
     // Admin is logged in as user_1, so their own row should not show Deshabilitar
     asAdmin('user_1');
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     expect(screen.queryByRole('button', { name: /deshabilitar/i })).not.toBeInTheDocument();
   });
 
@@ -383,6 +418,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /deshabilitar/i }));
     const dialog = screen.getByRole('dialog');
     fireEvent.click(dialog.querySelector('button:last-child') as HTMLElement);
@@ -397,6 +433,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /reactivar/i }));
     const dialog = screen.getByRole('dialog');
     fireEvent.click(dialog.querySelector('button:last-child') as HTMLElement);
@@ -411,6 +448,7 @@ describe('UsuariosTable — acciones admin', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
     fireEvent.click(screen.getByRole('button', { name: /deshabilitar/i }));
     const dialog = screen.getByRole('dialog');
     fireEvent.click(dialog.querySelector('button:last-child') as HTMLElement);

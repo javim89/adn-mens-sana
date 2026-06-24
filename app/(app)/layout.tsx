@@ -17,7 +17,7 @@ export default async function AppLayout({
   return (
     <Providers>
       <Sidebar navItems={navItems} />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1">{children}</main>
     </Providers>
   );
 }
