@@ -3,6 +3,22 @@ import { describe, test, expect, vi } from 'vitest';
 import TabPersonal from '../_components/tabs/TabPersonal';
 import type { DeportistaFormData } from '@/lib/types/deportistas';
 
+// Radix Select uses a portal and doesn't render options until opened.
+// Mock the shadcn select primitives to render all options inline.
+vi.mock('@/app/components/ui/select', () => ({
+  Select: ({ children, value, onValueChange }: { children: React.ReactNode; value?: string; onValueChange?: (v: string) => void }) => (
+    <div data-testid="select" data-value={value}>{children}</div>
+  ),
+  SelectTrigger: ({ children, id, className }: { children: React.ReactNode; id?: string; className?: string }) => (
+    <button id={id} className={className} role="combobox">{children}</button>
+  ),
+  SelectValue: ({ placeholder }: { placeholder?: string }) => <span>{placeholder}</span>,
+  SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => (
+    <div role="option" data-value={value}>{children}</div>
+  ),
+}));
+
 const emptyData: DeportistaFormData = {
   apellido: '',
   nombre: '',

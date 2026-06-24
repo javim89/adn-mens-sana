@@ -1,13 +1,19 @@
 'use client';
 
-import CustomSelect from '@/app/components/ui/CustomSelect';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 
 interface EnumSelectProps<T extends string> {
   value: T | '';
   onChange: (v: T | '') => void;
   options: Record<T, string>;
   placeholder?: string;
-  id: string;
+  id?: string;
   className?: string;
   disabled?: boolean;
 }
@@ -21,19 +27,22 @@ export default function EnumSelect<T extends string>({
   className = '',
   disabled = false,
 }: EnumSelectProps<T>) {
-  const allOptions = [
-    { value: '', label: placeholder },
-    ...(Object.entries(options) as [T, string][]).map(([k, label]) => ({ value: k, label })),
-  ];
-
   return (
-    <CustomSelect
-      id={id}
+    <Select
       value={value}
-      onChange={(v) => onChange(v as T | '')}
-      options={allOptions}
+      onValueChange={(v) => onChange(v === '__placeholder__' ? '' : (v as T))}
       disabled={disabled}
-      className={`w-full ${className}`}
-    />
+    >
+      <SelectTrigger id={id} className={`w-full ${className}`}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {(Object.entries(options) as [T, string][]).map(([k, label]) => (
+          <SelectItem key={k} value={k}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

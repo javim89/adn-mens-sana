@@ -5,7 +5,13 @@ import Link from 'next/link';
 import { Search, Plus, ChevronRight, X } from 'lucide-react';
 import { useCallback, useState, useTransition } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import CustomSelect from '@/app/components/ui/CustomSelect';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 import { fetchDeportistas } from '@/lib/api/deportistas';
 import type { FetchDeportistasParams } from '@/lib/api/deportistas';
 import {
@@ -160,34 +166,64 @@ export default function DeportistasTable() {
           </div>
 
           {/* Disciplina */}
-          <CustomSelect
-            value={filterDisciplina}
-            onChange={(v) => pushFilters({ 'filter[disciplina]': v || undefined, 'page[number]': '1' })}
-            options={[
-              { value: '', label: 'Todas las disciplinas' },
-              ...Object.values(Disciplina).map((d) => ({ value: d, label: DISCIPLINA_LABELS[d] })),
-            ]}
-          />
+          <Select
+            value={filterDisciplina || '__all__'}
+            onValueChange={(v) =>
+              pushFilters({ 'filter[disciplina]': v === '__all__' ? undefined : v, 'page[number]': '1' })
+            }
+          >
+            <SelectTrigger className="min-w-[160px]">
+              <SelectValue placeholder="Todas las disciplinas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas las disciplinas</SelectItem>
+              {Object.values(Disciplina).map((d) => (
+                <SelectItem key={d} value={d}>
+                  {DISCIPLINA_LABELS[d]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Categoria */}
-          <CustomSelect
-            value={filterCategoria}
-            onChange={(v) => pushFilters({ 'filter[categoria]': v || undefined, 'page[number]': '1' })}
-            options={[
-              { value: '', label: 'Todas las categorías' },
-              ...Object.values(Categoria).map((c) => ({ value: c, label: CATEGORIA_LABELS[c] })),
-            ]}
-          />
+          <Select
+            value={filterCategoria || '__all__'}
+            onValueChange={(v) =>
+              pushFilters({ 'filter[categoria]': v === '__all__' ? undefined : v, 'page[number]': '1' })
+            }
+          >
+            <SelectTrigger className="min-w-[160px]">
+              <SelectValue placeholder="Todas las categorías" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas las categorías</SelectItem>
+              {Object.values(Categoria).map((c) => (
+                <SelectItem key={c} value={c}>
+                  {CATEGORIA_LABELS[c]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Estado */}
-          <CustomSelect
-            value={filterEstado}
-            onChange={(v) => pushFilters({ 'filter[estado]': v || undefined, 'page[number]': '1' })}
-            options={[
-              { value: '', label: 'Todos los estados' },
-              ...Object.values(EstadoDeportista).map((e) => ({ value: e, label: ESTADO_LABELS[e] })),
-            ]}
-          />
+          <Select
+            value={filterEstado || '__all__'}
+            onValueChange={(v) =>
+              pushFilters({ 'filter[estado]': v === '__all__' ? undefined : v, 'page[number]': '1' })
+            }
+          >
+            <SelectTrigger className="min-w-[140px]">
+              <SelectValue placeholder="Todos los estados" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos los estados</SelectItem>
+              {Object.values(EstadoDeportista).map((e) => (
+                <SelectItem key={e} value={e}>
+                  {ESTADO_LABELS[e]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Clear */}
           {hasFilters && (

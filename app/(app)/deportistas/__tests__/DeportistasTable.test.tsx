@@ -135,9 +135,10 @@ describe('DeportistasTable', () => {
     vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
 
     render(<DeportistasTable />, { wrapper });
-    expect(screen.getByDisplayValue('Todas las disciplinas')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Todas las categorías')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Todos los estados')).toBeInTheDocument();
+    // Radix Select renders triggers as combobox buttons — check by accessible role
+    const comboboxes = screen.getAllByRole('combobox');
+    // Disciplina, Categoria and Estado filters
+    expect(comboboxes.length).toBeGreaterThanOrEqual(3);
   });
 
   test('muestra mensaje cuando la lista está vacía', async () => {

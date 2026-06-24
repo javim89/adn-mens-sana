@@ -29,11 +29,38 @@ This is a Next.js 16 + React 19 + Tailwind CSS v4 project. All styling uses Tail
 - `Geist Mono` — stats, scores, numbers
 
 **Components:**
-- Buttons: primary (`bg-[#121A61] text-white hover:bg-[#1E2A8A]`), secondary (border + transparent), accent (golden, rarely)
+- Buttons: use shadcn `<Button>` — primary variant maps to bg-primary (navy), add `hover:bg-[#1E2A8A]` for hover. Accent/golden buttons: `className="bg-[#C9A84C] text-white"`.
 - Cards: white bg + `shadow-sm`, blue header band, hover `shadow-md -translate-y-0.5`
 - Nav: dark blue bg, white links, active = gold bottom border
 - Hero: full-bleed photo with `bg-[#121A61]/70` overlay, or solid navy with subtle texture
 - Badges: `bg-[#3346CC] text-white uppercase text-xs rounded-full px-2 py-0.5`
+
+**Component library: shadcn/ui (mandatory)**
+All UI components must use shadcn/ui primitives installed under `app/components/ui/`. Do NOT build custom dropdown, dialog, input, or button components from scratch — use the shadcn equivalents.
+
+Available primitives (expand as more are added via `npx shadcn@latest add <name>`):
+- `select` → `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectItem`
+- `button` → `Button` (variants: `default` = primary navy, `secondary`, `outline`, `ghost`, `destructive`)
+- `dialog` → `Dialog`, `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogFooter`
+- `input` → `Input`
+- `label` → `Label`
+- `badge` → `Badge`
+- `card` → `Card`, `CardHeader`, `CardTitle`, `CardContent`, `CardFooter`
+- `tabs` → `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`
+
+**shadcn token → club palette mapping:**
+| shadcn token | Club color | Hex |
+|---|---|---|
+| `--primary` / `bg-primary` | Azul marino | `#121A61` |
+| `--primary-foreground` | Blanco | `#ffffff` |
+| `--secondary` / `bg-secondary` | Gris claro | `#F3F4F6` |
+| `--accent` / `bg-accent` | Azul claro | `#3346CC` |
+| `--muted-foreground` | Gris neutro | `#6B7280` |
+| `--destructive` | Rojo | `#dc2626` |
+| `--ring` | Azul claro | `#3346CC` |
+
+For hover states on primary buttons, use `hover:bg-[#1E2A8A]` (azul medio — no shadcn token for this).
+For dorado/gold accents, use `bg-[#C9A84C]` directly — no shadcn token.
 
 **Icons:** Lucide React only.
 **Shield:** always use `/public/shield.svg`, never distort it.

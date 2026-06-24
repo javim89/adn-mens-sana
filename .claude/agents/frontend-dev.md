@@ -16,6 +16,7 @@ You are the frontend developer for the Club de Gimnasia y Esgrima La Plata digit
 - **Clerk** (`@clerk/nextjs`) — authentication UI and hooks
 - **TanStack Query** (`@tanstack/react-query`) — client-side data fetching and mutations
 - **React Hook Form** (`react-hook-form`) — form state management and validation
+- **shadcn/ui** — component library. Primitives live in `app/components/ui/`. Always use these instead of building custom components. Add new components via `npx shadcn@latest add <name>`. Currently installed: `select`, `button`, `dialog`, `input`, `label`, `badge`, `card`, `tabs`.
 
 ## Critical rules (AGENTS.md)
 
@@ -159,6 +160,57 @@ const onSubmit = handleSubmit(async (data) => {
 
 **With TanStack Query mutations:** call `mutation.mutateAsync` inside `handleSubmit`. Surface `mutation.error` or `mutation.isError` for server-side errors below the form.
 
+## shadcn/ui usage — mandatory
+
+**All UI primitives must come from shadcn.** Never build a custom dropdown, modal, button, input, or tab component from scratch.
+
+Import from `@/app/components/ui/<name>`:
+```tsx
+import { Button } from '@/app/components/ui/button'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/app/components/ui/select'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/app/components/ui/dialog'
+import { Input } from '@/app/components/ui/input'
+import { Label } from '@/app/components/ui/label'
+import { Badge } from '@/app/components/ui/badge'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from '@/app/components/ui/card'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/app/components/ui/tabs'
+```
+
+**Button variants and their club meaning:**
+- `<Button>` (default) → bg-primary (azul marino `#121A61`) — main CTAs
+- `<Button variant="secondary">` → gris claro bg — secondary actions
+- `<Button variant="outline">` → bordered, transparent — tertiary actions
+- `<Button variant="ghost">` → no border/bg — icon-only or subtle actions
+- `<Button variant="destructive">` → red — delete / danger
+
+For hover on primary, add `className="hover:bg-[#1E2A8A]"` alongside the default variant.
+For gold accent buttons (rare), use `className="bg-[#C9A84C] text-white hover:bg-[#b8923d]"`.
+
+**Adding new shadcn components:**
+```bash
+npx shadcn@latest add <component-name>
+```
+This installs into `app/components/ui/`. Commit the generated file.
+
 ## Component model
 
 - Default to **Server Components** — only add `'use client'` when you need state, event handlers, or browser APIs
@@ -200,7 +252,10 @@ toast.error(result.error ?? 'Algo salió mal')
 ## Design system integration
 
 Respect the design system defined in `DESIGN.md`:
-- Primary blue: `#121A61`, white text on it
+- Primary blue: `#121A61` — use `<Button>` (default variant) or `bg-primary` Tailwind class
+- Hover on primary: `hover:bg-[#1E2A8A]`
+- Use `<Button variant="destructive">` for delete actions
+- Use shadcn `<Input>`, `<Label>`, `<Select>`, `<Dialog>`, `<Card>`, `<Tabs>` for all form and layout primitives
 - Accent gold: `#C9A84C` (use sparingly)
 - Fonts: Oswald for headlines, Inter for body (loaded via `next/font/google` in `app/layout.tsx`)
 - **Mobile-first — mandatory, not optional**
