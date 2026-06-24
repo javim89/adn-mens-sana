@@ -290,6 +290,32 @@ describe('invitarUsuario', () => {
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/rol no permitido/i);
   });
+
+  test('acepta kinesiologo como rol válido', async () => {
+    const mockCreate = vi.fn().mockResolvedValue({ id: 'inv_kine' });
+    mockClerkClient.mockResolvedValueOnce({
+      users: { getUserList: vi.fn(), updateUserMetadata: vi.fn() },
+      invitations: {
+        getInvitationList: vi.fn(),
+        createInvitation: mockCreate,
+        revokeInvitation: vi.fn(),
+      },
+    });
+
+    const result = await invitarUsuario({
+      firstName: 'Clara',
+      lastName: 'Ríos',
+      email: 'clara@test.com',
+      rol: 'kinesiologo',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publicMetadata: expect.objectContaining({ role: 'kinesiologo' }),
+      }),
+    );
+  });
 });
 
 describe('cambiarRol', () => {
@@ -370,6 +396,25 @@ describe('cambiarRol', () => {
 
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/propio rol/i);
+  });
+
+  test('acepta nutricionista como rol válido al cambiar rol', async () => {
+    const mockUpdateMetadata = vi.fn().mockResolvedValue({ id: 'user_target' });
+    mockClerkClient.mockResolvedValueOnce({
+      users: { getUserList: vi.fn(), updateUserMetadata: mockUpdateMetadata },
+      invitations: {
+        getInvitationList: vi.fn(),
+        createInvitation: vi.fn(),
+        revokeInvitation: vi.fn(),
+      },
+    });
+
+    const result = await cambiarRol('user_target', 'nutricionista');
+
+    expect(result.ok).toBe(true);
+    expect(mockUpdateMetadata).toHaveBeenCalledWith('user_target', {
+      publicMetadata: { role: 'nutricionista' },
+    });
   });
 });
 

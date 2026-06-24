@@ -53,17 +53,26 @@ test.describe('Usuarios — Admin', () => {
     await expect(roleSelector).toBeVisible()
     await roleSelector.selectOption('medico')
   })
+
+  test.skip('Admin puede seleccionar kinesiologo en el selector de cambio de rol', async ({ page }) => {
+    // Requires: authenticated admin session
+    await page.goto('/usuarios')
+    await expect(page.getByText('Cambiar rol')).toBeVisible()
+    const roleSelector = page.getByRole('combobox', { name: /cambiar rol/i }).first()
+    await expect(roleSelector).toBeVisible()
+    await roleSelector.selectOption('kinesiologo')
+  })
 })
 
 test.describe('Usuarios — No-admin', () => {
   test.skip('No-admin no ve el botón "Nuevo usuario"', async ({ page }) => {
-    // This test requires a storageState fixture with an entrenador or medico session
+    // This test requires a storageState fixture with a non-admin role (entrenador, medico, kinesiologo, etc.)
     await page.goto('/usuarios')
     await expect(page.getByRole('button', { name: 'Nuevo usuario' })).not.toBeVisible()
   })
 
   test.skip('No-admin no ve la columna "Cambiar rol"', async ({ page }) => {
-    // This test requires a storageState fixture with an entrenador or medico session
+    // This test requires a storageState fixture with a non-admin role (entrenador, medico, kinesiologo, etc.)
     await page.goto('/usuarios')
     await expect(page.getByText('Cambiar rol')).not.toBeVisible()
   })
@@ -163,7 +172,7 @@ test.describe('Usuarios — Disable / Delete / Reactivate', () => {
   })
 
   test.skip('No-admin no ve botones de deshabilitar ni eliminar', async ({ page }) => {
-    // Requires storageState fixture with an entrenador or medico session
+    // Requires storageState fixture with a non-admin role (entrenador, medico, kinesiologo, etc.)
     await page.goto('/usuarios')
     await expect(page.getByRole('button', { name: /deshabilitar/i })).not.toBeVisible()
     await expect(page.getByRole('button', { name: /eliminar/i })).not.toBeVisible()

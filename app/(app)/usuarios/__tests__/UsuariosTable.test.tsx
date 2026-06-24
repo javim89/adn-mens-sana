@@ -87,7 +87,7 @@ describe('UsuariosTable', () => {
 
     expect(screen.getAllByText('Laura Méndez')[0]).toBeInTheDocument();
     expect(screen.getAllByText('l.mendez@gimnasia.org.ar')[0]).toBeInTheDocument();
-    expect(screen.getAllByText('admin')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Admin')[0]).toBeInTheDocument();
     expect(screen.getAllByText('Activo')[0]).toBeInTheDocument();
   });
 
@@ -178,6 +178,30 @@ describe('UsuariosTable', () => {
 
     const messages = screen.getAllByText(/no hay usuarios registrados/i);
     expect(messages.length).toBeGreaterThan(0);
+  });
+
+  test('RolBadge renderiza con color propio para kinesiologo (no usa fallback bg-gray-100)', () => {
+    const mockKinesiologo: Usuario = {
+      id: 'user_kine',
+      firstName: 'Ana',
+      lastName: 'Torres',
+      email: 'a.torres@gimnasia.org.ar',
+      rol: 'kinesiologo',
+      lastSignInAt: null,
+      createdAt: new Date('2026-01-01'),
+      status: 'activo',
+      disabled: false,
+    };
+    asNonAdmin();
+    render(<UsuariosTable usuarios={[mockKinesiologo]} />);
+
+    // Badge should display the label (not raw rol value)
+    const badge = screen.getAllByText('Kinesiólogo')[0];
+    expect(badge).toBeInTheDocument();
+    // Badge must NOT have the fallback gray class
+    expect(badge.className).not.toContain('bg-gray-100');
+    // Badge must have the teal color class
+    expect(badge.className).toContain('bg-[#0F766E]');
   });
 });
 

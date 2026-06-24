@@ -1,6 +1,16 @@
-export type AppRole = 'admin' | 'entrenador' | 'medico';
+export type AppRole = 'admin' | 'entrenador' | 'medico' | 'kinesiologo' | 'nutricionista' | 'psicologo' | 'cardiologo';
 
-export const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador', 'medico'];
+export const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador', 'medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'];
+
+export const ROL_LABELS: Record<AppRole, string> = {
+  admin:         'Admin',
+  entrenador:    'Entrenador',
+  medico:        'Médico',
+  kinesiologo:   'Kinesiólogo',
+  nutricionista: 'Nutricionista',
+  psicologo:     'Psicólogo',
+  cardiologo:    'Cardiólogo',
+};
 
 export type IconKey = 'LayoutDashboard' | 'Users' | 'CalendarDays' | 'UserCog';
 
@@ -18,9 +28,13 @@ const ALL_NAV_ITEMS: NavItem[] = [
 ];
 
 const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
-  admin:      ALL_NAV_ITEMS,
-  entrenador: ALL_NAV_ITEMS.filter(i => !['/turnos', '/usuarios'].includes(i.href)),
-  medico:     ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
+  admin:         ALL_NAV_ITEMS,
+  entrenador:    ALL_NAV_ITEMS.filter(i => !['/turnos', '/usuarios'].includes(i.href)),
+  medico:        ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
+  kinesiologo:   ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
+  nutricionista: ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
+  psicologo:     ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
+  cardiologo:    ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
 };
 
 export function getNavItemsForRole(role: string | undefined | null): NavItem[] {

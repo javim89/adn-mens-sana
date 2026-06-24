@@ -6,7 +6,7 @@ import { Mail, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUser } from '@clerk/nextjs';
 import { reenviarInvitacion, cambiarRol, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
-import { ROLES_PERMITIDOS } from '@/lib/roles';
+import { ROLES_PERMITIDOS, ROL_LABELS } from '@/lib/roles';
 import type { Usuario } from '@/lib/types/usuarios';
 import ConfirmarAccionModal from './ConfirmarAccionModal';
 
@@ -30,16 +30,21 @@ function formatLastSignIn(date: Date | null): string {
 }
 
 const ROL_BADGE: Record<string, string> = {
-  admin: 'bg-[#121A61] text-white',
-  entrenador: 'bg-[#C9A84C] text-[#1C1C1C]',
-  medico: 'bg-[#3346CC] text-white',
+  admin:         'bg-[#121A61] text-white',
+  entrenador:    'bg-[#C9A84C] text-[#1C1C1C]',
+  medico:        'bg-[#3346CC] text-white',
+  kinesiologo:   'bg-[#0F766E] text-white',
+  nutricionista: 'bg-[#7C3AED] text-white',
+  psicologo:     'bg-[#B45309] text-white',
+  cardiologo:    'bg-[#DC2626] text-white',
 };
 
 function RolBadge({ rol }: { rol: string }) {
   const classes = ROL_BADGE[rol] ?? 'bg-gray-100 text-[#6B7280]';
+  const label = (ROL_LABELS as Record<string, string>)[rol] ?? (rol || '—');
   return (
     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${classes}`}>
-      {rol || '—'}
+      {label}
     </span>
   );
 }
@@ -213,7 +218,7 @@ function RolSelector({ userId, currentRol }: { userId: string; currentRol: strin
       >
         {ROLES_PERMITIDOS.map((rol) => (
           <option key={rol} value={rol}>
-            {rol}
+            {ROL_LABELS[rol]}
           </option>
         ))}
       </select>

@@ -6,13 +6,13 @@ import { z } from 'zod';
 import { X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { invitarUsuario } from '@/lib/actions/usuarios';
-import { ROLES_PERMITIDOS } from '@/lib/roles';
+import { ROLES_PERMITIDOS, ROL_LABELS } from '@/lib/roles';
 
 const schema = z.object({
   firstName: z.string().min(1, 'El nombre es requerido'),
   lastName: z.string().min(1, 'El apellido es requerido'),
   email: z.string().min(1, 'El email es requerido').email('El email no es válido'),
-  rol: z.enum(['admin', 'entrenador', 'medico'], {
+  rol: z.enum(['admin', 'entrenador', 'medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'], {
     error: 'Seleccioná un rol',
   }),
 });
@@ -159,7 +159,7 @@ export default function InvitarUsuarioModal({ open, onClose, onSuccess }: Invita
                 </option>
                 {ROLES_PERMITIDOS.map((rol) => (
                   <option key={rol} value={rol}>
-                    {rol}
+                    {ROL_LABELS[rol]}
                   </option>
                 ))}
               </select>

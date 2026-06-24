@@ -63,4 +63,44 @@ describe('Sidebar nav items por rol', () => {
     expect(screen.queryByText('Turnos')).not.toBeInTheDocument();
     expect(screen.queryByText('Usuarios')).not.toBeInTheDocument();
   });
+
+  it('kinesiologo ve 3 items: Dashboard, Deportistas, Turnos (sin Usuarios)', () => {
+    const navItems = getNavItemsForRole('kinesiologo');
+    render(<Sidebar navItems={navItems} isOpen={false} onClose={noop} />);
+
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Deportistas')).toBeInTheDocument();
+    expect(screen.getByText('Turnos')).toBeInTheDocument();
+    expect(screen.queryByText('Usuarios')).not.toBeInTheDocument();
+  });
+
+  it('nutricionista ve 3 items: Dashboard, Deportistas, Turnos (sin Usuarios)', () => {
+    const navItems = getNavItemsForRole('nutricionista');
+    render(<Sidebar navItems={navItems} isOpen={false} onClose={noop} />);
+
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Deportistas')).toBeInTheDocument();
+    expect(screen.getByText('Turnos')).toBeInTheDocument();
+    expect(screen.queryByText('Usuarios')).not.toBeInTheDocument();
+  });
+
+  it('psicologo ve 3 items: Dashboard, Deportistas, Turnos (sin Usuarios)', () => {
+    const navItems = getNavItemsForRole('psicologo');
+    render(<Sidebar navItems={navItems} isOpen={false} onClose={noop} />);
+
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Deportistas')).toBeInTheDocument();
+    expect(screen.getByText('Turnos')).toBeInTheDocument();
+    expect(screen.queryByText('Usuarios')).not.toBeInTheDocument();
+  });
+
+  it('cardiologo ve 3 items: Dashboard, Deportistas, Turnos (sin Usuarios)', () => {
+    const navItems = getNavItemsForRole('cardiologo');
+    render(<Sidebar navItems={navItems} isOpen={false} onClose={noop} />);
+
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Deportistas')).toBeInTheDocument();
+    expect(screen.getByText('Turnos')).toBeInTheDocument();
+    expect(screen.queryByText('Usuarios')).not.toBeInTheDocument();
+  });
 });

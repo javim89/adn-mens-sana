@@ -77,6 +77,42 @@ test.describe('Sidebar nav items por rol (si factible en CI)', () => {
     await expect(page.getByRole('link', { name: 'Usuarios' })).not.toBeVisible();
   });
 
+  test.skip('usuario con rol kinesiologo ve: Dashboard, Deportistas, Turnos — NO ve Usuarios', async ({ page }) => {
+    // Requires: authenticated session for a user with publicMetadata.role = 'kinesiologo'
+    await page.goto('/dashboard');
+    await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Deportistas' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Turnos' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Usuarios' })).not.toBeVisible();
+  });
+
+  test.skip('usuario con rol nutricionista ve: Dashboard, Deportistas, Turnos — NO ve Usuarios', async ({ page }) => {
+    // Requires: authenticated session for a user with publicMetadata.role = 'nutricionista'
+    await page.goto('/dashboard');
+    await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Deportistas' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Turnos' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Usuarios' })).not.toBeVisible();
+  });
+
+  test.skip('usuario con rol psicologo ve: Dashboard, Deportistas, Turnos — NO ve Usuarios', async ({ page }) => {
+    // Requires: authenticated session for a user with publicMetadata.role = 'psicologo'
+    await page.goto('/dashboard');
+    await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Deportistas' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Turnos' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Usuarios' })).not.toBeVisible();
+  });
+
+  test.skip('usuario con rol cardiologo ve: Dashboard, Deportistas, Turnos — NO ve Usuarios', async ({ page }) => {
+    // Requires: authenticated session for a user with publicMetadata.role = 'cardiologo'
+    await page.goto('/dashboard');
+    await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Deportistas' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Turnos' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Usuarios' })).not.toBeVisible();
+  });
+
   test.skip('usuario sin rol ve solo Dashboard (fallback)', async ({ page }) => {
     // Requires: authenticated session for a user with no role in publicMetadata
     await page.goto('/dashboard');
