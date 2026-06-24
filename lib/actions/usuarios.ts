@@ -28,15 +28,16 @@ export async function getUsuarios(): Promise<Usuario[]> {
   const activos: UsuarioActivo[] = usersResponse.data.map((u) => {
     const meta = (u.publicMetadata ?? {}) as Record<string, unknown>;
     return {
-    id: u.id,
-    firstName: u.firstName || String(meta.firstName ?? ''),
-    lastName: u.lastName || String(meta.lastName ?? ''),
-    email: u.emailAddresses[0]?.emailAddress ?? '',
-    rol: String(meta.role ?? ''),
-    lastSignInAt: u.lastSignInAt != null ? new Date(u.lastSignInAt) : null,
-    createdAt: new Date(u.createdAt),
-    status: 'activo' as const,
-  };
+      id: u.id,
+      firstName: u.firstName || String(meta.firstName ?? ''),
+      lastName: u.lastName || String(meta.lastName ?? ''),
+      email: u.emailAddresses[0]?.emailAddress ?? '',
+      rol: String(meta.role ?? ''),
+      lastSignInAt: u.lastSignInAt != null ? new Date(u.lastSignInAt) : null,
+      createdAt: new Date(u.createdAt),
+      status: 'activo' as const,
+      disabled: u.banned === true,
+    };
   });
 
   const pendientes: UsuarioPendiente[] = invitationsResponse.data.map((inv) => {
@@ -134,6 +135,73 @@ export async function reenviarInvitacion(
       return { ok: false, error: error.message };
     }
     return { ok: false, error: 'Error al reenviar la invitación' };
+  }
+}
+
+export async function deshabilitarUsuario(
+  userId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const check = await assertAdmin();
+  if (!check.ok) return { ok: false, error: check.error };
+
+  if (check.userId === userId) {
+    return { ok: false, error: 'No podés deshabilitar tu propia cuenta' };
+  }
+
+  try {
+    const client = await clerkClient();
+    await client.users.banUser(userId);
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof Error) return { ok: false, error: error.message };
+    return { ok: false, error: 'Error al deshabilitar el usuario' };
+  }
+}
+
+export async function reactivarUsuario(
+  userId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const check = await assertAdmin();
+  if (!check.ok) return { ok: false, error: check.error };
+
+  if (check.userId === userId) {
+    return { ok: false, error: 'No podés reactivar tu propia cuenta' };
+  }
+
+  try {
+    const client = await clerkClient();
+    await client.users.unbanUser(userId);
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof Error) return { ok: false, error: error.message };
+    return { ok: false, error: 'Error al reactivar el usuario' };
+  }
+}
+
+export async function eliminarUsuario(
+  id: string,
+  status: 'activo' | 'pendiente',
+): Promise<{ ok: boolean; error?: string }> {
+  const check = await assertAdmin();
+  if (!check.ok) return { ok: false, error: check.error };
+
+  if (status === 'activo' && check.userId === id) {
+    return { ok: false, error: 'No podés eliminar tu propia cuenta' };
+  }
+
+  try {
+    const client = await clerkClient();
+
+    if (status === 'activo') {
+      await client.users.deleteUser(id);
+    } else {
+      await client.invitations.revokeInvitation(id);
+    }
+
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof Error) return { ok: false, error: error.message };
+    return { ok: false, error: 'Error al eliminar el usuario' };
   }
 }
 

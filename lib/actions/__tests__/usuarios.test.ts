@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
-const { mockAuth, mockCurrentUser, mockClerkClient } = vi.hoisted(() => {
+const { mockAuth, mockCurrentUser, mockClerkClient, mockUsersBan, mockUsersUnban, mockUsersDelete, mockInvitationsRevoke } = vi.hoisted(() => {
   const mockAuth = vi.fn().mockResolvedValue({ userId: 'user_admin_123' });
 
   const mockCurrentUser = vi.fn().mockResolvedValue({
@@ -12,11 +12,17 @@ const { mockAuth, mockCurrentUser, mockClerkClient } = vi.hoisted(() => {
   const mockInvitationsCreate = vi.fn().mockResolvedValue({ id: 'inv_new' });
   const mockInvitationsRevoke = vi.fn().mockResolvedValue({ id: 'inv_old' });
   const mockUsersUpdateMetadata = vi.fn().mockResolvedValue({ id: 'user_admin_123' });
+  const mockUsersBan = vi.fn().mockResolvedValue({});
+  const mockUsersUnban = vi.fn().mockResolvedValue({});
+  const mockUsersDelete = vi.fn().mockResolvedValue({});
 
   const mockClerkClient = vi.fn().mockResolvedValue({
     users: {
       getUserList: mockUsersGetList,
       updateUserMetadata: mockUsersUpdateMetadata,
+      banUser: mockUsersBan,
+      unbanUser: mockUsersUnban,
+      deleteUser: mockUsersDelete,
     },
     invitations: {
       getInvitationList: mockInvitationsGetList,
@@ -25,7 +31,7 @@ const { mockAuth, mockCurrentUser, mockClerkClient } = vi.hoisted(() => {
     },
   });
 
-  return { mockAuth, mockCurrentUser, mockClerkClient };
+  return { mockAuth, mockCurrentUser, mockClerkClient, mockUsersBan, mockUsersUnban, mockUsersDelete, mockInvitationsRevoke };
 });
 
 vi.mock('@clerk/nextjs/server', () => ({
@@ -34,7 +40,7 @@ vi.mock('@clerk/nextjs/server', () => ({
   clerkClient: mockClerkClient,
 }));
 
-import { getUsuarios, invitarUsuario, cambiarRol, reenviarInvitacion } from '../usuarios';
+import { getUsuarios, invitarUsuario, cambiarRol, reenviarInvitacion, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '../usuarios';
 
 
 describe('getUsuarios', () => {
@@ -418,5 +424,248 @@ describe('reenviarInvitacion', () => {
         publicMetadata: expect.objectContaining({ role: 'medico' }),
       }),
     );
+  });
+});
+
+describe('getUsuarios — disabled field', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
+    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+  });
+
+  const makeUserClient = (banned: boolean) => ({
+    users: {
+      getUserList: vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: 'user_1',
+            firstName: 'Test',
+            lastName: 'User',
+            emailAddresses: [{ emailAddress: 't@test.com' }],
+            publicMetadata: { role: 'entrenador' },
+            lastSignInAt: null,
+            createdAt: 1710000000000,
+            banned,
+          },
+        ],
+      }),
+      updateUserMetadata: vi.fn(),
+      banUser: vi.fn(),
+      unbanUser: vi.fn(),
+      deleteUser: vi.fn(),
+    },
+    invitations: {
+      getInvitationList: vi.fn().mockResolvedValue({ data: [] }),
+      createInvitation: vi.fn(),
+      revokeInvitation: vi.fn(),
+    },
+  });
+
+  test('expone disabled: false para usuario no baneado', async () => {
+    mockClerkClient.mockResolvedValueOnce(makeUserClient(false));
+    const result = await getUsuarios();
+    expect(result[0].status).toBe('activo');
+    if (result[0].status === 'activo') {
+      expect(result[0].disabled).toBe(false);
+    }
+  });
+
+  test('expone disabled: true para usuario baneado', async () => {
+    mockClerkClient.mockResolvedValueOnce(makeUserClient(true));
+    const result = await getUsuarios();
+    expect(result[0].status).toBe('activo');
+    if (result[0].status === 'activo') {
+      expect(result[0].disabled).toBe(true);
+    }
+  });
+});
+
+describe('deshabilitarUsuario', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
+    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+    mockClerkClient.mockResolvedValue({
+      users: {
+        getUserList: vi.fn(),
+        updateUserMetadata: vi.fn(),
+        banUser: mockUsersBan,
+        unbanUser: mockUsersUnban,
+        deleteUser: mockUsersDelete,
+      },
+      invitations: {
+        getInvitationList: vi.fn(),
+        createInvitation: vi.fn(),
+        revokeInvitation: mockInvitationsRevoke,
+      },
+    });
+  });
+
+  test('falla si el caller no es admin', async () => {
+    mockAuth.mockResolvedValueOnce({ userId: 'user_no_admin' });
+    mockCurrentUser.mockResolvedValueOnce({ publicMetadata: { role: 'entrenador' } });
+
+    const result = await deshabilitarUsuario('user_target');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/admin/i);
+  });
+
+  test('falla si el userId es el propio admin', async () => {
+    const result = await deshabilitarUsuario('user_admin_123');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/propia cuenta/i);
+  });
+
+  test('llama banUser con el userId correcto', async () => {
+    const result = await deshabilitarUsuario('user_target');
+
+    expect(result.ok).toBe(true);
+    expect(mockUsersBan).toHaveBeenCalledWith('user_target');
+  });
+
+  test('retorna error si banUser lanza excepción', async () => {
+    mockUsersBan.mockRejectedValueOnce(new Error('Clerk ban failed'));
+
+    const result = await deshabilitarUsuario('user_target');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe('Clerk ban failed');
+  });
+});
+
+describe('reactivarUsuario', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
+    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+    mockClerkClient.mockResolvedValue({
+      users: {
+        getUserList: vi.fn(),
+        updateUserMetadata: vi.fn(),
+        banUser: mockUsersBan,
+        unbanUser: mockUsersUnban,
+        deleteUser: mockUsersDelete,
+      },
+      invitations: {
+        getInvitationList: vi.fn(),
+        createInvitation: vi.fn(),
+        revokeInvitation: mockInvitationsRevoke,
+      },
+    });
+  });
+
+  test('falla si el caller no es admin', async () => {
+    mockAuth.mockResolvedValueOnce({ userId: 'user_no_admin' });
+    mockCurrentUser.mockResolvedValueOnce({ publicMetadata: { role: 'entrenador' } });
+
+    const result = await reactivarUsuario('user_target');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/admin/i);
+  });
+
+  test('falla si el userId es el propio admin', async () => {
+    const result = await reactivarUsuario('user_admin_123');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/propia cuenta/i);
+  });
+
+  test('llama unbanUser con el userId correcto', async () => {
+    const result = await reactivarUsuario('user_target');
+
+    expect(result.ok).toBe(true);
+    expect(mockUsersUnban).toHaveBeenCalledWith('user_target');
+  });
+
+  test('retorna error si unbanUser lanza excepción', async () => {
+    mockUsersUnban.mockRejectedValueOnce(new Error('Clerk unban failed'));
+
+    const result = await reactivarUsuario('user_target');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe('Clerk unban failed');
+  });
+});
+
+describe('eliminarUsuario', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
+    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+    mockClerkClient.mockResolvedValue({
+      users: {
+        getUserList: vi.fn(),
+        updateUserMetadata: vi.fn(),
+        banUser: mockUsersBan,
+        unbanUser: mockUsersUnban,
+        deleteUser: mockUsersDelete,
+      },
+      invitations: {
+        getInvitationList: vi.fn(),
+        createInvitation: vi.fn(),
+        revokeInvitation: mockInvitationsRevoke,
+      },
+    });
+  });
+
+  test('falla si el caller no es admin', async () => {
+    mockAuth.mockResolvedValueOnce({ userId: 'user_no_admin' });
+    mockCurrentUser.mockResolvedValueOnce({ publicMetadata: { role: 'entrenador' } });
+
+    const result = await eliminarUsuario('user_target', 'activo');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/admin/i);
+  });
+
+  test('falla si el admin intenta eliminarse a sí mismo (status activo)', async () => {
+    const result = await eliminarUsuario('user_admin_123', 'activo');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/propia cuenta/i);
+  });
+
+  test('llama deleteUser para usuario activo', async () => {
+    const result = await eliminarUsuario('user_target', 'activo');
+
+    expect(result.ok).toBe(true);
+    expect(mockUsersDelete).toHaveBeenCalledWith('user_target');
+  });
+
+  test('llama revokeInvitation para invitación pendiente', async () => {
+    const result = await eliminarUsuario('inv_123', 'pendiente');
+
+    expect(result.ok).toBe(true);
+    expect(mockInvitationsRevoke).toHaveBeenCalledWith('inv_123');
+  });
+
+  test('no aplica self-guard para invitaciones pendientes', async () => {
+    // Even if the id matches the admin's userId, pending invitations are not user accounts
+    const result = await eliminarUsuario('user_admin_123', 'pendiente');
+
+    expect(result.ok).toBe(true);
+    expect(mockInvitationsRevoke).toHaveBeenCalledWith('user_admin_123');
+  });
+
+  test('retorna error si deleteUser lanza excepción', async () => {
+    mockUsersDelete.mockRejectedValueOnce(new Error('Clerk delete failed'));
+
+    const result = await eliminarUsuario('user_target', 'activo');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe('Clerk delete failed');
+  });
+
+  test('retorna error si revokeInvitation lanza excepción', async () => {
+    mockInvitationsRevoke.mockRejectedValueOnce(new Error('Clerk revoke failed'));
+
+    const result = await eliminarUsuario('inv_123', 'pendiente');
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe('Clerk revoke failed');
   });
 });

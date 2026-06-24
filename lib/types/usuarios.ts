@@ -7,6 +7,7 @@ export type UsuarioActivo = {
   lastSignInAt: Date | null
   createdAt: Date
   status: 'activo'
+  disabled: boolean
 }
 
 export type UsuarioPendiente = {
