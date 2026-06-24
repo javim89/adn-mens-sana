@@ -17,12 +17,18 @@ vi.mock('next/image', () => ({
   default: ({ alt }: { alt: string }) => <img alt={alt} />,
 }))
 
-// Mock @clerk/nextjs (used by Sidebar)
+// Mock @clerk/nextjs (used by Sidebar and AppShell)
 vi.mock('@clerk/nextjs', () => ({
   Show: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   SignUpButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   UserButton: () => <div data-testid="user-button" />,
+}))
+
+// Mock @tanstack/react-query (used by Providers)
+vi.mock('@tanstack/react-query', () => ({
+  QueryClient: class QueryClient {},
+  QueryClientProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 import { currentUser } from '@clerk/nextjs/server'

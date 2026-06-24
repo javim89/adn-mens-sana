@@ -21,10 +21,12 @@ vi.mock('@clerk/nextjs', () => ({
   UserButton: () => <div data-testid="user-button" />,
 }));
 
+const noop = () => {};
+
 describe('Sidebar nav items por rol', () => {
   it('admin ve los 4 items: Dashboard, Deportistas, Turnos, Usuarios', () => {
     const navItems = getNavItemsForRole('admin');
-    render(<Sidebar navItems={navItems} />);
+    render(<Sidebar navItems={navItems} isOpen={false} onClose={noop} />);
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Deportistas')).toBeInTheDocument();
@@ -34,7 +36,7 @@ describe('Sidebar nav items por rol', () => {
 
   it('entrenador ve 2 items: Dashboard, Deportistas (sin Turnos ni Usuarios)', () => {
     const navItems = getNavItemsForRole('entrenador');
-    render(<Sidebar navItems={navItems} />);
+    render(<Sidebar navItems={navItems} isOpen={false} onClose={noop} />);
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Deportistas')).toBeInTheDocument();
@@ -44,7 +46,7 @@ describe('Sidebar nav items por rol', () => {
 
   it('medico ve 3 items: Dashboard, Deportistas, Turnos (sin Usuarios)', () => {
     const navItems = getNavItemsForRole('medico');
-    render(<Sidebar navItems={navItems} />);
+    render(<Sidebar navItems={navItems} isOpen={false} onClose={noop} />);
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Deportistas')).toBeInTheDocument();
@@ -54,7 +56,7 @@ describe('Sidebar nav items por rol', () => {
 
   it('sin rol ve solo Dashboard (fallback)', () => {
     const navItems = getNavItemsForRole(undefined);
-    render(<Sidebar navItems={navItems} />);
+    render(<Sidebar navItems={navItems} isOpen={false} onClose={noop} />);
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.queryByText('Deportistas')).not.toBeInTheDocument();

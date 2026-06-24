@@ -92,9 +92,10 @@ describe('DeportistasTable', () => {
     );
 
     render(<DeportistasTable />, { wrapper });
-    // Data appears after async query resolves
-    expect(await screen.findByText('García, Juan')).toBeInTheDocument();
-    expect(screen.getByText('López, María')).toBeInTheDocument();
+    // Data appears after async query resolves (renders in both mobile and desktop)
+    const results = await screen.findAllByText('García, Juan');
+    expect(results.length).toBeGreaterThan(0);
+    expect(screen.getAllByText('López, María').length).toBeGreaterThan(0);
   });
 
   test('muestra badge de estado Activo con clase verde', async () => {
@@ -103,7 +104,7 @@ describe('DeportistasTable', () => {
     );
 
     render(<DeportistasTable />, { wrapper });
-    await screen.findByText('García, Juan');
+    await screen.findAllByText('García, Juan');
 
     const badges = screen.getAllByText('Activo');
     const badge = badges.find((el) => el.tagName.toLowerCase() === 'span');
@@ -116,7 +117,7 @@ describe('DeportistasTable', () => {
     );
 
     render(<DeportistasTable />, { wrapper });
-    await screen.findByText('López, María');
+    await screen.findAllByText('López, María');
 
     const badges = screen.getAllByText('Inactivo');
     const badge = badges.find((el) => el.tagName.toLowerCase() === 'span');
@@ -143,8 +144,9 @@ describe('DeportistasTable', () => {
     vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([], 0));
 
     render(<DeportistasTable />, { wrapper });
-    // Wait for query to settle
-    await screen.findByText(/no se encontraron deportistas/i);
+    // Appears in both mobile list and desktop table
+    const msgs = await screen.findAllByText(/no se encontraron deportistas/i);
+    expect(msgs.length).toBeGreaterThan(0);
   });
 
   test('NO renderiza paginación cuando total <= pageSize', async () => {

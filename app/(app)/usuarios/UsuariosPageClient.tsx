@@ -19,8 +19,8 @@ export default function UsuariosPageClient({ usuarios }: UsuariosPageClientProps
   const isAdmin = isLoaded && user?.publicMetadata?.role === 'admin';
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-1">
+    <div className="p-4 md:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <h1
           className="text-3xl font-bold text-[#121A61] font-['Oswald',sans-serif]"
         >
@@ -29,7 +29,7 @@ export default function UsuariosPageClient({ usuarios }: UsuariosPageClientProps
         {isAdmin && (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors"
+            className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors shrink-0"
           >
             <Plus size={16} />
             Nuevo usuario

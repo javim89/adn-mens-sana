@@ -115,7 +115,7 @@ export default function DeportistasTable() {
   return (
     <div className={isPending || isLoading ? 'opacity-60 pointer-events-none' : ''}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <h1
           className="text-3xl font-bold text-[#121A61]"
           style={{ fontFamily: 'Oswald, sans-serif' }}
@@ -124,7 +124,7 @@ export default function DeportistasTable() {
         </h1>
         <Link
           href="/deportistas/nuevo"
-          className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors"
+          className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors shrink-0"
         >
           <Plus size={16} />
           Nuevo deportista
@@ -219,9 +219,68 @@ export default function DeportistasTable() {
           </div>
         )}
 
-        {/* Table */}
+        {/* Mobile/tablet card list — hidden on lg+ */}
         {!isError && (
-          <div className="overflow-x-auto">
+          <ul className="lg:hidden divide-y divide-gray-100">
+            {deportistas.length === 0 && !isLoading ? (
+              <li className="px-4 py-12 text-center text-sm text-[#6B7280]">
+                No se encontraron deportistas
+                {hasFilters && (
+                  <button
+                    onClick={handleClear}
+                    className="ml-2 text-[#121A61] underline hover:no-underline"
+                  >
+                    Limpiar filtros
+                  </button>
+                )}
+              </li>
+            ) : (
+              deportistas.map((item) => (
+                <li key={item.id} className="px-4 py-4">
+                  <Link
+                    href={`/deportistas/${item.id}`}
+                    className="flex items-start justify-between gap-2"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[#1C1C1C] truncate">
+                        {item.attributes.apellido}, {item.attributes.nombre}
+                      </p>
+                      <p className="text-xs text-[#6B7280] mt-0.5">DNI: {item.attributes.dni}</p>
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <span
+                          className={[
+                            'text-xs font-medium px-2.5 py-1 rounded-full',
+                            ESTADO_BADGE[item.attributes.estado as EstadoType] ?? 'bg-gray-100 text-[#6B7280]',
+                          ].join(' ')}
+                        >
+                          {ESTADO_LABELS[item.attributes.estado as EstadoType]}
+                        </span>
+                        {item.attributes.disciplina && (
+                          <span className="text-xs text-[#6B7280]">
+                            {DISCIPLINA_LABELS[item.attributes.disciplina as DisciplinaType]}
+                          </span>
+                        )}
+                        {item.attributes.categoria && (
+                          <span className="text-xs text-[#6B7280]">
+                            {CATEGORIA_LABELS[item.attributes.categoria as CategoriaType]}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#6B7280] mt-1">
+                        Ingreso: {formatDate(item.attributes.fechaIngreso)}
+                      </p>
+                    </div>
+                    <ChevronRight size={16} className="text-[#6B7280] shrink-0 mt-1" />
+                  </Link>
+                </li>
+              ))
+            )}
+          </ul>
+        )}
+
+        {/* Desktop table — hidden below lg */}
+        {!isError && (
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="text-xs uppercase text-[#6B7280] bg-[#F3F4F6] border-b border-gray-100">

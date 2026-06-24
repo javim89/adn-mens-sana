@@ -221,6 +221,28 @@ function RolSelector({ userId, currentRol }: { userId: string; currentRol: strin
   );
 }
 
+function EstadoBadge({ usuario }: { usuario: Usuario }) {
+  if (usuario.status === 'activo' && usuario.disabled) {
+    return (
+      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-700">
+        Deshabilitado
+      </span>
+    );
+  }
+  if (usuario.status === 'activo') {
+    return (
+      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+        Activo
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
+      Pendiente
+    </span>
+  );
+}
+
 interface UsuariosTableProps {
   usuarios: Usuario[];
 }
@@ -327,17 +349,67 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
   return (
     <>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full">
+
+        {/* Mobile card list — hidden on lg+ */}
+        <ul className="lg:hidden divide-y divide-gray-100">
+          {usuarios.length === 0 ? (
+            <li className="px-4 py-12 text-center text-sm text-[#6B7280]">
+              No hay usuarios registrados
+            </li>
+          ) : (
+            usuarios.map((usuario) => {
+              const isDisabled = usuario.status === 'activo' && usuario.disabled;
+              return (
+                <li
+                  key={usuario.id}
+                  className={`px-4 py-4 flex flex-col gap-2${isDisabled ? ' opacity-60' : ''}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-[#1C1C1C]">
+                        {usuario.firstName} {usuario.lastName}
+                      </p>
+                      <p className="text-xs text-[#6B7280] mt-0.5">{usuario.email}</p>
+                    </div>
+                    <UsuarioAcciones
+                      usuario={usuario}
+                      isAdmin={!!isAdmin}
+                      currentUserId={currentUserId}
+                      openConfirm={openConfirm}
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <RolBadge rol={usuario.rol} />
+                    <EstadoBadge usuario={usuario} />
+                  </div>
+                  {isAdmin && usuario.status === 'activo' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[#6B7280]">Rol:</span>
+                      <RolSelector userId={usuario.id} currentRol={usuario.rol} />
+                    </div>
+                  )}
+                  <p className="text-xs text-[#6B7280]">
+                    Último ingreso:{' '}
+                    {usuario.status === 'activo' ? formatLastSignIn(usuario.lastSignInAt) : '—'}
+                  </p>
+                </li>
+              );
+            })
+          )}
+        </ul>
+
+        {/* Desktop table — hidden below lg */}
+        <div className="hidden lg:block overflow-x-auto">
+          <table className="w-full">
             <thead>
               <tr className="text-xs uppercase text-[#6B7280] bg-[#F3F4F6] border-b border-gray-100">
-                <th className="px-5 py-3 text-left">Nombre</th>
-                <th className="px-5 py-3 text-left">Email</th>
-                <th className="px-5 py-3 text-left">Rol</th>
-                <th className="px-5 py-3 text-left">Último ingreso</th>
-                <th className="px-5 py-3 text-left">Estado</th>
-                {isAdmin && <th className="px-5 py-3 text-left">Cambiar rol</th>}
-                <th className="px-5 py-3 text-left">Acciones</th>
+                <th className="px-4 py-3 text-left">Nombre</th>
+                <th className="px-4 py-3 text-left">Email</th>
+                <th className="px-4 py-3 text-left">Rol</th>
+                <th className="hidden xl:table-cell px-4 py-3 text-left">Último ingreso</th>
+                <th className="px-4 py-3 text-left">Estado</th>
+                {isAdmin && <th className="hidden xl:table-cell px-4 py-3 text-left">Cambiar rol</th>}
+                <th className="px-4 py-3 text-left">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -358,35 +430,23 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                       key={usuario.id}
                       className={`border-b border-gray-50 hover:bg-[#F3F4F6] transition-colors${isDisabled ? ' opacity-60' : ''}`}
                     >
-                      <td className="px-5 py-3.5 text-sm font-medium text-[#1C1C1C]">
+                      <td className="px-4 py-3.5 text-sm font-medium text-[#1C1C1C]">
                         {usuario.firstName} {usuario.lastName}
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-[#6B7280]">{usuario.email}</td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-4 py-3.5 text-sm text-[#6B7280]">{usuario.email}</td>
+                      <td className="px-4 py-3.5">
                         <RolBadge rol={usuario.rol} />
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-[#6B7280]">
+                      <td className="hidden xl:table-cell px-4 py-3.5 text-sm text-[#6B7280]">
                         {usuario.status === 'activo'
                           ? formatLastSignIn(usuario.lastSignInAt)
                           : '—'}
                       </td>
-                      <td className="px-5 py-3.5">
-                        {usuario.status === 'activo' && usuario.disabled ? (
-                          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-700">
-                            Deshabilitado
-                          </span>
-                        ) : usuario.status === 'activo' ? (
-                          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700">
-                            Activo
-                          </span>
-                        ) : (
-                          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
-                            Pendiente
-                          </span>
-                        )}
+                      <td className="px-4 py-3.5">
+                        <EstadoBadge usuario={usuario} />
                       </td>
                       {isAdmin && (
-                        <td className="px-5 py-3.5">
+                        <td className="hidden xl:table-cell px-4 py-3.5">
                           {usuario.status === 'activo' ? (
                             <RolSelector userId={usuario.id} currentRol={usuario.rol} />
                           ) : (
@@ -394,7 +454,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                           )}
                         </td>
                       )}
-                      <td className="px-5 py-3.5">
+                      <td className="px-4 py-3.5">
                         <UsuarioAcciones
                           usuario={usuario}
                           isAdmin={!!isAdmin}

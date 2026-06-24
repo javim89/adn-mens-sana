@@ -1,7 +1,7 @@
 import { currentUser } from '@clerk/nextjs/server';
-import Sidebar from '../components/Sidebar';
 import { getNavItemsForRole } from '../../lib/roles';
 import Providers from './providers';
+import AppShell from './_components/AppShell';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +16,9 @@ export default async function AppLayout({
 
   return (
     <Providers>
-      <Sidebar navItems={navItems} />
-      <main className="flex-1">{children}</main>
+      <div className="flex flex-col min-h-screen flex-1">
+        <AppShell navItems={navItems}>{children}</AppShell>
+      </div>
     </Providers>
   );
 }
