@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, Plus, ChevronRight, X } from 'lucide-react';
 import { useCallback, useState, useTransition } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import CustomSelect from '@/app/components/ui/CustomSelect';
 import { fetchDeportistas } from '@/lib/api/deportistas';
 import type { FetchDeportistasParams } from '@/lib/api/deportistas';
 import {
@@ -159,46 +160,34 @@ export default function DeportistasTable() {
           </div>
 
           {/* Disciplina */}
-          <select
+          <CustomSelect
             value={filterDisciplina}
-            onChange={(e) => pushFilters({ 'filter[disciplina]': e.target.value || undefined, 'page[number]': '1' })}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 text-[#1C1C1C]"
-          >
-            <option value="">Todas las disciplinas</option>
-            {Object.values(Disciplina).map((d) => (
-              <option key={d} value={d}>
-                {DISCIPLINA_LABELS[d]}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => pushFilters({ 'filter[disciplina]': v || undefined, 'page[number]': '1' })}
+            options={[
+              { value: '', label: 'Todas las disciplinas' },
+              ...Object.values(Disciplina).map((d) => ({ value: d, label: DISCIPLINA_LABELS[d] })),
+            ]}
+          />
 
           {/* Categoria */}
-          <select
+          <CustomSelect
             value={filterCategoria}
-            onChange={(e) => pushFilters({ 'filter[categoria]': e.target.value || undefined, 'page[number]': '1' })}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 text-[#1C1C1C]"
-          >
-            <option value="">Todas las categorías</option>
-            {Object.values(Categoria).map((c) => (
-              <option key={c} value={c}>
-                {CATEGORIA_LABELS[c]}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => pushFilters({ 'filter[categoria]': v || undefined, 'page[number]': '1' })}
+            options={[
+              { value: '', label: 'Todas las categorías' },
+              ...Object.values(Categoria).map((c) => ({ value: c, label: CATEGORIA_LABELS[c] })),
+            ]}
+          />
 
           {/* Estado */}
-          <select
+          <CustomSelect
             value={filterEstado}
-            onChange={(e) => pushFilters({ 'filter[estado]': e.target.value || undefined, 'page[number]': '1' })}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 text-[#1C1C1C]"
-          >
-            <option value="">Todos los estados</option>
-            {Object.values(EstadoDeportista).map((e) => (
-              <option key={e} value={e}>
-                {ESTADO_LABELS[e]}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => pushFilters({ 'filter[estado]': v || undefined, 'page[number]': '1' })}
+            options={[
+              { value: '', label: 'Todos los estados' },
+              ...Object.values(EstadoDeportista).map((e) => ({ value: e, label: ESTADO_LABELS[e] })),
+            ]}
+          />
 
           {/* Clear */}
           {hasFilters && (

@@ -1,12 +1,13 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { invitarUsuario } from '@/lib/actions/usuarios';
 import { ROLES_PERMITIDOS, ROL_LABELS } from '@/lib/roles';
+import CustomSelect from '@/app/components/ui/CustomSelect';
 
 const schema = z.object({
   firstName: z.string().min(1, 'El nombre es requerido'),
@@ -30,6 +31,7 @@ export default function InvitarUsuarioModal({ open, onClose, onSuccess }: Invita
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -148,21 +150,21 @@ export default function InvitarUsuarioModal({ open, onClose, onSuccess }: Invita
               >
                 Rol
               </label>
-              <select
-                id="rol"
-                {...register('rol')}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 text-[#1C1C1C]"
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  Seleccioná un rol
-                </option>
-                {ROLES_PERMITIDOS.map((rol) => (
-                  <option key={rol} value={rol}>
-                    {ROL_LABELS[rol]}
-                  </option>
-                ))}
-              </select>
+              <Controller
+                name="rol"
+                control={control}
+                render={({ field }) => (
+                  <CustomSelect
+                    id="rol"
+                    value={field.value ?? ''}
+                    onChange={(v) => field.onChange(v)}
+                    options={ROLES_PERMITIDOS.map((rol) => ({ value: rol, label: ROL_LABELS[rol] }))}
+                    placeholder="Seleccioná un rol"
+                    error={!!errors.rol}
+                    className="w-full"
+                  />
+                )}
+              />
               {errors.rol && (
                 <p className="text-xs text-red-600">{errors.rol.message}</p>
               )}

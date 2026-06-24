@@ -1,5 +1,7 @@
 'use client';
 
+import CustomSelect from '@/app/components/ui/CustomSelect';
+
 interface EnumSelectProps<T extends string> {
   value: T | '';
   onChange: (v: T | '') => void;
@@ -19,23 +21,19 @@ export default function EnumSelect<T extends string>({
   className = '',
   disabled = false,
 }: EnumSelectProps<T>) {
+  const allOptions = [
+    { value: '', label: placeholder },
+    ...(Object.entries(options) as [T, string][]).map(([k, label]) => ({ value: k, label })),
+  ];
+
   return (
-    <select
+    <CustomSelect
       id={id}
       value={value}
-      onChange={(e) => onChange(e.target.value as T | '')}
+      onChange={(v) => onChange(v as T | '')}
+      options={allOptions}
       disabled={disabled}
-      className={[
-        'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 text-[#1C1C1C] bg-white disabled:bg-gray-50 disabled:cursor-not-allowed',
-        className,
-      ].join(' ')}
-    >
-      <option value="">{placeholder}</option>
-      {(Object.entries(options) as [T, string][]).map(([k, label]) => (
-        <option key={k} value={k}>
-          {label}
-        </option>
-      ))}
-    </select>
+      className={`w-full ${className}`}
+    />
   );
 }

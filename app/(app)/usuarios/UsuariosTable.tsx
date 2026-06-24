@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Loader2, ChevronDown } from 'lucide-react';
+import CustomSelect from '@/app/components/ui/CustomSelect';
 import { toast } from 'sonner';
 import { useUser } from '@clerk/nextjs';
 import { reenviarInvitacion, cambiarRol, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
@@ -188,8 +189,7 @@ function RolSelector({ userId, currentRol }: { userId: string; currentRol: strin
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const nuevoRol = e.target.value;
+  function handleChange(nuevoRol: string) {
     startTransition(async () => {
       const result = await cambiarRol(userId, nuevoRol);
       if (result.ok) {
@@ -202,27 +202,14 @@ function RolSelector({ userId, currentRol }: { userId: string; currentRol: strin
   }
 
   return (
-    <div className="relative">
-      {isPending && (
-        <Loader2
-          size={12}
-          className="animate-spin absolute right-2 top-1/2 -translate-y-1/2 text-[#6B7280] pointer-events-none"
-        />
-      )}
-      <select
-        value={currentRol}
-        onChange={handleChange}
-        disabled={isPending}
-        aria-label="Cambiar rol"
-        className="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 text-[#1C1C1C] disabled:opacity-50 pr-6"
-      >
-        {ROLES_PERMITIDOS.map((rol) => (
-          <option key={rol} value={rol}>
-            {ROL_LABELS[rol]}
-          </option>
-        ))}
-      </select>
-    </div>
+    <CustomSelect
+      value={currentRol}
+      onChange={handleChange}
+      options={ROLES_PERMITIDOS.map((rol) => ({ value: rol, label: ROL_LABELS[rol] }))}
+      aria-label="Cambiar rol"
+      size="sm"
+      disabled={isPending}
+    />
   );
 }
 
