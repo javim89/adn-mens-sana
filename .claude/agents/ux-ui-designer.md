@@ -42,10 +42,46 @@ This is a Next.js 16 + React 19 + Tailwind CSS v4 project. All styling uses Tail
 
 Balance history (139 years, "Primeros en América") with community warmth (Triperos, working-class La Plata fans). The design should feel weighty but not cold — passionate, proud, popular.
 
-- Mobile-first (most Argentine football fans are on mobile)
+- **Mobile-first — non-negotiable.** Design for the smallest screen first, then enhance for larger ones.
 - High contrast sections (navy + white) alternated with light sections (white/gray-50) for breathing room
 - Horizontal band motifs (referencing the jersey's azul horizontal stripe)
 - Generous whitespace
+
+## Responsive design — mandatory rules
+
+Every layout and component you design MUST work across all breakpoints. Follow these project conventions:
+
+**Breakpoints (Tailwind defaults):**
+- `sm` — 640px (large phones, landscape)
+- `md` — 768px (tablets)
+- `lg` — 1024px (small laptops) ← primary desktop threshold
+- `xl` — 1280px (standard desktop)
+
+**Data tables:**
+- Below `lg`: show a **card/list view** (`lg:hidden`). Never show a wide table on mobile or tablet.
+- At `lg+`: show the **table** (`hidden lg:block`) with `overflow-x-auto` on the wrapper.
+- Between `lg` and `xl`: hide low-priority columns (`hidden xl:table-cell`) to avoid horizontal overflow. Always show: name, primary identifier, status, actions. Can hide: secondary dates, role selectors, metadata.
+
+**Page headers (title + action button):**
+- Always `flex flex-wrap items-center justify-between gap-3`, never plain `flex justify-between`.
+- The action button must have `shrink-0` so it doesn't compress; wrapping is acceptable on small screens.
+
+**Page padding:** always `p-4 md:p-8` — never flat `p-8` which is too tight on mobile.
+
+**Navigation / sidebar:**
+- Mobile (< `lg`): hidden by default, slides in as a fixed overlay drawer when toggled.
+- Desktop (`lg+`): static, always visible. The `AppShell` component handles this — do not replicate the pattern.
+
+**Overflow:**
+- Use `overflow-x-auto` only on the immediate table container, never on layout wrappers (`main`, the AppShell flex div, etc.).
+- Do NOT put `overflow-x-hidden` on `main` or layout containers — it clips action buttons and dropdowns.
+
+**Checklist before declaring a design done:**
+- [ ] Tested mentally at 375px (iPhone SE), 768px (iPad), 1024px (laptop), 1440px (desktop)
+- [ ] No horizontal scroll at any breakpoint
+- [ ] Tables replaced with cards below `lg`
+- [ ] Page header title + button wraps cleanly, nothing clipped
+- [ ] Padding uses responsive values (`p-4 md:p-8`)
 
 ## User feedback — mandatory
 

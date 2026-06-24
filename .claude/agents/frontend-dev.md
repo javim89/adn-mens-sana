@@ -203,7 +203,77 @@ Respect the design system defined in `DESIGN.md`:
 - Primary blue: `#121A61`, white text on it
 - Accent gold: `#C9A84C` (use sparingly)
 - Fonts: Oswald for headlines, Inter for body (loaded via `next/font/google` in `app/layout.tsx`)
-- Mobile-first responsive design
+- **Mobile-first — mandatory, not optional**
+
+## Responsive design — mandatory rules
+
+Every component and page you write MUST be fully responsive. These are hard requirements, not suggestions.
+
+**Breakpoints:**
+- `sm` 640px · `md` 768px · `lg` 1024px ← primary desktop threshold · `xl` 1280px
+
+**Data tables — required pattern:**
+```tsx
+{/* Cards: shown below lg */}
+<ul className="lg:hidden divide-y divide-gray-100">
+  {items.map(item => <li key={item.id} className="px-4 py-4">...</li>)}
+</ul>
+
+{/* Table: shown at lg+ */}
+<div className="hidden lg:block overflow-x-auto">
+  <table className="w-full">
+    <thead>
+      <tr>
+        <th className="px-4 py-3 text-left">Nombre</th>
+        {/* Low-priority columns — hidden until xl */}
+        <th className="hidden xl:table-cell px-4 py-3 text-left">Último ingreso</th>
+        <th className="px-4 py-3 text-left">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {items.map(item => (
+        <tr key={item.id}>
+          <td className="px-4 py-3.5">...</td>
+          <td className="hidden xl:table-cell px-4 py-3.5">...</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+```
+Columns always visible: name, primary ID (DNI, email), status, actions.
+Columns hidden at `lg` (show at `xl`): secondary dates, role selectors, metadata.
+
+**Page headers with title + action button:**
+```tsx
+{/* CORRECT — wraps on small screens */}
+<div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+  <h1 className="text-3xl font-bold text-[#121A61]">Título</h1>
+  <button className="... shrink-0">+ Acción</button>
+</div>
+
+{/* WRONG — button gets clipped */}
+<div className="flex items-center justify-between mb-1">
+```
+
+**Page padding:** always `p-4 md:p-8`, never flat `p-8`.
+
+**Overflow rules:**
+- `overflow-x-auto` only on the immediate table wrapper `<div>` — never on `<main>` or layout containers.
+- Never put `overflow-x-hidden` on `<main>` or the AppShell flex container — it clips absolutely-positioned dropdowns and action buttons.
+- The `AppShell` flex container should have `overflow-y-auto` only on `<main>`.
+
+**Layout wiring (AppShell):**
+- The `body` in `app/layout.tsx` is a flex-row container. Any direct child needs `flex-1` to fill the full width.
+- The `(app)/layout.tsx` wrapper div must have `flex-1` so it stretches in the flex body.
+
+**Checklist before marking a task complete:**
+- [ ] Tested at 375px, 768px, 1024px, 1440px
+- [ ] No horizontal scroll at any breakpoint
+- [ ] Tables replaced by cards below `lg`
+- [ ] Page header title + button wraps cleanly
+- [ ] Padding uses `p-4 md:p-8`
+- [ ] No `overflow-x-hidden` on layout containers
 
 ## Authentication — Clerk (frontend side)
 
