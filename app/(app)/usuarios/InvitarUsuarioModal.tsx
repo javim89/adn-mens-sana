@@ -7,13 +7,7 @@ import { X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { invitarUsuario } from '@/lib/actions/usuarios';
 import { ROLES_PERMITIDOS, ROL_LABELS } from '@/lib/roles';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
+import { CustomSelect } from '@/app/components/ui/custom-select';
 
 const schema = z.object({
   firstName: z.string().min(1, 'El nombre es requerido'),
@@ -160,24 +154,14 @@ export default function InvitarUsuarioModal({ open, onClose, onSuccess }: Invita
                 name="rol"
                 control={control}
                 render={({ field }) => (
-                  <Select
+                  <CustomSelect
+                    id="rol"
                     value={field.value ?? ''}
-                    onValueChange={(v) => field.onChange(v)}
-                  >
-                    <SelectTrigger
-                      id="rol"
-                      className={`w-full${errors.rol ? ' border-red-400' : ''}`}
-                    >
-                      <SelectValue placeholder="Seleccioná un rol" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLES_PERMITIDOS.map((rol) => (
-                        <SelectItem key={rol} value={rol}>
-                          {ROL_LABELS[rol]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => field.onChange(v)}
+                    options={ROLES_PERMITIDOS.map((rol) => ({ value: rol, label: ROL_LABELS[rol] }))}
+                    placeholder="Seleccioná un rol"
+                    className={errors.rol ? '[&_button]:border-red-400' : ''}
+                  />
                 )}
               />
               {errors.rol && (

@@ -3,13 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Loader2, ChevronDown } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
+import { CustomSelect } from '@/app/components/ui/custom-select';
 import { toast } from 'sonner';
 import { useUser } from '@clerk/nextjs';
 import { reenviarInvitacion, cambiarRol, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
@@ -208,22 +202,12 @@ function RolSelector({ userId, currentRol }: { userId: string; currentRol: strin
   }
 
   return (
-    <Select
+    <CustomSelect
       value={currentRol}
-      onValueChange={handleChange}
+      onChange={handleChange}
       disabled={isPending}
-    >
-      <SelectTrigger className="h-8 text-xs px-2 w-full" aria-label="Cambiar rol">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {ROLES_PERMITIDOS.map((rol) => (
-          <SelectItem key={rol} value={rol}>
-            {ROL_LABELS[rol]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      options={ROLES_PERMITIDOS.map((rol) => ({ value: rol, label: ROL_LABELS[rol] }))}
+    />
   );
 }
 

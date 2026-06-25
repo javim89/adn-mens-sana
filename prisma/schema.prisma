@@ -168,6 +168,7 @@ model Deportista {
   // 1:N relations
   clubesAnteriores        ClubAnterior[]
   historiaDeportiva       HistoriaDeportiva[]
+  turnosDeportista        TurnoDeportista[]
 
   // 1:1 satellite models
   datosEscolares          DatosEscolares?
@@ -357,6 +358,35 @@ enum EnfermedadPreexistente {
   ALERGIAS
   ETS
   OTRO
+}
+
+model Turno {
+  id            String            @id @default(cuid())
+  titulo        String
+  fecha         DateTime
+  hora          String
+  lugar         String
+  descripcion   String?
+  profesionalId String            @map("profesional_id")
+
+  deportistas   TurnoDeportista[]
+
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  @@map("turnos")
+}
+
+model TurnoDeportista {
+  id           String     @id @default(cuid())
+  turnoId      String     @map("turno_id")
+  deportistaId String     @map("deportista_id")
+
+  turno        Turno      @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+  deportista   Deportista @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@unique([turnoId, deportistaId])
+  @@map("turno_deportistas")
 }
 
 enum AntecedenteEnfermedadFamiliar {
