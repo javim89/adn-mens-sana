@@ -69,7 +69,27 @@ See `DESIGN.md` for the full design system: color palette (azul marino `#121A61`
 - **TypeScript**
 - **Clerk** — authentication and user management (`@clerk/nextjs`). Middleware at `middleware.ts` protects routes. Use `auth()` from `@clerk/nextjs/server` in Server Components; `useUser` / `useAuth` hooks in Client Components.
 - **Neon** — serverless PostgreSQL database. Connection via `DATABASE_URL` env var (pooled) and `DATABASE_URL_UNPOOLED` for migrations.
-- **Prisma** — ORM. Schema at `prisma/schema.prisma`. Client singleton at `lib/db.ts`. Run migrations with `npx prisma migrate dev`; generate types with `npx prisma generate`.
+- **Prisma** — ORM. Schema at `prisma/schema.prisma`. Client singleton at `lib/db.ts`. Generate types with `npx prisma generate`.
+
+### Correr migraciones (IPv6 — IMPORTANTE)
+
+`npx prisma migrate dev` falla porque la red local usa IPv6 y la conexión TCP directa a Neon no funciona. El flujo correcto es:
+
+1. Agregar los modelos/enums al schema (`prisma/schema.prisma`)
+2. Crear el directorio y el SQL manualmente:
+   ```
+   prisma/migrations/<YYYYMMDDHHMMSS>_<nombre>/migration.sql
+   ```
+3. Aplicar via HTTP (bypasea TCP):
+   ```bash
+   node scripts/apply-migration.mjs <nombre-directorio>
+   ```
+4. Regenerar el cliente:
+   ```bash
+   npx prisma generate
+   ```
+
+El script `scripts/apply-migration.mjs` usa `@neondatabase/serverless` con el driver HTTP para ejecutar el SQL sin TCP.
 
 ## Architecture
 

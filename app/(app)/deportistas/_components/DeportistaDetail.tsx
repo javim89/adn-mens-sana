@@ -10,6 +10,8 @@ import type {
   MedioTransporte,
   CondicionVivienda,
   DificultadAlimentacion,
+  EnfermedadPreexistente,
+  AntecedenteEnfermedadFamiliar,
 } from '@/lib/generated/prisma/enums';
 import {
   DISCIPLINA_LABELS,
@@ -24,6 +26,8 @@ import {
   DIFICULTAD_ALIMENTACION_LABELS,
   TIPO_APOYO_LABELS,
   SERVICIO_LABELS,
+  ENFERMEDAD_PREEXISTENTE_LABELS,
+  ANTECEDENTE_ENFERMEDAD_FAMILIAR_LABELS,
 } from '@/lib/utils/enum-labels';
 
 function formatDate(date: Date | null | undefined): string {
@@ -294,6 +298,113 @@ export default function DeportistaDetail({ deportista: d }: DeportistaDetailProp
                     </span>
                   ))}
                 </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Datos de Salud */}
+        {d.datosSalud && (
+          <>
+            <SectionTitle>Datos de Salud</SectionTitle>
+
+            <FieldRow label="Grupo y factor sanguíneo" value={val(d.datosSalud.grupoSanguineo)} />
+            <FieldRow label="Horas de sueño promedio" value={val(d.datosSalud.horasSuenio)} />
+            <FieldRow
+              label="Obra social y nº de afiliado"
+              value={val(d.datosSalud.obraSocial)}
+              className="sm:col-span-2"
+            />
+
+            {d.datosSalud.enfermedadesPreexistentes.length > 0 && (
+              <div className="sm:col-span-2">
+                <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-2">
+                  Enfermedades preexistentes
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {d.datosSalud.enfermedadesPreexistentes.map(
+                    (e: { id: string; enfermedad: EnfermedadPreexistente }) => (
+                      <span
+                        key={e.id}
+                        className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full"
+                      >
+                        {ENFERMEDAD_PREEXISTENTE_LABELS[e.enfermedad]}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+
+            {d.datosSalud.antecedentesEnfermedadesFam.length > 0 && (
+              <div className="sm:col-span-2">
+                <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-2">
+                  Antecedentes de enfermedades familiares
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {d.datosSalud.antecedentesEnfermedadesFam.map(
+                    (a: { id: string; antecedente: AntecedenteEnfermedadFamiliar }) => (
+                      <span
+                        key={a.id}
+                        className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full"
+                      >
+                        {ANTECEDENTE_ENFERMEDAD_FAMILIAR_LABELS[a.antecedente]}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-1">
+                Antecedente familiar de muerte súbita
+              </p>
+              {d.datosSalud.antecedenteMuerteSubitaFamiliar == null ? (
+                <p className="text-sm text-[#1C1C1C]">—</p>
+              ) : d.datosSalud.antecedenteMuerteSubitaFamiliar ? (
+                <span className="text-xs font-medium bg-red-100 text-red-700 px-2.5 py-1 rounded-full">
+                  Sí
+                </span>
+              ) : (
+                <span className="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full">
+                  No
+                </span>
+              )}
+            </div>
+
+            <div />
+
+            {d.datosSalud.antecedentesQuirurgicos && (
+              <div className="sm:col-span-2">
+                <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-0.5">
+                  Antecedentes quirúrgicos
+                </p>
+                <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">
+                  {d.datosSalud.antecedentesQuirurgicos}
+                </p>
+              </div>
+            )}
+
+            {d.datosSalud.medicacionCronica && (
+              <div className="sm:col-span-2">
+                <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-0.5">
+                  Medicación / tratamientos crónicos
+                </p>
+                <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">
+                  {d.datosSalud.medicacionCronica}
+                </p>
+              </div>
+            )}
+
+            {d.datosSalud.historialLesiones && (
+              <div className="sm:col-span-2">
+                <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-0.5">
+                  Historial de lesiones
+                </p>
+                <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">
+                  {d.datosSalud.historialLesiones}
+                </p>
               </div>
             )}
           </>

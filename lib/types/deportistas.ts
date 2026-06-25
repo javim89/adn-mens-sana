@@ -11,6 +11,8 @@ import type {
   DificultadAlimentacion,
   TipoApoyo,
   Servicio,
+  EnfermedadPreexistente,
+  AntecedenteEnfermedadFamiliar,
 } from '@/lib/generated/prisma/enums';
 import type { Deportista } from '@/lib/generated/prisma/client';
 
@@ -81,6 +83,19 @@ export type DeportistaFormData = {
     esSocio: boolean;
     apoyosRequeridos: TipoApoyo[];
   };
+
+  // Tab Salud
+  datosSalud?: {
+    grupoSanguineo?: string;
+    horasSuenio?: string;
+    obraSocial?: string;
+    enfermedadesPreexistentes: EnfermedadPreexistente[];
+    antecedentesEnfermedadesFam: AntecedenteEnfermedadFamiliar[];
+    antecedenteMuerteSubitaFamiliar?: boolean;
+    antecedentesQuirurgicos?: string;
+    medicacionCronica?: string;
+    historialLesiones?: string;
+  };
 };
 
 // Tipo para la fila de la tabla (proyección parcial)
@@ -132,5 +147,17 @@ export type DeportistaWithRelations = Deportista & {
     recibeVianda: boolean;
     esSocio: boolean;
     apoyosRequeridos: Array<{ id: string; tipo: TipoApoyo }>;
+  }) | null;
+  datosSalud: ({
+    id: string;
+    grupoSanguineo: string | null;
+    horasSuenio: string | null;
+    obraSocial: string | null;
+    antecedenteMuerteSubitaFamiliar: boolean | null;
+    antecedentesQuirurgicos: string | null;
+    medicacionCronica: string | null;
+    historialLesiones: string | null;
+    enfermedadesPreexistentes: Array<{ id: string; enfermedad: EnfermedadPreexistente }>;
+    antecedentesEnfermedadesFam: Array<{ id: string; antecedente: AntecedenteEnfermedadFamiliar }>;
   }) | null;
 };

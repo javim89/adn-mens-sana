@@ -1,12 +1,13 @@
 'use client';
 
-export type TabId = 'personal' | 'deportivo' | 'escolar' | 'social';
+export type TabId = 'personal' | 'deportivo' | 'escolar' | 'social' | 'salud';
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'personal', label: 'Datos Personales' },
   { id: 'deportivo', label: 'Datos Deportivos' },
   { id: 'escolar', label: 'Datos Escolares' },
   { id: 'social', label: 'Datos Sociales' },
+  { id: 'salud', label: 'Salud' },
 ];
 
 interface DeportistaFormTabsProps {

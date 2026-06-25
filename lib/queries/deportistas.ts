@@ -77,6 +77,12 @@ export async function getDeportistaById(id: string): Promise<DeportistaWithRelat
       viviendaFamiliar: { include: { servicios: true } },
       datosFamiliares: true,
       necesidadesApoyo: { include: { apoyosRequeridos: true } },
+      datosSalud: {
+        include: {
+          enfermedadesPreexistentes: true,
+          antecedentesEnfermedadesFam: true,
+        },
+      },
     },
   });
 

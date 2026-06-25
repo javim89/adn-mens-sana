@@ -18,6 +18,8 @@ import type {
   DificultadAlimentacion,
   TipoApoyo,
   Servicio,
+  EnfermedadPreexistente,
+  AntecedenteEnfermedadFamiliar,
 } from '@/lib/generated/prisma/enums';
 
 // ---------------------------------------------------------------------------
@@ -98,6 +100,18 @@ export type DeportistaDetailAttributes = {
     recibeVianda: boolean;
     esSocio: boolean;
     apoyosRequeridos: Array<{ id: string; tipo: TipoApoyo }>;
+  } | null;
+  datosSalud: {
+    id: string;
+    grupoSanguineo: string | null;
+    horasSuenio: string | null;
+    obraSocial: string | null;
+    antecedenteMuerteSubitaFamiliar: boolean | null;
+    antecedentesQuirurgicos: string | null;
+    medicacionCronica: string | null;
+    historialLesiones: string | null;
+    enfermedadesPreexistentes: Array<{ id: string; enfermedad: EnfermedadPreexistente }>;
+    antecedentesEnfermedadesFam: Array<{ id: string; antecedente: AntecedenteEnfermedadFamiliar }>;
   } | null;
 };
 

@@ -11,6 +11,7 @@ import TabPersonal from './tabs/TabPersonal';
 import TabDeportivo from './tabs/TabDeportivo';
 import TabEscolar from './tabs/TabEscolar';
 import TabSocial from './tabs/TabSocial';
+import TabSalud from './tabs/TabSalud';
 import { createDeportista, updateDeportista } from '@/lib/api/deportistas';
 import type { DeportistaFormData, DeportistaWithRelations } from '@/lib/types/deportistas';
 
@@ -60,6 +61,10 @@ function buildInitialData(d?: DeportistaWithRelations): DeportistaFormData {
       estado: 'ACTIVO',
       esRepresentante: false,
       clubesAnteriores: [],
+      datosSalud: {
+        enfermedadesPreexistentes: [],
+        antecedentesEnfermedadesFam: [],
+      },
     };
   }
 
@@ -135,6 +140,26 @@ function buildInitialData(d?: DeportistaWithRelations): DeportistaFormData {
           apoyosRequeridos: d.necesidadesApoyo.apoyosRequeridos.map((a: { tipo: import('@/lib/generated/prisma/enums').TipoApoyo }) => a.tipo),
         }
       : undefined,
+    datosSalud: d.datosSalud
+      ? {
+          grupoSanguineo: d.datosSalud.grupoSanguineo ?? undefined,
+          horasSuenio: d.datosSalud.horasSuenio ?? undefined,
+          obraSocial: d.datosSalud.obraSocial ?? undefined,
+          antecedenteMuerteSubitaFamiliar: d.datosSalud.antecedenteMuerteSubitaFamiliar ?? undefined,
+          antecedentesQuirurgicos: d.datosSalud.antecedentesQuirurgicos ?? undefined,
+          medicacionCronica: d.datosSalud.medicacionCronica ?? undefined,
+          historialLesiones: d.datosSalud.historialLesiones ?? undefined,
+          enfermedadesPreexistentes: d.datosSalud.enfermedadesPreexistentes.map(
+            (e: { enfermedad: import('@/lib/generated/prisma/enums').EnfermedadPreexistente }) => e.enfermedad,
+          ),
+          antecedentesEnfermedadesFam: d.datosSalud.antecedentesEnfermedadesFam.map(
+            (a: { antecedente: import('@/lib/generated/prisma/enums').AntecedenteEnfermedadFamiliar }) => a.antecedente,
+          ),
+        }
+      : {
+          enfermedadesPreexistentes: [],
+          antecedentesEnfermedadesFam: [],
+        },
   };
 }
 
@@ -233,6 +258,9 @@ export default function DeportistaForm({ mode, initialData }: DeportistaFormProp
           )}
           {activeTab === 'social' && (
             <TabSocial data={watchedData} onChange={patch} />
+          )}
+          {activeTab === 'salud' && (
+            <TabSalud data={watchedData} onChange={patch} />
           )}
         </div>
 

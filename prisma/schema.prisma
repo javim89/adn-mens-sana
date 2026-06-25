@@ -175,6 +175,7 @@ model Deportista {
   viviendaFamiliar        ViviendaFamiliar?
   datosFamiliares         DatosFamiliares?
   necesidadesApoyo        NecesidadesApoyo?
+  datosSalud              DatosSalud?
 
   createdAt               DateTime                 @default(now()) @map("created_at")
   updatedAt               DateTime                 @updatedAt @map("updated_at")
@@ -298,4 +299,77 @@ model ApoyoRequerido {
 
   @@unique([necesidadesApoyoId, tipo])
   @@map("apoyos_requeridos")
+}
+
+model DatosSalud {
+  id                              String   @id @default(cuid())
+  deportistaId                    String   @unique @map("deportista_id")
+  grupoSanguineo                  String?  @map("grupo_sanguineo")
+  horasSuenio                     String?  @map("horas_suenio")
+  obraSocial                      String?  @map("obra_social")
+  antecedenteMuerteSubitaFamiliar Boolean? @map("antecedente_muerte_subita_familiar")
+  antecedentesQuirurgicos         String?  @map("antecedentes_quirurgicos")
+  medicacionCronica               String?  @map("medicacion_cronica")
+  historialLesiones               String?  @map("historial_lesiones")
+
+  enfermedadesPreexistentes       EnfermedadPreexistenteItem[]
+  antecedentesEnfermedadesFam     AntecedenteEnfermedadFamiliarItem[]
+
+  deportista                      Deportista @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@map("datos_salud")
+}
+
+model EnfermedadPreexistenteItem {
+  id           String                 @id @default(cuid())
+  datosSaludId String                 @map("datos_salud_id")
+  enfermedad   EnfermedadPreexistente
+
+  datosSalud   DatosSalud @relation(fields: [datosSaludId], references: [id], onDelete: Cascade)
+
+  @@unique([datosSaludId, enfermedad])
+  @@map("enfermedades_preexistentes")
+}
+
+model AntecedenteEnfermedadFamiliarItem {
+  id           String                        @id @default(cuid())
+  datosSaludId String                        @map("datos_salud_id")
+  antecedente  AntecedenteEnfermedadFamiliar
+
+  datosSalud   DatosSalud @relation(fields: [datosSaludId], references: [id], onDelete: Cascade)
+
+  @@unique([datosSaludId, antecedente])
+  @@map("antecedentes_enfermedades_familiares")
+}
+
+// ---------------------------------------------------------------------------
+// Enums — Salud
+// ---------------------------------------------------------------------------
+
+enum EnfermedadPreexistente {
+  PRESION_ARTERIAL
+  DIABETES
+  ASMA
+  CHAGAS
+  EPILEPSIA
+  MIGRANA
+  COVID
+  ALERGIAS
+  ETS
+  OTRO
+}
+
+enum AntecedenteEnfermedadFamiliar {
+  DIABETES
+  EPOC
+  DISLIPEMIAS
+  HIPOTIROIDISMO
+  HIPERTIROIDISMO
+  ASMA
+  CANCER
+  CHAGAS
+  MIGRANA
+  HIPERTENSION_ARTERIAL
+  CORONARIOPATIAS
+  OTRO
 }

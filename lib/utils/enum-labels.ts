@@ -11,6 +11,8 @@ import type {
   DificultadAlimentacion,
   TipoApoyo,
   Servicio,
+  EnfermedadPreexistente,
+  AntecedenteEnfermedadFamiliar,
 } from '@/lib/generated/prisma/enums';
 
 export const DISCIPLINA_LABELS: Record<Disciplina, string> = {
@@ -134,4 +136,32 @@ export const SERVICIO_LABELS: Record<Servicio, string> = {
   SEGURIDAD: 'Seguridad',
   ALARMA: 'Alarma',
   NINGUNA: 'Ninguno',
+};
+
+export const ENFERMEDAD_PREEXISTENTE_LABELS: Record<EnfermedadPreexistente, string> = {
+  PRESION_ARTERIAL: 'Presión arterial',
+  DIABETES: 'Diabetes',
+  ASMA: 'Asma',
+  CHAGAS: 'Chagas',
+  EPILEPSIA: 'Epilepsia',
+  MIGRANA: 'Migraña',
+  COVID: 'Covid',
+  ALERGIAS: 'Alergias',
+  ETS: 'Enf. de transmisión sexual',
+  OTRO: 'Otro',
+};
+
+export const ANTECEDENTE_ENFERMEDAD_FAMILIAR_LABELS: Record<AntecedenteEnfermedadFamiliar, string> = {
+  DIABETES: 'Diabetes',
+  EPOC: 'EPOC',
+  DISLIPEMIAS: 'Dislipemias',
+  HIPOTIROIDISMO: 'Hipotiroidismo',
+  HIPERTIROIDISMO: 'Hipertiroidismo',
+  ASMA: 'Asma',
+  CANCER: 'Cáncer',
+  CHAGAS: 'Chagas',
+  MIGRANA: 'Migraña',
+  HIPERTENSION_ARTERIAL: 'Hipertensión arterial',
+  CORONARIOPATIAS: 'Coronariopatías',
+  OTRO: 'Otro',
 };

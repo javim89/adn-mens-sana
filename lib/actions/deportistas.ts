@@ -166,6 +166,42 @@ export async function createDeportista(
       satOps.push(apoyoOp);
     }
 
+    const sal = data.datosSalud;
+    if (sal) {
+      satOps.push(
+        prisma.datosSalud.create({
+          data: {
+            deportistaId,
+            grupoSanguineo: sal.grupoSanguineo?.trim() || null,
+            horasSuenio: sal.horasSuenio?.trim() || null,
+            obraSocial: sal.obraSocial?.trim() || null,
+            antecedenteMuerteSubitaFamiliar: sal.antecedenteMuerteSubitaFamiliar ?? null,
+            antecedentesQuirurgicos: sal.antecedentesQuirurgicos?.trim() || null,
+            medicacionCronica: sal.medicacionCronica?.trim() || null,
+            historialLesiones: sal.historialLesiones?.trim() || null,
+            ...(sal.enfermedadesPreexistentes && sal.enfermedadesPreexistentes.length > 0
+              ? {
+                  enfermedadesPreexistentes: {
+                    createMany: {
+                      data: sal.enfermedadesPreexistentes.map((e) => ({ enfermedad: e })),
+                    },
+                  },
+                }
+              : {}),
+            ...(sal.antecedentesEnfermedadesFam && sal.antecedentesEnfermedadesFam.length > 0
+              ? {
+                  antecedentesEnfermedadesFam: {
+                    createMany: {
+                      data: sal.antecedentesEnfermedadesFam.map((a) => ({ antecedente: a })),
+                    },
+                  },
+                }
+              : {}),
+          },
+        }),
+      );
+    }
+
     if (satOps.length > 0) {
       await Promise.all(satOps);
     }
@@ -394,6 +430,77 @@ export async function updateDeportista(
                   apoyosRequeridos: {
                     createMany: {
                       data: na.apoyosRequeridos.map((t) => ({ tipo: t })),
+                    },
+                  },
+                }
+              : {}),
+          },
+        });
+      }
+    }
+
+    // Upsert datos salud
+    const sal = data.datosSalud;
+    if (sal) {
+      const saludExisting = await prisma.datosSalud.findUnique({ where: { deportistaId: id } });
+      if (saludExisting) {
+        await prisma.enfermedadPreexistenteItem.deleteMany({ where: { datosSaludId: saludExisting.id } });
+        await prisma.antecedenteEnfermedadFamiliarItem.deleteMany({ where: { datosSaludId: saludExisting.id } });
+        await prisma.datosSalud.update({
+          where: { deportistaId: id },
+          data: {
+            grupoSanguineo: sal.grupoSanguineo?.trim() || null,
+            horasSuenio: sal.horasSuenio?.trim() || null,
+            obraSocial: sal.obraSocial?.trim() || null,
+            antecedenteMuerteSubitaFamiliar: sal.antecedenteMuerteSubitaFamiliar ?? null,
+            antecedentesQuirurgicos: sal.antecedentesQuirurgicos?.trim() || null,
+            medicacionCronica: sal.medicacionCronica?.trim() || null,
+            historialLesiones: sal.historialLesiones?.trim() || null,
+            ...(sal.enfermedadesPreexistentes && sal.enfermedadesPreexistentes.length > 0
+              ? {
+                  enfermedadesPreexistentes: {
+                    createMany: {
+                      data: sal.enfermedadesPreexistentes.map((e) => ({ enfermedad: e })),
+                    },
+                  },
+                }
+              : {}),
+            ...(sal.antecedentesEnfermedadesFam && sal.antecedentesEnfermedadesFam.length > 0
+              ? {
+                  antecedentesEnfermedadesFam: {
+                    createMany: {
+                      data: sal.antecedentesEnfermedadesFam.map((a) => ({ antecedente: a })),
+                    },
+                  },
+                }
+              : {}),
+          },
+        });
+      } else {
+        await prisma.datosSalud.create({
+          data: {
+            deportistaId: id,
+            grupoSanguineo: sal.grupoSanguineo?.trim() || null,
+            horasSuenio: sal.horasSuenio?.trim() || null,
+            obraSocial: sal.obraSocial?.trim() || null,
+            antecedenteMuerteSubitaFamiliar: sal.antecedenteMuerteSubitaFamiliar ?? null,
+            antecedentesQuirurgicos: sal.antecedentesQuirurgicos?.trim() || null,
+            medicacionCronica: sal.medicacionCronica?.trim() || null,
+            historialLesiones: sal.historialLesiones?.trim() || null,
+            ...(sal.enfermedadesPreexistentes && sal.enfermedadesPreexistentes.length > 0
+              ? {
+                  enfermedadesPreexistentes: {
+                    createMany: {
+                      data: sal.enfermedadesPreexistentes.map((e) => ({ enfermedad: e })),
+                    },
+                  },
+                }
+              : {}),
+            ...(sal.antecedentesEnfermedadesFam && sal.antecedentesEnfermedadesFam.length > 0
+              ? {
+                  antecedentesEnfermedadesFam: {
+                    createMany: {
+                      data: sal.antecedentesEnfermedadesFam.map((a) => ({ antecedente: a })),
                     },
                   },
                 }

@@ -221,12 +221,26 @@ datasource db {
 }
 ```
 
-**Migrations workflow:**
-```bash
-npx prisma migrate dev --name <migration-name>  # dev
-npx prisma generate                              # regenerate types after schema change
-npx prisma studio                                # GUI to inspect data
-```
+**Migrations workflow — IMPORTANTE: la red local usa IPv6 y `npx prisma migrate dev` falla con P1001.**
+
+No usar `npx prisma migrate dev`. En su lugar:
+
+1. Agregar los modelos/enums al schema (`prisma/schema.prisma`)
+2. Crear el archivo SQL manualmente:
+   ```
+   prisma/migrations/<YYYYMMDDHHMMSS>_<nombre>/migration.sql
+   ```
+   Seguir el mismo patrón que `prisma/migrations/20260609000000_init_deportista/migration.sql`
+3. Aplicar via HTTP con el script del proyecto:
+   ```bash
+   node scripts/apply-migration.mjs <nombre-directorio>
+   ```
+4. Regenerar el cliente:
+   ```bash
+   npx prisma generate
+   ```
+
+El script `scripts/apply-migration.mjs` usa `@neondatabase/serverless` con driver HTTP (no TCP) para ejecutar el SQL directamente en Neon, evitando el problema de conectividad IPv6.
 
 **Query patterns:**
 ```ts
