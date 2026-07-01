@@ -1,12 +1,21 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { createTurno, updateTurno } from '@/lib/actions/turnos';
 import type { TurnoListItem, TurnoFormData, Profesional } from '@/lib/types/turnos';
 import DeportistaMultiSelect from './DeportistaMultiSelect';
 import ProfesionalCombobox from './ProfesionalCombobox';
+
+interface DeportistaOption {
+  id: string;
+  nombre: string;
+  apellido: string;
+}
 
 interface Props {
   mode: 'create' | 'edit';
@@ -15,39 +24,79 @@ interface Props {
   initialData?: TurnoListItem;
 }
 
-interface DeportistaOption {
-  id: string;
-  nombre: string;
-  apellido: string;
+function buildSchema(isAdmin: boolean) {
+  return z
+    .object({
+      profesionalId: z.string().optional(),
+      titulo: z.string().min(1, 'El título es requerido'),
+      fecha: z.string().min(1, 'La fecha es requerida'),
+      hora: z.string().min(1, 'La hora es requerida'),
+      lugar: z.string().min(1, 'El lugar es requerido'),
+      descripcion: z.string().optional(),
+      deportistaIds: z.array(z.string()),
+    })
+    .superRefine((data, ctx) => {
+      if (isAdmin && !data.profesionalId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'El área responsable es requerida',
+          path: ['profesionalId'],
+        });
+      }
+    });
 }
+
+type FormValues = {
+  profesionalId?: string;
+  titulo: string;
+  fecha: string;
+  hora: string;
+  lugar: string;
+  descripcion?: string;
+  deportistaIds: string[];
+};
 
 export default function TurnoForm({ mode, isAdmin, profesionales, initialData }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  const [titulo, setTitulo] = useState(initialData?.titulo ?? '');
-  const [fecha, setFecha] = useState(initialData?.fecha ?? '');
-  const [hora, setHora] = useState(initialData?.hora ?? '');
-  const [lugar, setLugar] = useState(initialData?.lugar ?? '');
-  const [descripcion, setDescripcion] = useState(initialData?.descripcion ?? '');
-  const [profesionalId, setProfesionalId] = useState(initialData?.profesionalId ?? '');
+  // DeportistaMultiSelect needs full objects for display; keep them in local state
   const [deportistas, setDeportistas] = useState<DeportistaOption[]>(
     initialData?.deportistas ?? [],
   );
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const schema = useMemo(() => buildSchema(isAdmin), [isAdmin]);
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      profesionalId: initialData?.profesionalId ?? '',
+      titulo: initialData?.titulo ?? '',
+      fecha: initialData?.fecha ?? '',
+      hora: initialData?.hora ?? '',
+      lugar: initialData?.lugar ?? '',
+      descripcion: initialData?.descripcion ?? '',
+      deportistaIds: initialData?.deportistas.map((d) => d.id) ?? [],
+    },
+  });
+
+  function onSubmit(values: FormValues) {
+    setServerError(null);
 
     const data: TurnoFormData = {
-      titulo,
-      fecha,
-      hora,
-      lugar,
-      descripcion: descripcion || undefined,
-      profesionalId,
-      deportistaIds: deportistas.map((d) => d.id),
+      titulo: values.titulo,
+      fecha: values.fecha,
+      hora: values.hora,
+      lugar: values.lugar,
+      descripcion: values.descripcion || undefined,
+      profesionalId: values.profesionalId ?? '',
+      deportistaIds: values.deportistaIds,
     };
 
     startTransition(async () => {
@@ -57,7 +106,7 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
           : await updateTurno(initialData!.id, data);
 
       if (!result.success) {
-        setError(result.error);
+        setServerError(result.error);
         return;
       }
       router.push('/turnos');
@@ -65,10 +114,10 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-5">
-      {error && (
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="max-w-2xl mx-auto space-y-5">
+      {serverError && (
         <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          {error}
+          {serverError}
         </div>
       )}
 
@@ -77,11 +126,20 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
           <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
             Área responsable <span className="text-red-500">*</span>
           </label>
-          <ProfesionalCombobox
-            profesionales={profesionales}
-            value={profesionalId}
-            onChange={setProfesionalId}
+          <Controller
+            name="profesionalId"
+            control={control}
+            render={({ field }) => (
+              <ProfesionalCombobox
+                profesionales={profesionales}
+                value={field.value ?? ''}
+                onChange={field.onChange}
+              />
+            )}
           />
+          {errors.profesionalId && (
+            <p className="mt-1 text-xs text-red-600">{errors.profesionalId.message}</p>
+          )}
         </div>
       )}
 
@@ -91,12 +149,14 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
         </label>
         <input
           type="text"
-          value={titulo}
-          onChange={(e) => setTitulo(e.target.value)}
-          required
+          {...register('titulo')}
           placeholder="Ej: Revisión médica pretemporada"
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 aria-[invalid=true]:border-red-400"
+          aria-invalid={errors.titulo ? 'true' : 'false'}
         />
+        {errors.titulo && (
+          <p className="mt-1 text-xs text-red-600">{errors.titulo.message}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -106,11 +166,13 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
           </label>
           <input
             type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            required
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+            {...register('fecha')}
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 aria-[invalid=true]:border-red-400"
+            aria-invalid={errors.fecha ? 'true' : 'false'}
           />
+          {errors.fecha && (
+            <p className="mt-1 text-xs text-red-600">{errors.fecha.message}</p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
@@ -118,11 +180,13 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
           </label>
           <input
             type="time"
-            value={hora}
-            onChange={(e) => setHora(e.target.value)}
-            required
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+            {...register('hora')}
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 aria-[invalid=true]:border-red-400"
+            aria-invalid={errors.hora ? 'true' : 'false'}
           />
+          {errors.hora && (
+            <p className="mt-1 text-xs text-red-600">{errors.hora.message}</p>
+          )}
         </div>
       </div>
 
@@ -132,19 +196,20 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
         </label>
         <input
           type="text"
-          value={lugar}
-          onChange={(e) => setLugar(e.target.value)}
-          required
+          {...register('lugar')}
           placeholder="Ej: Consultorio 3 — Sector Médico"
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 aria-[invalid=true]:border-red-400"
+          aria-invalid={errors.lugar ? 'true' : 'false'}
         />
+        {errors.lugar && (
+          <p className="mt-1 text-xs text-red-600">{errors.lugar.message}</p>
+        )}
       </div>
 
       <div>
         <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">Descripción</label>
         <textarea
-          value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
+          {...register('descripcion')}
           rows={3}
           placeholder="Detalles adicionales del turno..."
           className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
@@ -153,7 +218,19 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
 
       <div>
         <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">Deportista/s</label>
-        <DeportistaMultiSelect value={deportistas} onChange={setDeportistas} />
+        <Controller
+          name="deportistaIds"
+          control={control}
+          render={({ field }) => (
+            <DeportistaMultiSelect
+              value={deportistas}
+              onChange={(selected) => {
+                setDeportistas(selected);
+                field.onChange(selected.map((d) => d.id));
+              }}
+            />
+          )}
+        />
       </div>
 
       <div className="flex items-center gap-3 pt-2">
