@@ -25,7 +25,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es" className={`${oswald.variable} ${inter.variable}`}>
-      <body className="flex min-h-screen bg-[#F3F4F6] text-[#1C1C1C] font-[family-name:var(--font-inter)]">
+      <body suppressHydrationWarning className="flex min-h-screen bg-[#F3F4F6] text-[#1C1C1C] font-[family-name:var(--font-inter)]">
         <ClerkProvider>
           {children}
           <Toaster richColors position="top-right" />

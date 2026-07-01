@@ -12,7 +12,7 @@ export const ROL_LABELS: Record<AppRole, string> = {
   cardiologo:    'Cardiólogo',
 };
 
-export type IconKey = 'LayoutDashboard' | 'Users' | 'CalendarDays' | 'UserCog';
+export type IconKey = 'LayoutDashboard' | 'Users' | 'CalendarDays' | 'UserCog' | 'ClipboardList';
 
 export interface NavItem {
   href: string;
@@ -21,10 +21,11 @@ export interface NavItem {
 }
 
 const ALL_NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard',   label: 'Dashboard',   icon: 'LayoutDashboard' },
-  { href: '/deportistas', label: 'Deportistas', icon: 'Users' },
-  { href: '/turnos',      label: 'Turnos',      icon: 'CalendarDays' },
-  { href: '/usuarios',    label: 'Usuarios',    icon: 'UserCog' },
+  { href: '/dashboard',    label: 'Dashboard',     icon: 'LayoutDashboard' },
+  { href: '/deportistas',  label: 'Deportistas',   icon: 'Users' },
+  { href: '/turnos',       label: 'Turnos',        icon: 'CalendarDays' },
+  { href: '/seguimientos', label: 'Seguimientos',  icon: 'ClipboardList' },
+  { href: '/usuarios',     label: 'Usuarios',      icon: 'UserCog' },
 ];
 
 const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {

@@ -169,6 +169,7 @@ model Deportista {
   clubesAnteriores        ClubAnterior[]
   historiaDeportiva       HistoriaDeportiva[]
   turnosDeportista        TurnoDeportista[]
+  seguimientos            Seguimiento[]
 
   // 1:1 satellite models
   datosEscolares          DatosEscolares?
@@ -387,6 +388,42 @@ model TurnoDeportista {
 
   @@unique([turnoId, deportistaId])
   @@map("turno_deportistas")
+}
+
+// ---------------------------------------------------------------------------
+// Enums — Seguimientos
+// ---------------------------------------------------------------------------
+
+enum PrioridadSeguimiento {
+  BAJA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+// ---------------------------------------------------------------------------
+// Models — Seguimientos
+// ---------------------------------------------------------------------------
+
+model Seguimiento {
+  id                   String               @id @default(cuid())
+  deportistaId         String               @map("deportista_id")
+  profesionalId        String               @map("profesional_id")
+  fecha                DateTime
+  titulo               String
+  descripcion          String?
+  recomendaciones      String?
+  resultadosEvaluacion String?              @map("resultados_evaluacion")
+  prioridad            PrioridadSeguimiento @default(MEDIA)
+  proximaCita          DateTime?            @map("proxima_cita")
+  alertaSeguimiento    String?              @map("alerta_seguimiento")
+
+  deportista           Deportista           @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+
+  @@map("seguimientos")
 }
 
 enum AntecedenteEnfermedadFamiliar {
