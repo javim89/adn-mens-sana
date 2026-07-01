@@ -19,9 +19,14 @@ export default async function TurnosPage() {
       uniqueIds.map((id) => client.users.getUser(id).catch(() => null)),
     );
     for (const u of users) {
-      if (u) {
-        profesionalesMap[u.id] = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
-      }
+      if (!u) continue;
+      const meta = (u.publicMetadata ?? {}) as Record<string, unknown>;
+      const nombre = u.firstName || String(meta.firstName ?? '');
+      const apellido = u.lastName || String(meta.lastName ?? '');
+      profesionalesMap[u.id] =
+        `${nombre} ${apellido}`.trim() ||
+        u.emailAddresses?.[0]?.emailAddress ||
+        u.id;
     }
   }
 
