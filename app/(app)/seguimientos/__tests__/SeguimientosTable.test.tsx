@@ -110,9 +110,9 @@ describe('SeguimientosTable', () => {
     expect(screen.getAllByText('Urgente primero').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Media despues').length).toBeGreaterThan(0);
 
-    // Filter by URGENTE
-    const select = screen.getByRole('combobox');
-    await user.selectOptions(select, 'URGENTE');
+    // Open the prioridad CustomSelect and pick "Urgente"
+    await user.click(screen.getByRole('button', { name: 'Todas las prioridades' }));
+    await user.click(screen.getByRole('button', { name: 'Urgente' }));
 
     expect(screen.getAllByText('Urgente primero').length).toBeGreaterThan(0);
     expect(screen.queryByText('Media despues')).toBeNull();

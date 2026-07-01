@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Plus, Pencil, Search } from 'lucide-react';
 import type { SeguimientoListItem } from '@/lib/types/seguimientos';
 import DeleteSeguimientoModal from './DeleteSeguimientoModal';
+import { CustomSelect } from '@/app/components/ui/custom-select';
 
 interface Props {
   initialSeguimientos: SeguimientoListItem[];
@@ -141,31 +142,29 @@ export default function SeguimientosTable({
           />
         </div>
 
-        <select
+        <CustomSelect
           value={prioridadFilter}
-          onChange={(e) => setPrioridadFilter(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 bg-white"
-        >
-          <option value="">Todas las prioridades</option>
-          <option value="BAJA">Baja</option>
-          <option value="MEDIA">Media</option>
-          <option value="ALTA">Alta</option>
-          <option value="URGENTE">Urgente</option>
-        </select>
+          onChange={(v) => setPrioridadFilter(v)}
+          options={[
+            { value: '', label: 'Todas las prioridades' },
+            { value: 'BAJA', label: 'Baja' },
+            { value: 'MEDIA', label: 'Media' },
+            { value: 'ALTA', label: 'Alta' },
+            { value: 'URGENTE', label: 'Urgente' },
+          ]}
+          className="min-w-[160px]"
+        />
 
         {isAdmin && profesionalesUnicos.length > 0 && (
-          <select
+          <CustomSelect
             value={areaFilter}
-            onChange={(e) => setAreaFilter(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 bg-white"
-          >
-            <option value="">Todas las áreas</option>
-            {profesionalesUnicos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setAreaFilter(v)}
+            options={[
+              { value: '', label: 'Todas las áreas' },
+              ...profesionalesUnicos.map((p) => ({ value: p.id, label: p.nombre })),
+            ]}
+            className="min-w-[160px]"
+          />
         )}
       </div>
 
