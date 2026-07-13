@@ -10,9 +10,10 @@ interface ClubItem {
 interface ClubAnteriorListProps {
   clubs: ClubItem[];
   onChange: (clubs: ClubItem[]) => void;
+  disabled?: boolean;
 }
 
-export default function ClubAnteriorList({ clubs, onChange }: ClubAnteriorListProps) {
+export default function ClubAnteriorList({ clubs, onChange, disabled = false }: ClubAnteriorListProps) {
   function addClub() {
     onChange([...clubs, { nombre: '', periodo: '' }]);
   }
@@ -28,13 +29,14 @@ export default function ClubAnteriorList({ clubs, onChange }: ClubAnteriorListPr
   }
 
   return (
-    <div className="space-y-3">
+    <div className={`space-y-3${disabled ? ' opacity-50' : ''}`}>
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-[#1C1C1C]">Clubes anteriores</span>
         <button
           type="button"
           onClick={addClub}
-          className="flex items-center gap-1.5 text-xs text-[#121A61] hover:text-[#1E2A8A] border border-[#121A61]/30 rounded-lg px-2.5 py-1.5 transition-colors"
+          disabled={disabled}
+          className="flex items-center gap-1.5 text-xs text-[#121A61] hover:text-[#1E2A8A] border border-[#121A61]/30 rounded-lg px-2.5 py-1.5 transition-colors disabled:cursor-not-allowed"
         >
           <Plus size={12} />
           Agregar club
@@ -52,20 +54,23 @@ export default function ClubAnteriorList({ clubs, onChange }: ClubAnteriorListPr
                 value={club.nombre}
                 onChange={(e) => updateClub(index, 'nombre', e.target.value)}
                 placeholder="Nombre del club"
-                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+                disabled={disabled}
+                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 disabled:cursor-not-allowed"
               />
               <input
                 type="text"
                 value={club.periodo ?? ''}
                 onChange={(e) => updateClub(index, 'periodo', e.target.value)}
                 placeholder="Período (ej: 2019-2021)"
-                className="w-36 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+                disabled={disabled}
+                className="w-36 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 disabled:cursor-not-allowed"
               />
               <button
                 type="button"
                 onClick={() => removeClub(index)}
                 aria-label="Eliminar club"
-                className="text-red-400 hover:text-red-600 p-1.5 rounded transition-colors"
+                disabled={disabled}
+                className="text-red-400 hover:text-red-600 p-1.5 rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Trash2 size={15} />
               </button>

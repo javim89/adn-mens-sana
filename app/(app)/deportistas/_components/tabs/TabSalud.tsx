@@ -11,6 +11,7 @@ import type { DeportistaFormData } from '@/lib/types/deportistas';
 interface TabSaludProps {
   data: DeportistaFormData;
   onChange: (patch: Partial<DeportistaFormData>) => void;
+  disabled?: boolean;
 }
 
 function Field({
@@ -42,11 +43,13 @@ function MultiSelectDropdown({
   selected,
   onChange,
   placeholder = 'Seleccionar...',
+  disabled = false,
 }: {
   options: Record<string, string>;
   selected: string[];
   onChange: (values: string[]) => void;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -60,6 +63,7 @@ function MultiSelectDropdown({
   }, []);
 
   function toggle(value: string) {
+    if (disabled) return;
     onChange(
       selected.includes(value)
         ? selected.filter((v) => v !== value)
@@ -75,11 +79,12 @@ function MultiSelectDropdown({
         : `${selected.length} seleccionadas`;
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className={`relative${disabled ? ' opacity-50' : ''}`}>
       <button
         type="button"
-        onClick={() => setIsOpen((o) => !o)}
-        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+        onClick={() => !disabled && setIsOpen((o) => !o)}
+        disabled={disabled}
+        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 disabled:cursor-not-allowed"
       >
         <span className={label ? 'text-[#1C1C1C]' : 'text-[#6B7280]'}>
           {label ?? placeholder}
@@ -90,7 +95,7 @@ function MultiSelectDropdown({
         />
       </button>
 
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {Object.entries(options).map(([value, optLabel]) => (
             <label
@@ -119,9 +124,11 @@ function MultiSelectDropdown({
               className="inline-flex items-center gap-1 text-xs bg-[#121A61]/10 text-[#121A61] px-2 py-0.5 rounded-full"
             >
               {options[v]}
-              <button type="button" onClick={() => toggle(v)} className="hover:text-red-500">
-                ×
-              </button>
+              {!disabled && (
+                <button type="button" onClick={() => toggle(v)} className="hover:text-red-500">
+                  ×
+                </button>
+              )}
             </span>
           ))}
         </div>
@@ -130,7 +137,7 @@ function MultiSelectDropdown({
   );
 }
 
-export default function TabSalud({ data, onChange }: TabSaludProps) {
+export default function TabSalud({ data, onChange, disabled = false }: TabSaludProps) {
   const sal = data.datosSalud ?? {
     enfermedadesPreexistentes: [],
     antecedentesEnfermedadesFam: [],
@@ -139,6 +146,13 @@ export default function TabSalud({ data, onChange }: TabSaludProps) {
   function patchSal(patch: Partial<NonNullable<DeportistaFormData['datosSalud']>>) {
     onChange({ datosSalud: { ...sal, ...patch } });
   }
+
+  const inputCls = [
+    'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30',
+    disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
@@ -150,7 +164,8 @@ export default function TabSalud({ data, onChange }: TabSaludProps) {
           value={sal.grupoSanguineo ?? ''}
           onChange={(e) => patchSal({ grupoSanguineo: e.target.value })}
           placeholder="Ej: 0+"
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls}
         />
       </Field>
 
@@ -161,7 +176,8 @@ export default function TabSalud({ data, onChange }: TabSaludProps) {
           value={sal.horasSuenio ?? ''}
           onChange={(e) => patchSal({ horasSuenio: e.target.value })}
           placeholder="Ej: 8-9 horas"
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls}
         />
       </Field>
 
@@ -173,7 +189,8 @@ export default function TabSalud({ data, onChange }: TabSaludProps) {
           value={sal.obraSocial ?? ''}
           onChange={(e) => patchSal({ obraSocial: e.target.value })}
           placeholder="Ej: IOMA - A244990067/04"
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls}
         />
       </Field>
 
@@ -189,6 +206,7 @@ export default function TabSalud({ data, onChange }: TabSaludProps) {
             })
           }
           placeholder="Seleccionar enfermedades..."
+          disabled={disabled}
         />
       </Field>
 
@@ -204,11 +222,12 @@ export default function TabSalud({ data, onChange }: TabSaludProps) {
             })
           }
           placeholder="Seleccionar antecedentes familiares..."
+          disabled={disabled}
         />
       </Field>
 
       {/* Alerta muerte súbita */}
-      <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4 sm:col-span-2">
+      <div className={`rounded-xl border-2 border-red-200 bg-red-50 p-4 sm:col-span-2${disabled ? ' opacity-50' : ''}`}>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex items-start gap-2">
             <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
@@ -219,8 +238,9 @@ export default function TabSalud({ data, onChange }: TabSaludProps) {
           <div className="flex gap-2 sm:shrink-0">
             <button
               type="button"
-              onClick={() => patchSal({ antecedenteMuerteSubitaFamiliar: true })}
-              className={`px-4 py-1.5 text-sm rounded-full border transition-colors ${
+              onClick={() => !disabled && patchSal({ antecedenteMuerteSubitaFamiliar: true })}
+              disabled={disabled}
+              className={`px-4 py-1.5 text-sm rounded-full border transition-colors disabled:cursor-not-allowed ${
                 sal.antecedenteMuerteSubitaFamiliar === true
                   ? 'bg-red-500 border-red-500 text-white'
                   : 'border-red-300 text-red-700 hover:bg-red-100'
@@ -230,8 +250,9 @@ export default function TabSalud({ data, onChange }: TabSaludProps) {
             </button>
             <button
               type="button"
-              onClick={() => patchSal({ antecedenteMuerteSubitaFamiliar: false })}
-              className={`px-4 py-1.5 text-sm rounded-full border transition-colors ${
+              onClick={() => !disabled && patchSal({ antecedenteMuerteSubitaFamiliar: false })}
+              disabled={disabled}
+              className={`px-4 py-1.5 text-sm rounded-full border transition-colors disabled:cursor-not-allowed ${
                 sal.antecedenteMuerteSubitaFamiliar === false
                   ? 'bg-gray-600 border-gray-600 text-white'
                   : 'border-gray-300 text-gray-700 hover:bg-gray-100'
@@ -250,7 +271,8 @@ export default function TabSalud({ data, onChange }: TabSaludProps) {
           value={sal.antecedentesQuirurgicos ?? ''}
           onChange={(e) => patchSal({ antecedentesQuirurgicos: e.target.value })}
           rows={3}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 resize-y"
+          disabled={disabled}
+          className={`${inputCls} resize-y`}
         />
       </Field>
 
@@ -261,7 +283,8 @@ export default function TabSalud({ data, onChange }: TabSaludProps) {
           value={sal.medicacionCronica ?? ''}
           onChange={(e) => patchSal({ medicacionCronica: e.target.value })}
           rows={3}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 resize-y"
+          disabled={disabled}
+          className={`${inputCls} resize-y`}
         />
       </Field>
 
@@ -272,7 +295,8 @@ export default function TabSalud({ data, onChange }: TabSaludProps) {
           value={sal.historialLesiones ?? ''}
           onChange={(e) => patchSal({ historialLesiones: e.target.value })}
           rows={3}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 resize-y"
+          disabled={disabled}
+          className={`${inputCls} resize-y`}
         />
       </Field>
     </div>

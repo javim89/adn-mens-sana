@@ -1,6 +1,6 @@
-export type AppRole = 'admin' | 'entrenador' | 'medico' | 'kinesiologo' | 'nutricionista' | 'psicologo' | 'cardiologo';
+export type AppRole = 'admin' | 'entrenador' | 'medico' | 'kinesiologo' | 'nutricionista' | 'psicologo' | 'cardiologo' | 'social';
 
-export const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador', 'medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'];
+export const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador', 'medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo', 'social'];
 
 export const ROL_LABELS: Record<AppRole, string> = {
   admin:         'Admin',
@@ -10,6 +10,7 @@ export const ROL_LABELS: Record<AppRole, string> = {
   nutricionista: 'Nutricionista',
   psicologo:     'Psicólogo',
   cardiologo:    'Cardiólogo',
+  social:        'Social',
 };
 
 export type IconKey = 'LayoutDashboard' | 'Users' | 'CalendarDays' | 'UserCog' | 'ClipboardList';
@@ -36,6 +37,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   nutricionista: ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
   psicologo:     ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
   cardiologo:    ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
+  social:        ALL_NAV_ITEMS.filter(i => ['/dashboard', '/deportistas'].includes(i.href)),
 };
 
 export function getNavItemsForRole(role: string | undefined | null): NavItem[] {

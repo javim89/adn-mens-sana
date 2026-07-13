@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@clerk/nextjs/server', () => ({
   auth: vi.fn(),
+  currentUser: vi.fn().mockResolvedValue({ publicMetadata: { role: 'admin' } }),
 }));
 
 vi.mock('@/lib/db', () => ({

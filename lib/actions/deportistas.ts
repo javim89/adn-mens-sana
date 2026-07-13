@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
 import type { DeportistaFormData } from '@/lib/types/deportistas';
@@ -229,10 +229,15 @@ export async function updateDeportista(
     const { userId } = await auth();
     if (!userId) throw new Error('No autorizado');
 
+    const clerkUser = await currentUser();
+    const userRole = String(clerkUser?.publicMetadata?.role ?? '');
+    const isSocial = userRole === 'social';
+
     // Verify existence
     const existing = await prisma.deportista.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Deportista no encontrado' };
 
+    if (!isSocial) {
     // Update main record
     await prisma.deportista.update({
       where: { id },
@@ -273,6 +278,7 @@ export async function updateDeportista(
         })),
       });
     }
+    } // end !isSocial block
 
     // Upsert datos escolares
     const de = data.datosEscolares;
@@ -439,9 +445,9 @@ export async function updateDeportista(
       }
     }
 
-    // Upsert datos salud
+    // Upsert datos salud (blocked for social role)
     const sal = data.datosSalud;
-    if (sal) {
+    if (!isSocial && sal) {
       const saludExisting = await prisma.datosSalud.findUnique({ where: { deportistaId: id } });
       if (saludExisting) {
         await prisma.enfermedadPreexistenteItem.deleteMany({ where: { datosSaludId: saludExisting.id } });

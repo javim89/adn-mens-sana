@@ -14,6 +14,7 @@ interface TabDeportivoProps {
   data: DeportistaFormData;
   errors?: Partial<Record<string, string>>;
   onChange: (patch: Partial<DeportistaFormData>) => void;
+  disabled?: boolean;
 }
 
 function Field({
@@ -40,7 +41,15 @@ function Field({
   );
 }
 
-export default function TabDeportivo({ data, onChange }: TabDeportivoProps) {
+const inputCls = (disabled: boolean) =>
+  [
+    'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30',
+    disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+export default function TabDeportivo({ data, onChange, disabled = false }: TabDeportivoProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
       {/* Fila 1 */}
@@ -51,6 +60,7 @@ export default function TabDeportivo({ data, onChange }: TabDeportivoProps) {
           onChange={(v) => onChange({ disciplina: v || undefined })}
           options={DISCIPLINA_LABELS}
           placeholder="Seleccionar disciplina..."
+          disabled={disabled}
         />
       </Field>
 
@@ -61,6 +71,7 @@ export default function TabDeportivo({ data, onChange }: TabDeportivoProps) {
           onChange={(v) => onChange({ categoria: v || undefined })}
           options={CATEGORIA_LABELS}
           placeholder="Seleccionar categoría..."
+          disabled={disabled}
         />
       </Field>
 
@@ -71,7 +82,8 @@ export default function TabDeportivo({ data, onChange }: TabDeportivoProps) {
           type="text"
           value={data.posicion ?? ''}
           onChange={(e) => onChange({ posicion: e.target.value })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls(disabled)}
         />
       </Field>
 
@@ -82,6 +94,7 @@ export default function TabDeportivo({ data, onChange }: TabDeportivoProps) {
           onChange={(v) => onChange({ estado: v || 'ACTIVO' })}
           options={ESTADO_LABELS}
           placeholder="Seleccionar estado..."
+          disabled={disabled}
         />
       </Field>
 
@@ -93,6 +106,7 @@ export default function TabDeportivo({ data, onChange }: TabDeportivoProps) {
           onChange={(v) => onChange({ actividadComplementaria: v || undefined })}
           options={ACTIVIDAD_COMPLEMENTARIA_LABELS}
           placeholder="Seleccionar actividad..."
+          disabled={disabled}
         />
       </Field>
 
@@ -102,18 +116,20 @@ export default function TabDeportivo({ data, onChange }: TabDeportivoProps) {
           type="date"
           value={data.fechaIngreso ?? ''}
           onChange={(e) => onChange({ fechaIngreso: e.target.value })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls(disabled)}
         />
       </Field>
 
       {/* Fila 4: checkbox */}
       <div className="sm:col-span-2">
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className={`flex items-center gap-2${disabled ? ' opacity-50 cursor-not-allowed' : ' cursor-pointer'}`}>
           <input
             id="esRepresentante"
             type="checkbox"
             checked={data.esRepresentante}
             onChange={(e) => onChange({ esRepresentante: e.target.checked })}
+            disabled={disabled}
             className="w-4 h-4 text-[#121A61] rounded border-gray-300 focus:ring-[#3346CC]/30"
           />
           <span className="text-sm text-[#1C1C1C]">Es representante</span>
@@ -125,6 +141,7 @@ export default function TabDeportivo({ data, onChange }: TabDeportivoProps) {
         <ClubAnteriorList
           clubs={data.clubesAnteriores}
           onChange={(clubs) => onChange({ clubesAnteriores: clubs })}
+          disabled={disabled}
         />
       </div>
     </div>

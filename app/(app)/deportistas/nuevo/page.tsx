@@ -1,7 +1,13 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { currentUser } from '@clerk/nextjs/server';
 import DeportistaForm from '../_components/DeportistaForm';
 
-export default function NuevoDeportistaPage() {
+export default async function NuevoDeportistaPage() {
+  const user = await currentUser();
+  const role = String(user?.publicMetadata?.role ?? '');
+  if (role === 'social') redirect('/deportistas');
+
   return (
     <div className="p-8">
       <div className="mb-2">

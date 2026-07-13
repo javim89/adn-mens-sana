@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import type { DeportistaWithRelations } from '@/lib/types/deportistas';
@@ -356,6 +356,10 @@ export async function PATCH(
     );
   }
 
+  const clerkUser = await currentUser();
+  const userRole = String(clerkUser?.publicMetadata?.role ?? '');
+  const isSocial = userRole === 'social';
+
   const contentType = request.headers.get('Content-Type') ?? '';
   if (!contentType.includes('application/vnd.api+json')) {
     return new Response(
@@ -428,46 +432,48 @@ export async function PATCH(
   const attrs = parsed.data.data.attributes;
 
   try {
-    // Update main record (only provided fields)
-    await prisma.deportista.update({
-      where: { id },
-      data: {
-        ...(attrs.apellido !== undefined ? { apellido: attrs.apellido.trim() } : {}),
-        ...(attrs.nombre !== undefined ? { nombre: attrs.nombre.trim() } : {}),
-        ...(attrs.dni !== undefined ? { dni: attrs.dni.trim() } : {}),
-        ...(attrs.fechaNacimiento !== undefined ? { fechaNacimiento: new Date(attrs.fechaNacimiento) } : {}),
-        ...(attrs.provincia !== undefined ? { provincia: attrs.provincia?.trim() || null } : {}),
-        ...(attrs.ciudad !== undefined ? { ciudad: attrs.ciudad?.trim() || null } : {}),
-        ...(attrs.genero !== undefined ? { genero: attrs.genero || null } : {}),
-        ...(attrs.telefono !== undefined ? { telefono: attrs.telefono?.trim() || null } : {}),
-        ...(attrs.email !== undefined ? { email: attrs.email?.trim() || null } : {}),
-        ...(attrs.domicilioActual !== undefined ? { domicilioActual: attrs.domicilioActual?.trim() || null } : {}),
-        ...(attrs.nacionalidad !== undefined ? { nacionalidad: attrs.nacionalidad?.trim() || null } : {}),
-        ...(attrs.contactoEmergencia !== undefined ? { contactoEmergencia: attrs.contactoEmergencia?.trim() || null } : {}),
-        ...(attrs.vivePensionClub !== undefined ? { vivePensionClub: attrs.vivePensionClub } : {}),
-        ...(attrs.vivePensionExterna !== undefined ? { vivePensionExterna: attrs.vivePensionExterna } : {}),
-        ...(attrs.observaciones !== undefined ? { observaciones: attrs.observaciones?.trim() || null } : {}),
-        ...(attrs.disciplina !== undefined ? { disciplina: attrs.disciplina || null } : {}),
-        ...(attrs.categoria !== undefined ? { categoria: attrs.categoria || null } : {}),
-        ...(attrs.posicion !== undefined ? { posicion: attrs.posicion?.trim() || null } : {}),
-        ...(attrs.estado !== undefined ? { estado: attrs.estado } : {}),
-        ...(attrs.actividadComplementaria !== undefined ? { actividadComplementaria: attrs.actividadComplementaria || null } : {}),
-        ...(attrs.fechaIngreso !== undefined ? { fechaIngreso: attrs.fechaIngreso ? new Date(attrs.fechaIngreso) : null } : {}),
-        ...(attrs.esRepresentante !== undefined ? { esRepresentante: attrs.esRepresentante } : {}),
-      },
-    });
+    if (!isSocial) {
+      // Update main record (only provided fields)
+      await prisma.deportista.update({
+        where: { id },
+        data: {
+          ...(attrs.apellido !== undefined ? { apellido: attrs.apellido.trim() } : {}),
+          ...(attrs.nombre !== undefined ? { nombre: attrs.nombre.trim() } : {}),
+          ...(attrs.dni !== undefined ? { dni: attrs.dni.trim() } : {}),
+          ...(attrs.fechaNacimiento !== undefined ? { fechaNacimiento: new Date(attrs.fechaNacimiento) } : {}),
+          ...(attrs.provincia !== undefined ? { provincia: attrs.provincia?.trim() || null } : {}),
+          ...(attrs.ciudad !== undefined ? { ciudad: attrs.ciudad?.trim() || null } : {}),
+          ...(attrs.genero !== undefined ? { genero: attrs.genero || null } : {}),
+          ...(attrs.telefono !== undefined ? { telefono: attrs.telefono?.trim() || null } : {}),
+          ...(attrs.email !== undefined ? { email: attrs.email?.trim() || null } : {}),
+          ...(attrs.domicilioActual !== undefined ? { domicilioActual: attrs.domicilioActual?.trim() || null } : {}),
+          ...(attrs.nacionalidad !== undefined ? { nacionalidad: attrs.nacionalidad?.trim() || null } : {}),
+          ...(attrs.contactoEmergencia !== undefined ? { contactoEmergencia: attrs.contactoEmergencia?.trim() || null } : {}),
+          ...(attrs.vivePensionClub !== undefined ? { vivePensionClub: attrs.vivePensionClub } : {}),
+          ...(attrs.vivePensionExterna !== undefined ? { vivePensionExterna: attrs.vivePensionExterna } : {}),
+          ...(attrs.observaciones !== undefined ? { observaciones: attrs.observaciones?.trim() || null } : {}),
+          ...(attrs.disciplina !== undefined ? { disciplina: attrs.disciplina || null } : {}),
+          ...(attrs.categoria !== undefined ? { categoria: attrs.categoria || null } : {}),
+          ...(attrs.posicion !== undefined ? { posicion: attrs.posicion?.trim() || null } : {}),
+          ...(attrs.estado !== undefined ? { estado: attrs.estado } : {}),
+          ...(attrs.actividadComplementaria !== undefined ? { actividadComplementaria: attrs.actividadComplementaria || null } : {}),
+          ...(attrs.fechaIngreso !== undefined ? { fechaIngreso: attrs.fechaIngreso ? new Date(attrs.fechaIngreso) : null } : {}),
+          ...(attrs.esRepresentante !== undefined ? { esRepresentante: attrs.esRepresentante } : {}),
+        },
+      });
 
-    // Handle clubs anteriores
-    if (attrs.clubesAnteriores !== undefined) {
-      await prisma.clubAnterior.deleteMany({ where: { deportistaId: id } });
-      if (attrs.clubesAnteriores.length > 0) {
-        await prisma.clubAnterior.createMany({
-          data: attrs.clubesAnteriores.map((c) => ({
-            deportistaId: id,
-            nombre: c.nombre,
-            periodo: c.periodo || null,
-          })),
-        });
+      // Handle clubs anteriores
+      if (attrs.clubesAnteriores !== undefined) {
+        await prisma.clubAnterior.deleteMany({ where: { deportistaId: id } });
+        if (attrs.clubesAnteriores.length > 0) {
+          await prisma.clubAnterior.createMany({
+            data: attrs.clubesAnteriores.map((c) => ({
+              deportistaId: id,
+              nombre: c.nombre,
+              periodo: c.periodo || null,
+            })),
+          });
+        }
       }
     }
 
@@ -653,9 +659,9 @@ export async function PATCH(
       }
     }
 
-    // Upsert datos salud
+    // Upsert datos salud (blocked for social role)
     const sal = attrs.datosSalud;
-    if (sal) {
+    if (!isSocial && sal) {
       const saludExisting = await prisma.datosSalud.findUnique({ where: { deportistaId: id } });
       if (saludExisting) {
         await prisma.enfermedadPreexistenteItem.deleteMany({ where: { datosSaludId: saludExisting.id } });

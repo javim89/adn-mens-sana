@@ -14,6 +14,7 @@ import TabSocial from './tabs/TabSocial';
 import TabSalud from './tabs/TabSalud';
 import { createDeportista, updateDeportista } from '@/lib/api/deportistas';
 import type { DeportistaFormData, DeportistaWithRelations } from '@/lib/types/deportistas';
+import type { AppRole } from '@/lib/roles';
 
 // ---------------------------------------------------------------------------
 // Zod schema for client-side validation (partial — only required fields validated)
@@ -166,11 +167,13 @@ function buildInitialData(d?: DeportistaWithRelations): DeportistaFormData {
 interface DeportistaFormProps {
   mode: 'create' | 'edit';
   initialData?: DeportistaWithRelations;
+  userRole?: AppRole;
 }
 
 const PERSONAL_FIELDS = ['apellido', 'nombre', 'dni', 'fechaNacimiento'];
 
-export default function DeportistaForm({ mode, initialData }: DeportistaFormProps) {
+export default function DeportistaForm({ mode, initialData, userRole }: DeportistaFormProps) {
+  const isSocial = userRole === 'social';
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('personal');
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -248,10 +251,10 @@ export default function DeportistaForm({ mode, initialData }: DeportistaFormProp
 
         <div className="px-6 pb-6">
           {activeTab === 'personal' && (
-            <TabPersonal data={watchedData} errors={flatErrors} onChange={patch} />
+            <TabPersonal data={watchedData} errors={flatErrors} onChange={patch} disabled={isSocial} />
           )}
           {activeTab === 'deportivo' && (
-            <TabDeportivo data={watchedData} errors={flatErrors} onChange={patch} />
+            <TabDeportivo data={watchedData} errors={flatErrors} onChange={patch} disabled={isSocial} />
           )}
           {activeTab === 'escolar' && (
             <TabEscolar data={watchedData} onChange={patch} />
@@ -260,7 +263,7 @@ export default function DeportistaForm({ mode, initialData }: DeportistaFormProp
             <TabSocial data={watchedData} onChange={patch} />
           )}
           {activeTab === 'salud' && (
-            <TabSalud data={watchedData} onChange={patch} />
+            <TabSalud data={watchedData} onChange={patch} disabled={isSocial} />
           )}
         </div>
 

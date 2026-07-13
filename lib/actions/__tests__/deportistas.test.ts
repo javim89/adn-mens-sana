@@ -1,8 +1,9 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // All mocks must be hoisted before vi.mock calls
-const { mockAuth, mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
+const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
   const mockAuth = vi.fn().mockResolvedValue({ userId: 'user_test_123' });
+  const mockCurrentUser = vi.fn().mockResolvedValue({ publicMetadata: { role: 'admin' } });
   const mockRevalidatePath = vi.fn();
   const mockPrisma = {
     deportista: {
@@ -43,10 +44,10 @@ const { mockAuth, mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
     },
     $transaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };
-  return { mockAuth, mockRevalidatePath, mockPrisma };
+  return { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma };
 });
 
-vi.mock('@clerk/nextjs/server', () => ({ auth: mockAuth }));
+vi.mock('@clerk/nextjs/server', () => ({ auth: mockAuth, currentUser: mockCurrentUser }));
 vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 

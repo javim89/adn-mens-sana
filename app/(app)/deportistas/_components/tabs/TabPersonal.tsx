@@ -8,6 +8,7 @@ interface TabPersonalProps {
   data: DeportistaFormData;
   errors: Partial<Record<string, string>>;
   onChange: (patch: Partial<DeportistaFormData>) => void;
+  disabled?: boolean;
 }
 
 function Field({
@@ -37,7 +38,18 @@ function Field({
   );
 }
 
-export default function TabPersonal({ data, errors, onChange }: TabPersonalProps) {
+const disabledCls = 'opacity-50 cursor-not-allowed bg-gray-50';
+
+export default function TabPersonal({ data, errors, onChange, disabled = false }: TabPersonalProps) {
+  const inputCls = (extra = '') =>
+    [
+      'w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30',
+      extra,
+      disabled ? disabledCls : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
       {/* Fila 1 */}
@@ -47,10 +59,8 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           type="text"
           value={data.apellido}
           onChange={(e) => onChange({ apellido: e.target.value })}
-          className={[
-            'w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30',
-            errors.apellido ? 'border-red-400' : 'border-gray-200',
-          ].join(' ')}
+          disabled={disabled}
+          className={inputCls(errors.apellido ? 'border-red-400' : 'border-gray-200')}
         />
       </Field>
 
@@ -60,10 +70,8 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           type="text"
           value={data.nombre}
           onChange={(e) => onChange({ nombre: e.target.value })}
-          className={[
-            'w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30',
-            errors.nombre ? 'border-red-400' : 'border-gray-200',
-          ].join(' ')}
+          disabled={disabled}
+          className={inputCls(errors.nombre ? 'border-red-400' : 'border-gray-200')}
         />
       </Field>
 
@@ -75,10 +83,8 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           value={data.dni}
           onChange={(e) => onChange({ dni: e.target.value })}
           maxLength={8}
-          className={[
-            'w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30',
-            errors.dni ? 'border-red-400' : 'border-gray-200',
-          ].join(' ')}
+          disabled={disabled}
+          className={inputCls(errors.dni ? 'border-red-400' : 'border-gray-200')}
         />
       </Field>
 
@@ -88,10 +94,8 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           type="date"
           value={data.fechaNacimiento}
           onChange={(e) => onChange({ fechaNacimiento: e.target.value })}
-          className={[
-            'w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30',
-            errors.fechaNacimiento ? 'border-red-400' : 'border-gray-200',
-          ].join(' ')}
+          disabled={disabled}
+          className={inputCls(errors.fechaNacimiento ? 'border-red-400' : 'border-gray-200')}
         />
       </Field>
 
@@ -103,6 +107,7 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           onChange={(v) => onChange({ genero: v || undefined })}
           options={GENERO_LABELS}
           placeholder="Seleccionar género..."
+          disabled={disabled}
         />
       </Field>
 
@@ -112,7 +117,8 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           type="text"
           value={data.nacionalidad ?? ''}
           onChange={(e) => onChange({ nacionalidad: e.target.value })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls('border-gray-200')}
         />
       </Field>
 
@@ -123,7 +129,8 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           type="tel"
           value={data.telefono ?? ''}
           onChange={(e) => onChange({ telefono: e.target.value })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls('border-gray-200')}
         />
       </Field>
 
@@ -133,7 +140,8 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           type="email"
           value={data.email ?? ''}
           onChange={(e) => onChange({ email: e.target.value })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls('border-gray-200')}
         />
       </Field>
 
@@ -144,7 +152,8 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           type="text"
           value={data.domicilioActual ?? ''}
           onChange={(e) => onChange({ domicilioActual: e.target.value })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls('border-gray-200')}
         />
       </Field>
 
@@ -155,7 +164,8 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           type="text"
           value={data.provincia ?? ''}
           onChange={(e) => onChange({ provincia: e.target.value })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls('border-gray-200')}
         />
       </Field>
 
@@ -165,7 +175,8 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           type="text"
           value={data.ciudad ?? ''}
           onChange={(e) => onChange({ ciudad: e.target.value })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls('border-gray-200')}
         />
       </Field>
 
@@ -176,30 +187,33 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           type="text"
           value={data.contactoEmergencia ?? ''}
           onChange={(e) => onChange({ contactoEmergencia: e.target.value })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          disabled={disabled}
+          className={inputCls('border-gray-200')}
           placeholder="Nombre y teléfono"
         />
       </Field>
 
       {/* Fila 8: Checkboxes */}
-      <div className="sm:col-span-2 flex flex-wrap gap-6">
-        <label className="flex items-center gap-2 cursor-pointer">
+      <div className={`sm:col-span-2 flex flex-wrap gap-6${disabled ? ' opacity-50' : ''}`}>
+        <label className={`flex items-center gap-2${disabled ? ' cursor-not-allowed' : ' cursor-pointer'}`}>
           <input
             id="vivePensionClub"
             type="checkbox"
             checked={data.vivePensionClub}
             onChange={(e) => onChange({ vivePensionClub: e.target.checked })}
+            disabled={disabled}
             className="w-4 h-4 text-[#121A61] rounded border-gray-300 focus:ring-[#3346CC]/30"
           />
           <span className="text-sm text-[#1C1C1C]">Vive en pensión del club</span>
         </label>
 
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label className={`flex items-center gap-2${disabled ? ' cursor-not-allowed' : ' cursor-pointer'}`}>
           <input
             id="vivePensionExterna"
             type="checkbox"
             checked={data.vivePensionExterna}
             onChange={(e) => onChange({ vivePensionExterna: e.target.checked })}
+            disabled={disabled}
             className="w-4 h-4 text-[#121A61] rounded border-gray-300 focus:ring-[#3346CC]/30"
           />
           <span className="text-sm text-[#1C1C1C]">Vive en pensión externa</span>
@@ -213,7 +227,8 @@ export default function TabPersonal({ data, errors, onChange }: TabPersonalProps
           value={data.observaciones ?? ''}
           onChange={(e) => onChange({ observaciones: e.target.value })}
           rows={3}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 resize-none"
+          disabled={disabled}
+          className={inputCls('border-gray-200 resize-none')}
         />
       </Field>
     </div>
