@@ -44,6 +44,7 @@ export default async function SeguimientosPage() {
     prioridad: s.prioridad,
     proximaCita: s.proximaCita?.toISOString() ?? null,
     alertaSeguimiento: s.alertaSeguimiento,
+    tipoSeguimiento: s.tipoSeguimiento ?? null,
     profesionalId: s.profesionalId,
     profesionalNombre: profesionalesMap[s.profesionalId] ?? s.profesionalId,
     deportistaId: s.deportista.id,

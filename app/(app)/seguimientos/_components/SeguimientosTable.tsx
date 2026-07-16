@@ -21,6 +21,23 @@ const PRIORIDAD_LABELS: Record<string, string> = {
   URGENTE: 'Urgente',
 };
 
+const TIPO_LABELS: Record<string, string> = {
+  GENERICO: 'Genérico',
+  TRAUMATOLOGIA: 'Traumatología',
+  HISTORIA_CLINICA: 'Historia Clínica',
+  EVALUACION_PSICOLOGICA: 'Evaluación Psicológica',
+  EVALUACION_CARDIOLOGICA: 'Evaluación Cardiológica',
+};
+
+function TipoBadge({ tipo }: { tipo: string | null }) {
+  const label = tipo ? (TIPO_LABELS[tipo] ?? tipo) : 'Genérico';
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+      {label}
+    </span>
+  );
+}
+
 const PRIORIDAD_STYLES: Record<string, string> = {
   BAJA: 'bg-[#D1FAE5] text-[#065F46]',
   MEDIA: 'bg-[#FEF9C3] text-[#713F12]',
@@ -187,7 +204,7 @@ export default function SeguimientosTable({
                 <li key={s.id} className="px-4 py-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
+                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
                         <Link
                           href={`/seguimientos/${s.id}`}
                           className="text-sm font-semibold text-[#1C1C1C] hover:text-[#121A61] truncate transition-colors"
@@ -195,6 +212,7 @@ export default function SeguimientosTable({
                           {s.titulo}
                         </Link>
                         <PrioridadBadge prioridad={s.prioridad} />
+                        <TipoBadge tipo={s.tipoSeguimiento} />
                       </div>
                       <p className="text-xs text-[#6B7280] mt-0.5">
                         {s.deportistaNombre} · {formatDate(s.fecha)}
@@ -251,6 +269,7 @@ export default function SeguimientosTable({
                 <th className="px-5 py-3 text-left">Fecha</th>
                 <th className="px-5 py-3 text-left">Título</th>
                 <th className="px-5 py-3 text-left">Prioridad</th>
+                <th className="hidden xl:table-cell px-5 py-3 text-left">Tipo</th>
                 {isAdmin && <th className="px-5 py-3 text-left">Área responsable</th>}
                 <th className="px-5 py-3 text-left">Próxima cita</th>
                 <th className="px-5 py-3" />
@@ -260,7 +279,7 @@ export default function SeguimientosTable({
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={isAdmin ? 7 : 6}
+                    colSpan={isAdmin ? 8 : 7}
                     className="px-5 py-12 text-center text-sm text-[#6B7280]"
                   >
                     No hay seguimientos.{' '}
@@ -301,6 +320,9 @@ export default function SeguimientosTable({
                       </td>
                       <td className="px-5 py-3.5">
                         <PrioridadBadge prioridad={s.prioridad} />
+                      </td>
+                      <td className="hidden xl:table-cell px-5 py-3.5">
+                        <TipoBadge tipo={s.tipoSeguimiento} />
                       </td>
                       {isAdmin && (
                         <td className="px-5 py-3.5 text-sm text-[#6B7280] max-w-[160px]">

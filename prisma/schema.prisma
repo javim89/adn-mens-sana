@@ -401,6 +401,14 @@ enum PrioridadSeguimiento {
   URGENTE
 }
 
+enum TipoSeguimiento {
+  GENERICO
+  TRAUMATOLOGIA
+  HISTORIA_CLINICA
+  EVALUACION_PSICOLOGICA
+  EVALUACION_CARDIOLOGICA
+}
+
 // ---------------------------------------------------------------------------
 // Models — Seguimientos
 // ---------------------------------------------------------------------------
@@ -417,13 +425,87 @@ model Seguimiento {
   prioridad            PrioridadSeguimiento @default(MEDIA)
   proximaCita          DateTime?            @map("proxima_cita")
   alertaSeguimiento    String?              @map("alerta_seguimiento")
+  tipoSeguimiento      TipoSeguimiento?     @map("tipo_seguimiento")
 
-  deportista           Deportista           @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+  deportista               Deportista                       @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+  traumatologia            SeguimientoTraumatologia?
+  historiaClinica          SeguimientoHistoriaClinica?
+  evaluacionPsicologica    SeguimientoEvaluacionPsicologica?
+  evaluacionCardiologica   SeguimientoEvaluacionCardiologica?
 
   createdAt            DateTime             @default(now()) @map("created_at")
   updatedAt            DateTime             @updatedAt @map("updated_at")
 
   @@map("seguimientos")
+}
+
+model SeguimientoTraumatologia {
+  id                    String      @id @default(cuid())
+  seguimientoId         String      @unique @map("seguimiento_id")
+  estabilidadHombro     String?     @map("estabilidad_hombro")
+  estabilidadRodilla    String?     @map("estabilidad_rodilla")
+  estabilidadTobillo    String?     @map("estabilidad_tobillo")
+  movilidadHombro       String?     @map("movilidad_hombro")
+  movilidadCadera       String?     @map("movilidad_cadera")
+  movilidadRodilla      String?     @map("movilidad_rodilla")
+  movilidadTobillo      String?     @map("movilidad_tobillo")
+  discrepanciaAsimetria String?     @map("discrepancia_asimetria")
+  postura               String?
+  laxitud               String?
+  podoscopia            String?
+  observaciones         String?
+
+  seguimiento           Seguimiento @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+
+  @@map("seguimientos_traumatologia")
+}
+
+model SeguimientoHistoriaClinica {
+  id                   String      @id @default(cuid())
+  seguimientoId        String      @unique @map("seguimiento_id")
+  tensionArterial      String?     @map("tension_arterial")
+  auscultacionPulmonar String?     @map("auscultacion_pulmonar")
+  avOjoDerecho         String?     @map("av_ojo_derecho")
+  avOjoIzquierdo       String?     @map("av_ojo_izquierdo")
+  diagnostico          String?
+
+  seguimiento          Seguimiento @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+
+  @@map("seguimientos_historia_clinica")
+}
+
+model SeguimientoEvaluacionPsicologica {
+  id                       String      @id @default(cuid())
+  seguimientoId            String      @unique @map("seguimiento_id")
+  cprdControlEstres        Int?        @map("cprd_control_estres")
+  cprdInfluenciaEvaluacion Int?        @map("cprd_influencia_evaluacion")
+  cprdMotivacion           Int?        @map("cprd_motivacion")
+  cprdHabilidadMental      Int?        @map("cprd_habilidad_mental")
+  cprdCohesionEquipo       Int?        @map("cprd_cohesion_equipo")
+  sociograma               String?
+  poms                     String?
+  staiRasgo                Int?        @map("stai_rasgo")
+  staiEstado               Int?        @map("stai_estado")
+  observaciones            String?
+
+  seguimiento              Seguimiento @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+
+  @@map("seguimientos_evaluacion_psicologica")
+}
+
+model SeguimientoEvaluacionCardiologica {
+  id                 String      @id @default(cuid())
+  seguimientoId      String      @unique @map("seguimiento_id")
+  ecg                String?
+  examenFisico       String?     @map("examen_fisico")
+  sintomas           String?
+  estudiosAnteriores String?     @map("estudios_anteriores")
+  diagnostico        String?
+  observaciones      String?
+
+  seguimiento        Seguimiento @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+
+  @@map("seguimientos_evaluacion_cardiologica")
 }
 
 enum AntecedenteEnfermedadFamiliar {

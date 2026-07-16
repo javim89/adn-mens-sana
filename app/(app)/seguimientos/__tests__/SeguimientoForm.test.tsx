@@ -1,5 +1,6 @@
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import SeguimientoForm from '../_components/SeguimientoForm';
 import type { SeguimientoListItem } from '@/lib/types/seguimientos';
 
@@ -34,6 +35,7 @@ const sampleInitialData: SeguimientoListItem = {
   prioridad: 'ALTA',
   proximaCita: null,
   alertaSeguimiento: null,
+  tipoSeguimiento: null,
   profesionalId: 'prof-medico-123',
   profesionalNombre: 'Dr. García',
   deportistaId: 'dep-1',
@@ -46,6 +48,7 @@ describe('SeguimientoForm', () => {
       <SeguimientoForm
         mode="create"
         isAdmin={false}
+        role="medico"
         profesionales={[]}
       />,
     );
@@ -59,6 +62,7 @@ describe('SeguimientoForm', () => {
       <SeguimientoForm
         mode="create"
         isAdmin={false}
+        role="medico"
         profesionales={[]}
       />,
     );
@@ -68,6 +72,7 @@ describe('SeguimientoForm', () => {
       <SeguimientoForm
         mode="create"
         isAdmin={true}
+        role="admin"
         profesionales={[{ id: 'p1', nombre: 'Ana', apellido: 'López', rol: 'medico' }]}
       />,
     );
@@ -79,6 +84,7 @@ describe('SeguimientoForm', () => {
       <SeguimientoForm
         mode="create"
         isAdmin={false}
+        role="medico"
         profesionales={[]}
       />,
     );
@@ -90,6 +96,7 @@ describe('SeguimientoForm', () => {
       <SeguimientoForm
         mode="edit"
         isAdmin={false}
+        role="medico"
         profesionales={[]}
         initialData={sampleInitialData}
       />,
@@ -102,11 +109,120 @@ describe('SeguimientoForm', () => {
       <SeguimientoForm
         mode="edit"
         isAdmin={false}
+        role="medico"
         profesionales={[]}
         initialData={sampleInitialData}
       />,
     );
     const tituloInput = screen.getByPlaceholderText(/Evaluación de rodilla/i);
     expect((tituloInput as HTMLInputElement).value).toBe('Seguimiento de rodilla');
+  });
+
+  // ---- New tests for tipo selector and role-based options ----
+
+  test('con role="medico" se muestra selector con opciones Genérico, Traumatología, Historia Clínica', async () => {
+    const user = userEvent.setup();
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="medico"
+        profesionales={[]}
+      />,
+    );
+    // The selector button is labeled with the current selection (defaults to GENERICO)
+    const tipoButton = screen.getByRole('button', { name: /Genérico/i });
+    await user.click(tipoButton);
+    expect(screen.getByRole('button', { name: /^Traumatología$/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Historia Clínica$/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Evaluación Psicológica/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Evaluación Cardiológica/i })).toBeNull();
+  });
+
+  test('con role="psicologo" se muestra selector con opciones Genérico, Evaluación Psicológica', async () => {
+    const user = userEvent.setup();
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="psicologo"
+        profesionales={[]}
+      />,
+    );
+    const tipoButton = screen.getByRole('button', { name: /Genérico/i });
+    await user.click(tipoButton);
+    expect(screen.getByRole('button', { name: /^Evaluación Psicológica$/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Traumatología/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Historia Clínica/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Evaluación Cardiológica/i })).toBeNull();
+  });
+
+  test('con role="kinesiologo" NO se muestra el selector de tipo', () => {
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="kinesiologo"
+        profesionales={[]}
+      />,
+    );
+    expect(screen.queryByText('Tipo de seguimiento')).toBeNull();
+  });
+
+  test('cuando el usuario selecciona tipo TRAUMATOLOGIA, aparece la sección "Estabilidad"', async () => {
+    const user = userEvent.setup();
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="medico"
+        profesionales={[]}
+      />,
+    );
+    // Open tipo selector and pick Traumatología
+    await user.click(screen.getByRole('button', { name: /Genérico/i }));
+    await user.click(screen.getByRole('button', { name: /^Traumatología$/i }));
+    // The Estabilidad section title should now be visible
+    expect(screen.getByText('Estabilidad')).toBeDefined();
+  });
+
+  test('cuando el usuario selecciona tipo EVALUACION_PSICOLOGICA, aparecen los campos CPRD numéricos', async () => {
+    const user = userEvent.setup();
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="psicologo"
+        profesionales={[]}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /Genérico/i }));
+    await user.click(screen.getByRole('button', { name: /^Evaluación Psicológica$/i }));
+    expect(screen.getByText('CPRD – Características Psicológicas')).toBeDefined();
+    expect(screen.getByText(/Control de Estrés/i)).toBeDefined();
+  });
+
+  test('los campos genéricos (descripción, recomendaciones) siempre se muestran independientemente del tipo', async () => {
+    const user = userEvent.setup();
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="medico"
+        profesionales={[]}
+      />,
+    );
+
+    // Present before changing tipo
+    expect(screen.getByPlaceholderText(/Detalles del seguimiento/i)).toBeDefined();
+    expect(screen.getByPlaceholderText(/Indicaciones, plan de acción/i)).toBeDefined();
+
+    // Change tipo to Traumatología
+    await user.click(screen.getByRole('button', { name: /Genérico/i }));
+    await user.click(screen.getByRole('button', { name: /^Traumatología$/i }));
+
+    // Still present
+    expect(screen.getByPlaceholderText(/Detalles del seguimiento/i)).toBeDefined();
+    expect(screen.getByPlaceholderText(/Indicaciones, plan de acción/i)).toBeDefined();
   });
 });

@@ -30,6 +30,7 @@ const makeSeguimiento = (overrides: Partial<SeguimientoListItem> = {}): Seguimie
   prioridad: 'MEDIA',
   proximaCita: null,
   alertaSeguimiento: null,
+  tipoSeguimiento: null,
   profesionalId: 'prof-medico-123',
   profesionalNombre: 'Dr. García',
   deportistaId: 'dep-1',
@@ -238,6 +239,32 @@ describe('SeguimientosTable', () => {
     viewLinks.forEach((link) => {
       expect((link as HTMLAnchorElement).href).toContain('/seguimientos/seg-1');
     });
+  });
+
+  test('la columna "Tipo" muestra "Traumatología" para seguimientos con tipoSeguimiento: TRAUMATOLOGIA', () => {
+    const data = [makeSeguimiento({ tipoSeguimiento: 'TRAUMATOLOGIA' })];
+    render(
+      <SeguimientosTable
+        initialSeguimientos={data}
+        isAdmin={false}
+        canWrite={false}
+        currentUserId="user-x"
+      />,
+    );
+    expect(screen.getAllByText('Traumatología').length).toBeGreaterThan(0);
+  });
+
+  test('muestra "Genérico" para seguimientos con tipoSeguimiento: null', () => {
+    const data = [makeSeguimiento({ tipoSeguimiento: null })];
+    render(
+      <SeguimientosTable
+        initialSeguimientos={data}
+        isAdmin={false}
+        canWrite={false}
+        currentUserId="user-x"
+      />,
+    );
+    expect(screen.getAllByText('Genérico').length).toBeGreaterThan(0);
   });
 
   test('botón Ver seguimiento aparece antes que Editar cuando el usuario puede modificar', () => {

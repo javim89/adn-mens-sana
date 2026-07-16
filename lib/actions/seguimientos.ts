@@ -3,10 +3,29 @@
 import { auth, currentUser, clerkClient } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
-import type { SeguimientoFormData, Profesional } from '@/lib/types/seguimientos';
+import type {
+  SeguimientoFormData,
+  Profesional,
+  TipoSeguimiento,
+  DatosEspecificosSeguimiento,
+} from '@/lib/types/seguimientos';
 
 const HEALTH_ROLES = ['medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'];
 const CAN_WRITE_ROLES = ['admin', ...HEALTH_ROLES];
+
+// Tipos permitidos por rol de profesional
+const TIPOS_POR_ROL: Record<string, TipoSeguimiento[]> = {
+  medico: ['GENERICO', 'TRAUMATOLOGIA', 'HISTORIA_CLINICA'],
+  psicologo: ['GENERICO', 'EVALUACION_PSICOLOGICA'],
+  cardiologo: ['GENERICO', 'EVALUACION_CARDIOLOGICA'],
+};
+
+function getTiposPermitidos(role: string): TipoSeguimiento[] {
+  if (role === 'admin') {
+    return ['GENERICO', 'TRAUMATOLOGIA', 'HISTORIA_CLINICA', 'EVALUACION_PSICOLOGICA', 'EVALUACION_CARDIOLOGICA'];
+  }
+  return TIPOS_POR_ROL[role] ?? ['GENERICO'];
+}
 
 async function getCallerInfo() {
   const { userId } = await auth();
@@ -15,6 +34,149 @@ async function getCallerInfo() {
   const role = String(user?.publicMetadata?.role ?? '');
   const isAdmin = role === 'admin';
   return { userId, role, isAdmin };
+}
+
+type PrismaTx = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+
+async function createDatosEspecificos(
+  tx: PrismaTx,
+  seguimientoId: string,
+  datosEspecificos: DatosEspecificosSeguimiento,
+): Promise<void> {
+  switch (datosEspecificos.tipo) {
+    case 'TRAUMATOLOGIA':
+      await tx.seguimientoTraumatologia.create({
+        data: {
+          seguimientoId,
+          ...datosEspecificos.datos,
+        },
+      });
+      break;
+    case 'HISTORIA_CLINICA':
+      await tx.seguimientoHistoriaClinica.create({
+        data: {
+          seguimientoId,
+          ...datosEspecificos.datos,
+        },
+      });
+      break;
+    case 'EVALUACION_PSICOLOGICA': {
+      const d = datosEspecificos.datos;
+      validateCprdRange(d.cprdControlEstres);
+      validateCprdRange(d.cprdInfluenciaEvaluacion);
+      validateCprdRange(d.cprdMotivacion);
+      validateCprdRange(d.cprdHabilidadMental);
+      validateCprdRange(d.cprdCohesionEquipo);
+      validateStaiRange(d.staiRasgo);
+      validateStaiRange(d.staiEstado);
+      await tx.seguimientoEvaluacionPsicologica.create({
+        data: {
+          seguimientoId,
+          ...d,
+        },
+      });
+      break;
+    }
+    case 'EVALUACION_CARDIOLOGICA':
+      await tx.seguimientoEvaluacionCardiologica.create({
+        data: {
+          seguimientoId,
+          ...datosEspecificos.datos,
+        },
+      });
+      break;
+    case 'GENERICO':
+      break;
+  }
+}
+
+async function upsertDatosEspecificos(
+  tx: PrismaTx,
+  seguimientoId: string,
+  datosEspecificos: DatosEspecificosSeguimiento,
+  previousTipo: TipoSeguimiento | null,
+): Promise<void> {
+  // If the type changed, delete the old satellite record before creating the new one
+  if (previousTipo && previousTipo !== datosEspecificos.tipo && previousTipo !== 'GENERICO') {
+    await deleteOldSatellite(tx, seguimientoId, previousTipo);
+  }
+
+  if (datosEspecificos.tipo === 'GENERICO') return;
+
+  switch (datosEspecificos.tipo) {
+    case 'TRAUMATOLOGIA':
+      await tx.seguimientoTraumatologia.upsert({
+        where: { seguimientoId },
+        create: { seguimientoId, ...datosEspecificos.datos },
+        update: { ...datosEspecificos.datos },
+      });
+      break;
+    case 'HISTORIA_CLINICA':
+      await tx.seguimientoHistoriaClinica.upsert({
+        where: { seguimientoId },
+        create: { seguimientoId, ...datosEspecificos.datos },
+        update: { ...datosEspecificos.datos },
+      });
+      break;
+    case 'EVALUACION_PSICOLOGICA': {
+      const d = datosEspecificos.datos;
+      validateCprdRange(d.cprdControlEstres);
+      validateCprdRange(d.cprdInfluenciaEvaluacion);
+      validateCprdRange(d.cprdMotivacion);
+      validateCprdRange(d.cprdHabilidadMental);
+      validateCprdRange(d.cprdCohesionEquipo);
+      validateStaiRange(d.staiRasgo);
+      validateStaiRange(d.staiEstado);
+      await tx.seguimientoEvaluacionPsicologica.upsert({
+        where: { seguimientoId },
+        create: { seguimientoId, ...d },
+        update: { ...d },
+      });
+      break;
+    }
+    case 'EVALUACION_CARDIOLOGICA':
+      await tx.seguimientoEvaluacionCardiologica.upsert({
+        where: { seguimientoId },
+        create: { seguimientoId, ...datosEspecificos.datos },
+        update: { ...datosEspecificos.datos },
+      });
+      break;
+  }
+}
+
+async function deleteOldSatellite(
+  tx: PrismaTx,
+  seguimientoId: string,
+  tipo: TipoSeguimiento,
+): Promise<void> {
+  switch (tipo) {
+    case 'TRAUMATOLOGIA':
+      await tx.seguimientoTraumatologia.deleteMany({ where: { seguimientoId } });
+      break;
+    case 'HISTORIA_CLINICA':
+      await tx.seguimientoHistoriaClinica.deleteMany({ where: { seguimientoId } });
+      break;
+    case 'EVALUACION_PSICOLOGICA':
+      await tx.seguimientoEvaluacionPsicologica.deleteMany({ where: { seguimientoId } });
+      break;
+    case 'EVALUACION_CARDIOLOGICA':
+      await tx.seguimientoEvaluacionCardiologica.deleteMany({ where: { seguimientoId } });
+      break;
+    case 'GENERICO':
+      break;
+  }
+}
+
+function validateCprdRange(value: number | undefined): void {
+  if (value !== undefined && value !== null && (value < 0 || value > 36)) {
+    throw new Error(`El valor CPRD debe estar entre 0 y 36 (recibido: ${value})`);
+  }
+}
+
+function validateStaiRange(value: number | undefined): void {
+  if (value !== undefined && value !== null && (value < 0 || value > 80)) {
+    throw new Error(`El valor STAI debe estar entre 0 y 80 (recibido: ${value})`);
+  }
 }
 
 export async function getProfesionalesSeguimientos(): Promise<Profesional[]> {
@@ -56,8 +218,19 @@ export async function createSeguimiento(
     if (!data.fecha) return { success: false, error: 'La fecha es requerida' };
     if (!data.deportistaId) return { success: false, error: 'El deportista es requerido' };
 
-    // Regla de propiedad en create: admin puede asignar un profesionalId diferente;
-    // profesional de salud siempre usa su propio userId como profesionalId.
+    // Validate tipo compatibility with caller role
+    const tipoSeguimiento = data.tipoSeguimiento ?? null;
+    if (tipoSeguimiento && tipoSeguimiento !== 'GENERICO') {
+      const tiposPermitidos = getTiposPermitidos(role ?? '');
+      if (!tiposPermitidos.includes(tipoSeguimiento)) {
+        return {
+          success: false,
+          error: `El rol "${role}" no puede crear seguimientos de tipo "${tipoSeguimiento}"`,
+        };
+      }
+    }
+
+    // Ownership rule: admin can assign a different profesionalId; health professionals always use their own userId
     const profesionalId = isAdmin ? data.profesionalId : userId;
     if (!profesionalId) return { success: false, error: 'El profesional es requerido' };
 
@@ -68,23 +241,32 @@ export async function createSeguimiento(
         ? new Date(data.proximaCita)
         : null;
 
-    const seguimiento = await prisma.seguimiento.create({
-      data: {
-        deportistaId: data.deportistaId,
-        profesionalId,
-        fecha: new Date(data.fecha),
-        titulo: data.titulo.trim(),
-        descripcion: data.descripcion?.trim() || null,
-        recomendaciones: data.recomendaciones?.trim() || null,
-        resultadosEvaluacion: data.resultadosEvaluacion?.trim() || null,
-        prioridad,
-        proximaCita,
-        alertaSeguimiento: data.alertaSeguimiento?.trim() || null,
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      const seguimiento = await tx.seguimiento.create({
+        data: {
+          deportistaId: data.deportistaId,
+          profesionalId,
+          fecha: new Date(data.fecha),
+          titulo: data.titulo.trim(),
+          descripcion: data.descripcion?.trim() || null,
+          recomendaciones: data.recomendaciones?.trim() || null,
+          resultadosEvaluacion: data.resultadosEvaluacion?.trim() || null,
+          prioridad,
+          proximaCita,
+          alertaSeguimiento: data.alertaSeguimiento?.trim() || null,
+          tipoSeguimiento,
+        },
+      });
+
+      if (data.datosEspecificos && tipoSeguimiento !== 'GENERICO') {
+        await createDatosEspecificos(tx as unknown as PrismaTx, seguimiento.id, data.datosEspecificos);
+      }
+
+      return seguimiento;
     });
 
     revalidatePath('/seguimientos');
-    return { success: true, id: seguimiento.id };
+    return { success: true, id: result.id };
   } catch (error) {
     console.error('createSeguimiento error:', error);
     return {
@@ -99,13 +281,13 @@ export async function updateSeguimiento(
   data: SeguimientoFormData,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const { userId, isAdmin } = await getCallerInfo();
+    const { userId, role, isAdmin } = await getCallerInfo();
     if (!userId) return { success: false, error: 'No autorizado' };
 
     const existing = await prisma.seguimiento.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Seguimiento no encontrado' };
 
-    // Regla de propiedad: solo el dueño o admin puede editar
+    // Ownership rule: only the owner or admin can edit
     const isOwner = existing.profesionalId === userId;
     const canModify = isAdmin || isOwner;
     if (!canModify) {
@@ -116,7 +298,19 @@ export async function updateSeguimiento(
       };
     }
 
-    // Admin puede reasignar el profesional; el dueño mantiene su propio profesionalId
+    // Validate tipo compatibility with caller role
+    const tipoSeguimiento = data.tipoSeguimiento ?? null;
+    if (tipoSeguimiento && tipoSeguimiento !== 'GENERICO') {
+      const tiposPermitidos = getTiposPermitidos(role ?? '');
+      if (!tiposPermitidos.includes(tipoSeguimiento)) {
+        return {
+          success: false,
+          error: `El rol "${role}" no puede crear seguimientos de tipo "${tipoSeguimiento}"`,
+        };
+      }
+    }
+
+    // Admin can reassign the professional; the owner keeps their own profesionalId
     const profesionalId = isAdmin ? data.profesionalId : existing.profesionalId;
 
     const proximaCita =
@@ -124,20 +318,37 @@ export async function updateSeguimiento(
         ? new Date(data.proximaCita)
         : null;
 
-    await prisma.seguimiento.update({
-      where: { id },
-      data: {
-        deportistaId: data.deportistaId,
-        profesionalId,
-        fecha: new Date(data.fecha),
-        titulo: data.titulo.trim(),
-        descripcion: data.descripcion?.trim() || null,
-        recomendaciones: data.recomendaciones?.trim() || null,
-        resultadosEvaluacion: data.resultadosEvaluacion?.trim() || null,
-        prioridad: data.prioridad || 'MEDIA',
-        proximaCita,
-        alertaSeguimiento: data.alertaSeguimiento?.trim() || null,
-      },
+    const previousTipo = (existing.tipoSeguimiento as TipoSeguimiento | null) ?? null;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.seguimiento.update({
+        where: { id },
+        data: {
+          deportistaId: data.deportistaId,
+          profesionalId,
+          fecha: new Date(data.fecha),
+          titulo: data.titulo.trim(),
+          descripcion: data.descripcion?.trim() || null,
+          recomendaciones: data.recomendaciones?.trim() || null,
+          resultadosEvaluacion: data.resultadosEvaluacion?.trim() || null,
+          prioridad: data.prioridad || 'MEDIA',
+          proximaCita,
+          alertaSeguimiento: data.alertaSeguimiento?.trim() || null,
+          tipoSeguimiento,
+        },
+      });
+
+      if (data.datosEspecificos) {
+        await upsertDatosEspecificos(
+          tx as unknown as PrismaTx,
+          id,
+          data.datosEspecificos,
+          previousTipo,
+        );
+      } else if (tipoSeguimiento === 'GENERICO' && previousTipo && previousTipo !== 'GENERICO') {
+        // If switching to GENERICO without datosEspecificos, clean up old satellite
+        await deleteOldSatellite(tx as unknown as PrismaTx, id, previousTipo);
+      }
     });
 
     revalidatePath('/seguimientos');
@@ -161,7 +372,7 @@ export async function deleteSeguimiento(
     const existing = await prisma.seguimiento.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Seguimiento no encontrado' };
 
-    // Regla de propiedad: solo el dueño o admin puede eliminar
+    // Ownership rule: only the owner or admin can delete
     const isOwner = existing.profesionalId === userId;
     const canModify = isAdmin || isOwner;
     if (!canModify) {

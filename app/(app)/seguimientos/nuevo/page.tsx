@@ -26,7 +26,7 @@ export default async function NuevoSeguimientoPage() {
       >
         Nuevo seguimiento
       </h1>
-      <SeguimientoForm mode="create" isAdmin={isAdmin} profesionales={profesionales} />
+      <SeguimientoForm mode="create" isAdmin={isAdmin} role={role} profesionales={profesionales} />
     </div>
   );
 }
