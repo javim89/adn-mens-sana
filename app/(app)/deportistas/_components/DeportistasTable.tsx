@@ -37,7 +37,7 @@ const ESTADO_BADGE: Record<string, string> = {
   SUSPENDIDO: 'bg-red-100 text-red-700',
 };
 
-export default function DeportistasTable() {
+export default function DeportistasTable({ canCreate = true }: { canCreate?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -124,13 +124,15 @@ export default function DeportistasTable() {
         >
           Deportistas
         </h1>
-        <Link
-          href="/deportistas/nuevo"
-          className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors shrink-0"
-        >
-          <Plus size={16} />
-          Nuevo deportista
-        </Link>
+        {canCreate && (
+          <Link
+            href="/deportistas/nuevo"
+            className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors shrink-0"
+          >
+            <Plus size={16} />
+            Nuevo deportista
+          </Link>
+        )}
       </div>
       <p className="text-[#6B7280] mb-6">
         Gestión del plantel deportivo

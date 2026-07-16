@@ -13,7 +13,8 @@ const schema = z.object({
   firstName: z.string().min(1, 'El nombre es requerido'),
   lastName: z.string().min(1, 'El apellido es requerido'),
   email: z.string().min(1, 'El email es requerido').email('El email no es válido'),
-  rol: z.enum(['admin', 'entrenador', 'medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'], {
+  // Derivado de ROLES_PERMITIDOS para que nunca se desincronice al agregar un rol nuevo.
+  rol: z.enum(ROLES_PERMITIDOS, {
     error: 'Seleccioná un rol',
   }),
 });
