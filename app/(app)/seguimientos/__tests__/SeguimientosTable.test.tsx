@@ -188,4 +188,78 @@ describe('SeguimientosTable', () => {
     expect(screen.queryByTitle('Editar seguimiento')).toBeNull();
     expect(screen.queryByTestId('delete-btn')).toBeNull();
   });
+
+  test('botón Ver seguimiento visible para usuario sin permisos de edición (no admin, no dueño)', () => {
+    const data = [makeSeguimiento({ id: 'seg-1', profesionalId: 'prof-medico-123' })];
+    render(
+      <SeguimientosTable
+        initialSeguimientos={data}
+        isAdmin={false}
+        canWrite={false}
+        currentUserId="otro-usuario-distinto"
+      />,
+    );
+    const viewLinks = screen.getAllByTitle('Ver seguimiento');
+    expect(viewLinks.length).toBeGreaterThan(0);
+    viewLinks.forEach((link) => {
+      expect((link as HTMLAnchorElement).href).toContain('/seguimientos/seg-1');
+    });
+  });
+
+  test('botón Ver seguimiento visible para admin', () => {
+    const data = [makeSeguimiento({ id: 'seg-1', profesionalId: 'otro-prof-999' })];
+    render(
+      <SeguimientosTable
+        initialSeguimientos={data}
+        isAdmin={true}
+        canWrite={true}
+        currentUserId="user-admin-123"
+      />,
+    );
+    const viewLinks = screen.getAllByTitle('Ver seguimiento');
+    expect(viewLinks.length).toBeGreaterThan(0);
+    viewLinks.forEach((link) => {
+      expect((link as HTMLAnchorElement).href).toContain('/seguimientos/seg-1');
+    });
+  });
+
+  test('botón Ver seguimiento visible para el propio profesional', () => {
+    const data = [makeSeguimiento({ id: 'seg-1', profesionalId: 'prof-medico-123' })];
+    render(
+      <SeguimientosTable
+        initialSeguimientos={data}
+        isAdmin={false}
+        canWrite={true}
+        currentUserId="prof-medico-123"
+      />,
+    );
+    const viewLinks = screen.getAllByTitle('Ver seguimiento');
+    expect(viewLinks.length).toBeGreaterThan(0);
+    viewLinks.forEach((link) => {
+      expect((link as HTMLAnchorElement).href).toContain('/seguimientos/seg-1');
+    });
+  });
+
+  test('botón Ver seguimiento aparece antes que Editar cuando el usuario puede modificar', () => {
+    const data = [makeSeguimiento({ id: 'seg-1', profesionalId: 'prof-medico-123' })];
+    render(
+      <SeguimientosTable
+        initialSeguimientos={data}
+        isAdmin={false}
+        canWrite={true}
+        currentUserId="prof-medico-123"
+      />,
+    );
+    const allLinks = screen.getAllByRole('link');
+    const actionLinks = allLinks.filter(
+      (l) =>
+        (l as HTMLAnchorElement).title === 'Ver seguimiento' ||
+        (l as HTMLAnchorElement).title === 'Editar seguimiento',
+    );
+    // Each layout (mobile + desktop) contributes one pair → we check relative order per pair
+    for (let i = 0; i < actionLinks.length; i += 2) {
+      expect((actionLinks[i] as HTMLAnchorElement).title).toBe('Ver seguimiento');
+      expect((actionLinks[i + 1] as HTMLAnchorElement).title).toBe('Editar seguimiento');
+    }
+  });
 });

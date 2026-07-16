@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Pencil, Search } from 'lucide-react';
+import { Plus, Pencil, Search, Eye } from 'lucide-react';
 import type { SeguimientoListItem } from '@/lib/types/seguimientos';
 import DeleteSeguimientoModal from './DeleteSeguimientoModal';
 import { CustomSelect } from '@/app/components/ui/custom-select';
@@ -210,22 +210,31 @@ export default function SeguimientosTable({
                         </p>
                       )}
                     </div>
-                    {canModifyRow && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Link
-                          href={`/seguimientos/${s.id}/editar`}
-                          className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
-                          title="Editar seguimiento"
-                        >
-                          <Pencil size={15} />
-                        </Link>
-                        <DeleteSeguimientoModal
-                          seguimientoId={s.id}
-                          seguimientoTitulo={s.titulo}
-                          onDeleted={() => handleDeleted(s.id)}
-                        />
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Link
+                        href={`/seguimientos/${s.id}`}
+                        className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
+                        title="Ver seguimiento"
+                      >
+                        <Eye size={15} />
+                      </Link>
+                      {canModifyRow && (
+                        <>
+                          <Link
+                            href={`/seguimientos/${s.id}/editar`}
+                            className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
+                            title="Editar seguimiento"
+                          >
+                            <Pencil size={15} />
+                          </Link>
+                          <DeleteSeguimientoModal
+                            seguimientoId={s.id}
+                            seguimientoTitulo={s.titulo}
+                            onDeleted={() => handleDeleted(s.id)}
+                          />
+                        </>
+                      )}
+                    </div>
                   </div>
                 </li>
               );
@@ -306,22 +315,31 @@ export default function SeguimientosTable({
                         )}
                       </td>
                       <td className="px-5 py-3.5">
-                        {canModifyRow && (
-                          <div className="flex items-center gap-1 justify-end">
-                            <Link
-                              href={`/seguimientos/${s.id}/editar`}
-                              className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
-                              title="Editar seguimiento"
-                            >
-                              <Pencil size={15} />
-                            </Link>
-                            <DeleteSeguimientoModal
-                              seguimientoId={s.id}
-                              seguimientoTitulo={s.titulo}
-                              onDeleted={() => handleDeleted(s.id)}
-                            />
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1 justify-end">
+                          <Link
+                            href={`/seguimientos/${s.id}`}
+                            className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
+                            title="Ver seguimiento"
+                          >
+                            <Eye size={15} />
+                          </Link>
+                          {canModifyRow && (
+                            <>
+                              <Link
+                                href={`/seguimientos/${s.id}/editar`}
+                                className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
+                                title="Editar seguimiento"
+                              >
+                                <Pencil size={15} />
+                              </Link>
+                              <DeleteSeguimientoModal
+                                seguimientoId={s.id}
+                                seguimientoTitulo={s.titulo}
+                                onDeleted={() => handleDeleted(s.id)}
+                              />
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
