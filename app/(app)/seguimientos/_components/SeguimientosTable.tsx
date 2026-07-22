@@ -3,9 +3,18 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Plus, Pencil, Search, Eye } from 'lucide-react';
-import type { SeguimientoListItem } from '@/lib/types/seguimientos';
+import type {
+  SeguimientoListItem,
+  TipoSeguimiento,
+  PrioridadSeguimiento,
+} from '@/lib/types/seguimientos';
 import DeleteSeguimientoModal from './DeleteSeguimientoModal';
 import { CustomSelect } from '@/app/components/ui/custom-select';
+import {
+  getTipoSeguimientoMeta,
+  PRIORIDAD_LABELS,
+  PRIORIDAD_STYLES,
+} from '@/lib/utils/seguimiento-tipo';
 
 interface Props {
   initialSeguimientos: SeguimientoListItem[];
@@ -14,38 +23,18 @@ interface Props {
   currentUserId: string;
 }
 
-const PRIORIDAD_LABELS: Record<string, string> = {
-  BAJA: 'Baja',
-  MEDIA: 'Media',
-  ALTA: 'Alta',
-  URGENTE: 'Urgente',
-};
-
-const TIPO_LABELS: Record<string, string> = {
-  GENERICO: 'Genérico',
-  TRAUMATOLOGIA: 'Traumatología',
-  HISTORIA_CLINICA: 'Historia Clínica',
-  EVALUACION_PSICOLOGICA: 'Evaluación Psicológica',
-  EVALUACION_CARDIOLOGICA: 'Evaluación Cardiológica',
-};
-
-function TipoBadge({ tipo }: { tipo: string | null }) {
-  const label = tipo ? (TIPO_LABELS[tipo] ?? tipo) : 'Genérico';
+function TipoBadge({ tipo }: { tipo: TipoSeguimiento | null }) {
+  const meta = getTipoSeguimientoMeta(tipo);
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-      {label}
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${meta.badge}`}
+    >
+      {meta.label}
     </span>
   );
 }
 
-const PRIORIDAD_STYLES: Record<string, string> = {
-  BAJA: 'bg-[#D1FAE5] text-[#065F46]',
-  MEDIA: 'bg-[#FEF9C3] text-[#713F12]',
-  ALTA: 'bg-[#FED7AA] text-[#7C2D12]',
-  URGENTE: 'bg-[#FEE2E2] text-[#7F1D1D]',
-};
-
-function PrioridadBadge({ prioridad }: { prioridad: string }) {
+function PrioridadBadge({ prioridad }: { prioridad: PrioridadSeguimiento }) {
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PRIORIDAD_STYLES[prioridad] ?? 'bg-gray-100 text-gray-600'}`}
