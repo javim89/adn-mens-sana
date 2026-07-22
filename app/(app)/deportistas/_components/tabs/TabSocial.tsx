@@ -237,7 +237,7 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
 
       <div className="sm:col-span-2">
         <p className="text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-2">Servicios</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
           {Object.values(Servicio).map((s) => (
             <label key={s} className="flex items-center gap-2 cursor-pointer">
               <input
@@ -293,7 +293,7 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
 
       <div className="sm:col-span-2">
         <p className="text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-2">Apoyos requeridos</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
           {Object.values(TipoApoyo).map((t) => (
             <label key={t} className="flex items-center gap-2 cursor-pointer">
               <input
