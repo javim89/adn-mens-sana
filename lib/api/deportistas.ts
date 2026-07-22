@@ -7,7 +7,6 @@ import type { JsonApiCollection, JsonApiSingle } from '@/lib/types/jsonapi';
 import type { DeportistaFormData } from '@/lib/types/deportistas';
 import type {
   Disciplina,
-  Categoria,
   EstadoDeportista,
   Genero,
   ActividadComplementaria,
@@ -26,12 +25,17 @@ import type {
 // Attribute types (mirrors Prisma model shapes, without `id`)
 // ---------------------------------------------------------------------------
 
+export type CategoriaRef = { id: string; nombre: string } | null;
+
+export type CategoriaOption = { id: string; nombre: string; orden: number };
+
 export type DeportistaListAttributes = {
   nombre: string;
   apellido: string;
   dni: string;
   disciplina: Disciplina | null;
-  categoria: Categoria | null;
+  categoriaId: string | null;
+  categoria: CategoriaRef;
   estado: EstadoDeportista;
   fechaIngreso: string | null;
 };
@@ -53,7 +57,8 @@ export type DeportistaDetailAttributes = {
   vivePensionExterna: boolean;
   observaciones: string | null;
   disciplina: Disciplina | null;
-  categoria: Categoria | null;
+  categoriaId: string | null;
+  categoria: CategoriaRef;
   posicion: string | null;
   estado: EstadoDeportista;
   actividadComplementaria: ActividadComplementaria | null;
@@ -124,7 +129,7 @@ export type FetchDeportistasParams = {
   'page[size]'?: number;
   'filter[search]'?: string;
   'filter[disciplina]'?: string;
-  'filter[categoria]'?: string;
+  'filter[categoriaId]'?: string;
   'filter[estado]'?: string;
   sort?: string;
 };
@@ -174,6 +179,19 @@ export async function fetchDeportistas(
   });
   await throwIfNotOk(res);
   return res.json() as Promise<JsonApiCollection<DeportistaListAttributes>>;
+}
+
+/**
+ * GET /api/categorias
+ * Catálogo de categorías ordenado por `orden`. Alimenta el filtro de la tabla.
+ */
+export async function fetchCategorias(): Promise<CategoriaOption[]> {
+  const res = await fetch('/api/categorias', {
+    headers: { Accept: JSON_API_CONTENT_TYPE },
+  });
+  await throwIfNotOk(res);
+  const body = (await res.json()) as JsonApiCollection<{ nombre: string; orden: number }>;
+  return body.data.map((c) => ({ id: c.id, nombre: c.attributes.nombre, orden: c.attributes.orden }));
 }
 
 /**

@@ -2,7 +2,6 @@ import type { DeportistaWithRelations } from '@/lib/types/deportistas';
 import type {
   Genero,
   Disciplina,
-  Categoria,
   EstadoDeportista,
   ActividadComplementaria,
   NivelEstudio,
@@ -15,7 +14,6 @@ import type {
 } from '@/lib/generated/prisma/enums';
 import {
   DISCIPLINA_LABELS,
-  CATEGORIA_LABELS,
   ESTADO_LABELS,
   GENERO_LABELS,
   ACTIVIDAD_COMPLEMENTARIA_LABELS,
@@ -150,7 +148,7 @@ export function DatosDeportivosSection({ deportista: d }: SectionProps) {
       <SectionTitle>Datos Deportivos</SectionTitle>
 
       <FieldRow label="Disciplina" value={d.disciplina ? DISCIPLINA_LABELS[d.disciplina as Disciplina] : '—'} />
-      <FieldRow label="Categoría" value={d.categoria ? CATEGORIA_LABELS[d.categoria as Categoria] : '—'} />
+      <FieldRow label="Categoría" value={d.categoria ? d.categoria.nombre : '—'} />
       <FieldRow label="Posición" value={val(d.posicion)} />
       <div>
         <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-1">Estado</p>

@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   Disciplina,
-  Categoria,
   EstadoDeportista,
   Genero,
   ActividadComplementaria,
@@ -45,25 +44,8 @@ describe('Deportista enums', () => {
     })
   })
 
-  describe('Categoria', () => {
-    it('has all 15 correct values', () => {
-      expect(Categoria.SUB_12).toBe('SUB_12')
-      expect(Categoria.SUB_14).toBe('SUB_14')
-      expect(Categoria.SUB_16).toBe('SUB_16')
-      expect(Categoria.SUB_18).toBe('SUB_18')
-      expect(Categoria.NOVENA).toBe('NOVENA')
-      expect(Categoria.OCTAVA).toBe('OCTAVA')
-      expect(Categoria.SEPTIMA).toBe('SEPTIMA')
-      expect(Categoria.SEXTA).toBe('SEXTA')
-      expect(Categoria.QUINTA).toBe('QUINTA')
-      expect(Categoria.CUARTA).toBe('CUARTA')
-      expect(Categoria.RESERVA).toBe('RESERVA')
-      expect(Categoria.DIVISION_DE_HONOR).toBe('DIVISION_DE_HONOR')
-      expect(Categoria.PRIMERA).toBe('PRIMERA')
-      expect(Categoria.SENIOR).toBe('SENIOR')
-      expect(Categoria.VETERANOS).toBe('VETERANOS')
-    })
-  })
+  // El enum Categoria se eliminó: la categoría del deportista es ahora una
+  // relación FK al catálogo `categorias` (ver refactor categoria-enum-to-fk).
 
   describe('EstadoDeportista', () => {
     it('has all 4 correct values', () => {

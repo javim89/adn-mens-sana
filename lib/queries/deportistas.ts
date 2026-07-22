@@ -2,7 +2,6 @@ import { prisma } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import type {
   Disciplina,
-  Categoria,
   EstadoDeportista,
 } from '@/lib/generated/prisma/enums';
 import type { DeportistaListItem, DeportistaWithRelations } from '@/lib/types/deportistas';
@@ -10,7 +9,7 @@ import type { DeportistaListItem, DeportistaWithRelations } from '@/lib/types/de
 export interface GetDeportistasFilters {
   search?: string;
   disciplina?: Disciplina;
-  categoria?: Categoria;
+  categoriaId?: string;
   estado?: EstadoDeportista;
   page?: number;
   pageSize?: number;
@@ -26,7 +25,7 @@ export interface GetDeportistasResult {
 export async function getDeportistas(
   filters: GetDeportistasFilters = {},
 ): Promise<GetDeportistasResult> {
-  const { search, disciplina, categoria, estado, page = 1, pageSize = 20 } = filters;
+  const { search, disciplina, categoriaId, estado, page = 1, pageSize = 20 } = filters;
 
   const where = {
     ...(search
@@ -39,7 +38,7 @@ export async function getDeportistas(
         }
       : {}),
     ...(disciplina ? { disciplina } : {}),
-    ...(categoria ? { categoria } : {}),
+    ...(categoriaId ? { categoriaId } : {}),
     ...(estado ? { estado } : {}),
   };
 
@@ -52,7 +51,8 @@ export async function getDeportistas(
         apellido: true,
         dni: true,
         disciplina: true,
-        categoria: true,
+        categoriaId: true,
+        categoria: { select: { id: true, nombre: true } },
         estado: true,
         fechaIngreso: true,
       },
@@ -70,6 +70,7 @@ export async function getDeportistaById(id: string): Promise<DeportistaWithRelat
   const deportista = await prisma.deportista.findUnique({
     where: { id },
     include: {
+      categoria: { select: { id: true, nombre: true } },
       clubesAnteriores: true,
       historiaDeportiva: true,
       datosEscolares: true,

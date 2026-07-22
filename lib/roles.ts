@@ -13,7 +13,7 @@ export const ROL_LABELS: Record<AppRole, string> = {
   social:        'Social',
 };
 
-export type IconKey = 'LayoutDashboard' | 'Users' | 'CalendarDays' | 'UserCog' | 'ClipboardList';
+export type IconKey = 'LayoutDashboard' | 'Users' | 'CalendarDays' | 'UserCog' | 'ClipboardList' | 'Calendar';
 
 export interface NavItem {
   href: string;
@@ -26,6 +26,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { href: '/deportistas',  label: 'Deportistas',   icon: 'Users' },
   { href: '/turnos',       label: 'Turnos',        icon: 'CalendarDays' },
   { href: '/seguimientos', label: 'Seguimientos',  icon: 'ClipboardList' },
+  { href: '/calendario',   label: 'Calendario',    icon: 'Calendar' },
   { href: '/usuarios',     label: 'Usuarios',      icon: 'UserCog' },
 ];
 
@@ -37,7 +38,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   nutricionista: ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
   psicologo:     ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
   cardiologo:    ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
-  social:        ALL_NAV_ITEMS.filter(i => ['/dashboard', '/deportistas'].includes(i.href)),
+  social:        ALL_NAV_ITEMS.filter(i => ['/dashboard', '/deportistas', '/calendario'].includes(i.href)),
 };
 
 export function getNavItemsForRole(role: string | undefined | null): NavItem[] {

@@ -46,7 +46,8 @@ const mockDeportistaListItem = {
   apellido: 'Perez',
   dni: '12345678',
   disciplina: 'FUTBOL',
-  categoria: 'PRIMERA',
+  categoriaId: 'cat-primera',
+  categoria: { id: 'cat-primera', nombre: 'Primera' },
   estado: 'ACTIVO',
   fechaIngreso: new Date('2023-01-01'),
 };
@@ -69,7 +70,8 @@ const mockDeportistaFull = {
   vivePensionExterna: false,
   observaciones: null,
   disciplina: 'FUTBOL',
-  categoria: 'PRIMERA',
+  categoriaId: 'cat-primera',
+  categoria: { id: 'cat-primera', nombre: 'Primera' },
   posicion: null,
   estado: 'ACTIVO',
   actividadComplementaria: null,
@@ -124,6 +126,8 @@ describe('GET /api/deportistas', () => {
     expect(body.data[0].type).toBe('deportistas');
     expect(body.data[0].id).toBe('cuid1');
     expect(body.data[0].attributes.apellido).toBe('Perez');
+    expect(body.data[0].attributes.categoriaId).toBe('cat-primera');
+    expect(body.data[0].attributes.categoria).toEqual({ id: 'cat-primera', nombre: 'Primera' });
     expect(body.meta.total).toBe(1);
     expect(body.links).toBeDefined();
     expect(body.links.self).toBeDefined();
@@ -145,6 +149,23 @@ describe('GET /api/deportistas', () => {
 
     expect(getDeportistas).toHaveBeenCalledWith(
       expect.objectContaining({ search: 'Juan' }),
+    );
+  });
+
+  it('applies filter[categoriaId] param', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    vi.mocked(getDeportistas).mockResolvedValue({
+      deportistas: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    });
+
+    const req = makeRequest('http://localhost/api/deportistas?filter%5BcategoriaId%5D=cat-primera');
+    await GET(req);
+
+    expect(getDeportistas).toHaveBeenCalledWith(
+      expect.objectContaining({ categoriaId: 'cat-primera' }),
     );
   });
 
@@ -200,6 +221,7 @@ const validBody = {
       dni: '12345678',
       fechaNacimiento: '2000-01-01',
       estado: 'ACTIVO',
+      categoriaId: 'cat-primera',
       vivePensionClub: false,
       vivePensionExterna: false,
       esRepresentante: false,
@@ -293,5 +315,11 @@ describe('POST /api/deportistas', () => {
     const resBody = await res.json();
     expect(resBody.data.type).toBe('deportistas');
     expect(resBody.data.id).toBeDefined();
+    expect(resBody.data.attributes.categoria).toEqual({ id: 'cat-primera', nombre: 'Primera' });
+    expect(prisma.deportista.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ categoriaId: 'cat-primera' }),
+      }),
+    );
   });
 });

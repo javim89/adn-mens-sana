@@ -86,7 +86,7 @@ function buildInitialData(d?: DeportistaWithRelations): DeportistaFormData {
     vivePensionExterna: d.vivePensionExterna,
     observaciones: d.observaciones ?? undefined,
     disciplina: d.disciplina ?? undefined,
-    categoria: d.categoria ?? undefined,
+    categoriaId: d.categoriaId ?? undefined,
     posicion: d.posicion ?? undefined,
     estado: d.estado,
     actividadComplementaria: d.actividadComplementaria ?? undefined,
@@ -168,11 +168,12 @@ interface DeportistaFormProps {
   mode: 'create' | 'edit';
   initialData?: DeportistaWithRelations;
   userRole?: AppRole;
+  categorias?: Array<{ id: string; nombre: string }>;
 }
 
 const PERSONAL_FIELDS = ['apellido', 'nombre', 'dni', 'fechaNacimiento'];
 
-export default function DeportistaForm({ mode, initialData, userRole }: DeportistaFormProps) {
+export default function DeportistaForm({ mode, initialData, userRole, categorias = [] }: DeportistaFormProps) {
   const isSocial = userRole === 'social';
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('personal');
@@ -254,7 +255,7 @@ export default function DeportistaForm({ mode, initialData, userRole }: Deportis
             <TabPersonal data={watchedData} errors={flatErrors} onChange={patch} disabled={isSocial} />
           )}
           {activeTab === 'deportivo' && (
-            <TabDeportivo data={watchedData} errors={flatErrors} onChange={patch} disabled={isSocial} />
+            <TabDeportivo data={watchedData} errors={flatErrors} onChange={patch} disabled={isSocial} categorias={categorias} />
           )}
           {activeTab === 'escolar' && (
             <TabEscolar data={watchedData} onChange={patch} />

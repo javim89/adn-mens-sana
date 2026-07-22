@@ -4,7 +4,6 @@ import EnumSelect from '../EnumSelect';
 import ClubAnteriorList from '../ClubAnteriorList';
 import {
   DISCIPLINA_LABELS,
-  CATEGORIA_LABELS,
   ESTADO_LABELS,
   ACTIVIDAD_COMPLEMENTARIA_LABELS,
 } from '@/lib/utils/enum-labels';
@@ -15,6 +14,7 @@ interface TabDeportivoProps {
   errors?: Partial<Record<string, string>>;
   onChange: (patch: Partial<DeportistaFormData>) => void;
   disabled?: boolean;
+  categorias?: Array<{ id: string; nombre: string }>;
 }
 
 function Field({
@@ -49,7 +49,13 @@ const inputCls = (disabled: boolean) =>
     .filter(Boolean)
     .join(' ');
 
-export default function TabDeportivo({ data, onChange, disabled = false }: TabDeportivoProps) {
+export default function TabDeportivo({
+  data,
+  onChange,
+  disabled = false,
+  categorias = [],
+}: TabDeportivoProps) {
+  const categoriaOptions = Object.fromEntries(categorias.map((c) => [c.id, c.nombre]));
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
       {/* Fila 1 */}
@@ -67,9 +73,9 @@ export default function TabDeportivo({ data, onChange, disabled = false }: TabDe
       <Field label="Categoría" id="categoria">
         <EnumSelect
           id="categoria"
-          value={data.categoria ?? ''}
-          onChange={(v) => onChange({ categoria: v || undefined })}
-          options={CATEGORIA_LABELS}
+          value={data.categoriaId ?? ''}
+          onChange={(v) => onChange({ categoriaId: v || undefined })}
+          options={categoriaOptions}
           placeholder="Seleccionar categoría..."
           disabled={disabled}
         />

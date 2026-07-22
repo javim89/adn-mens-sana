@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, CalendarDays, UserCog, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarDays, UserCog, ClipboardList, Calendar } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import type { NavItem, IconKey } from '../../lib/roles';
@@ -14,6 +14,7 @@ const ICON_MAP: Record<IconKey, LucideIcon> = {
   CalendarDays,
   UserCog,
   ClipboardList,
+  Calendar,
 };
 
 interface SidebarProps {

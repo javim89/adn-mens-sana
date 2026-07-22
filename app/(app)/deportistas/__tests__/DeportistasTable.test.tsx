@@ -21,16 +21,22 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-// Mock the fetch helper
+// Mock the fetch helpers
 vi.mock('@/lib/api/deportistas', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/lib/api/deportistas')>();
   return {
     ...original,
     fetchDeportistas: vi.fn(),
+    fetchCategorias: vi.fn(),
   };
 });
 
-import { fetchDeportistas } from '@/lib/api/deportistas';
+import { fetchDeportistas, fetchCategorias } from '@/lib/api/deportistas';
+
+const mockCategorias = [
+  { id: 'cat-primera', nombre: 'Primera', orden: 13 },
+  { id: 'cat-reserva', nombre: 'Reserva', orden: 11 },
+];
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -57,7 +63,8 @@ const mockItem1: DeportistaListAttributes = {
   apellido: 'García',
   dni: '12345678',
   disciplina: 'FUTBOL',
-  categoria: 'PRIMERA',
+  categoriaId: 'cat-primera',
+  categoria: { id: 'cat-primera', nombre: 'Primera' },
   estado: 'ACTIVO',
   fechaIngreso: '2022-01-01T00:00:00.000Z',
 };
@@ -67,7 +74,8 @@ const mockItem2: DeportistaListAttributes = {
   apellido: 'López',
   dni: '87654321',
   disciplina: 'BASQUET',
-  categoria: 'RESERVA',
+  categoriaId: 'cat-reserva',
+  categoria: { id: 'cat-reserva', nombre: 'Reserva' },
   estado: 'INACTIVO',
   fechaIngreso: null,
 };
@@ -81,6 +89,7 @@ describe('DeportistasTable', () => {
     vi.clearAllMocks();
     // Default: no URL params
     mockSearchParamsGet.mockReturnValue(null);
+    vi.mocked(fetchCategorias).mockResolvedValue(mockCategorias);
   });
 
   test('renderiza la lista de deportistas obtenida de la API', async () => {
@@ -188,6 +197,43 @@ describe('DeportistasTable', () => {
 
     expect(fetchDeportistas).toHaveBeenCalledWith(
       expect.objectContaining({ 'filter[disciplina]': 'FUTBOL' }),
+    );
+  });
+
+  test('muestra el nombre de la categoría en la fila', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '1', attrs: mockItem1 }]),
+    );
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findAllByText('García, Juan');
+    // Aparece en la card mobile y en la fila de la tabla desktop
+    expect(screen.getAllByText('Primera').length).toBeGreaterThan(0);
+  });
+
+  test('puebla el filtro de categoría desde el catálogo /api/categorias', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    // El catálogo se solicitó
+    expect(fetchCategorias).toHaveBeenCalled();
+  });
+
+  test('pasa filter[categoriaId] en los params de la query cuando está en la URL', async () => {
+    mockSearchParamsGet.mockImplementation((key: string) => {
+      if (key === 'filter[categoriaId]') return 'cat-primera';
+      return null;
+    });
+
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    expect(fetchDeportistas).toHaveBeenCalledWith(
+      expect.objectContaining({ 'filter[categoriaId]': 'cat-primera' }),
     );
   });
 

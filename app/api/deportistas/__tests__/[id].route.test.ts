@@ -72,7 +72,8 @@ const mockDeportistaFull = {
   vivePensionExterna: false,
   observaciones: null,
   disciplina: 'FUTBOL',
-  categoria: 'PRIMERA',
+  categoriaId: 'cat-primera',
+  categoria: { id: 'cat-primera', nombre: 'Primera' },
   posicion: null,
   estado: 'ACTIVO',
   actividadComplementaria: null,
@@ -202,6 +203,65 @@ describe('PATCH /api/deportistas/[id]', () => {
     const resBody = await res.json();
     expect(resBody.data.type).toBe('deportistas');
     expect(resBody.data.attributes.apellido).toBe('Garcia');
+    expect(resBody.data.attributes.categoria).toEqual({ id: 'cat-primera', nombre: 'Primera' });
+  });
+
+  it('updates categoriaId', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    vi.mocked(prisma.deportista.findUnique)
+      .mockResolvedValueOnce({ id: 'cuid1' } as never)
+      .mockResolvedValueOnce(mockDeportistaFull as never);
+    vi.mocked(prisma.deportista.update).mockResolvedValue({} as never);
+
+    const body = {
+      data: { type: 'deportistas', id: 'cuid1', attributes: { categoriaId: 'cat-reserva' } },
+    };
+
+    const res = await PATCH(
+      makeRequest('http://localhost/api/deportistas/cuid1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/vnd.api+json' },
+        body: JSON.stringify(body),
+      }),
+      makeParams('cuid1'),
+    );
+
+    expect(res.status).toBe(200);
+    expect(prisma.deportista.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ categoriaId: 'cat-reserva' }),
+      }),
+    );
+  });
+
+  it('clears categoriaId to null when empty string sent', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    vi.mocked(prisma.deportista.findUnique)
+      .mockResolvedValueOnce({ id: 'cuid1' } as never)
+      .mockResolvedValueOnce({ ...mockDeportistaFull, categoriaId: null, categoria: null } as never);
+    vi.mocked(prisma.deportista.update).mockResolvedValue({} as never);
+
+    const body = {
+      data: { type: 'deportistas', id: 'cuid1', attributes: { categoriaId: '' } },
+    };
+
+    const res = await PATCH(
+      makeRequest('http://localhost/api/deportistas/cuid1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/vnd.api+json' },
+        body: JSON.stringify(body),
+      }),
+      makeParams('cuid1'),
+    );
+
+    expect(res.status).toBe(200);
+    expect(prisma.deportista.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ categoriaId: null }),
+      }),
+    );
+    const resBody = await res.json();
+    expect(resBody.data.attributes.categoria).toBeNull();
   });
 
   it('returns 409 when body id does not match URL id', async () => {

@@ -33,6 +33,7 @@ const makeDeportista = (
     vivePensionExterna: false,
     observaciones: null,
     disciplina: null,
+    categoriaId: null,
     categoria: null,
     posicion: null,
     estado: 'ACTIVO',
@@ -105,6 +106,19 @@ describe('DeportistaDetailTabs', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Seguimiento' }));
     expect(screen.getByText('Evaluación de rodilla')).toBeDefined();
+  });
+
+  test('la tab Datos Deportivos muestra el nombre de la categoría desde la relación', async () => {
+    const user = userEvent.setup();
+    render(
+      <DeportistaDetailTabs
+        deportista={makeDeportista({ categoria: { id: 'cat-primera', nombre: 'Primera' } })}
+        seguimientos={[]}
+      />,
+    );
+
+    await user.click(screen.getByRole('tab', { name: 'Datos Deportivos' }));
+    expect(screen.getByText('Primera')).toBeDefined();
   });
 
   test('el estado vacío de una tab de datos se muestra cuando no hay relación', async () => {

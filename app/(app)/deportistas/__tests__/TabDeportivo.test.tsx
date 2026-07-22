@@ -3,19 +3,31 @@ import { describe, test, expect, vi } from 'vitest';
 import TabDeportivo from '../_components/tabs/TabDeportivo';
 import type { DeportistaFormData } from '@/lib/types/deportistas';
 
-// Radix Select uses a portal and doesn't render options until opened.
-// Mock the shadcn select primitives to render all options inline.
-vi.mock('@/app/components/ui/select', () => ({
-  Select: ({ children, value, onValueChange }: { children: React.ReactNode; value?: string; onValueChange?: (v: string) => void }) => (
-    <div data-testid="select" data-value={value}>{children}</div>
-  ),
-  SelectTrigger: ({ children, id, className }: { children: React.ReactNode; id?: string; className?: string }) => (
-    <button id={id} className={className} role="combobox">{children}</button>
-  ),
-  SelectValue: ({ placeholder }: { placeholder?: string }) => <span>{placeholder}</span>,
-  SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => (
-    <div role="option" data-value={value}>{children}</div>
+// CustomSelect only renders options once opened (via portal-less dropdown).
+// Mock it to render the trigger plus all options inline so tests can assert on labels
+// and click options directly.
+vi.mock('@/app/components/ui/custom-select', () => ({
+  CustomSelect: ({
+    id,
+    value,
+    onChange,
+    options,
+    placeholder,
+  }: {
+    id?: string;
+    value: string;
+    onChange: (v: string) => void;
+    options: Array<{ value: string; label: string }>;
+    placeholder?: string;
+  }) => (
+    <div data-testid="custom-select" data-value={value}>
+      <button id={id} role="combobox">{placeholder}</button>
+      {options.map((o) => (
+        <div key={o.value} role="option" data-value={o.value} onClick={() => onChange(o.value)}>
+          {o.label}
+        </div>
+      ))}
+    </div>
   ),
 }));
 
@@ -43,10 +55,23 @@ describe('TabDeportivo', () => {
     expect(screen.getByText('Básquet')).toBeInTheDocument();
   });
 
-  test('renderiza select de Categoría con opciones', () => {
-    render(<TabDeportivo data={emptyData} onChange={vi.fn()} />);
+  const categorias = [
+    { id: 'cat-4ta', nombre: '4ta' },
+    { id: 'cat-primera', nombre: 'Primera' },
+  ];
+
+  test('renderiza select de Categoría con opciones provistas por prop', () => {
+    render(<TabDeportivo data={emptyData} onChange={vi.fn()} categorias={categorias} />);
     expect(screen.getByLabelText(/categoría/i)).toBeInTheDocument();
+    expect(screen.getByText('4ta')).toBeInTheDocument();
     expect(screen.getByText('Primera')).toBeInTheDocument();
+  });
+
+  test('seleccionar una categoría setea categoriaId con el id del catálogo', () => {
+    const onChange = vi.fn();
+    render(<TabDeportivo data={emptyData} onChange={onChange} categorias={categorias} />);
+    fireEvent.click(screen.getByText('Primera'));
+    expect(onChange).toHaveBeenCalledWith({ categoriaId: 'cat-primera' });
   });
 
   test('renderiza select de Estado con opciones', () => {
