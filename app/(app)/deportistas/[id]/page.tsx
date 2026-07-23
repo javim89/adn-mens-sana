@@ -21,7 +21,10 @@ export default async function DeportistaDetailPage({
   const { id } = await params;
   const deportista = await getDeportistaById(id);
 
-  const seguimientosRaw = await getSeguimientos({ deportistaId: id });
+  const { items: seguimientosRaw } = await getSeguimientos({
+    deportistaId: id,
+    pageSize: 500,
+  });
   const seguimientos = seguimientosRaw.map((s) => ({
     id: s.id,
     fecha: s.fecha.toISOString().split('T')[0],

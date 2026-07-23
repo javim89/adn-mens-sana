@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Plus, Pencil, Search, Eye } from 'lucide-react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { Plus, Pencil, Search, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import type {
   SeguimientoListItem,
   TipoSeguimiento,
@@ -16,11 +17,23 @@ import {
   PRIORIDAD_STYLES,
 } from '@/lib/utils/seguimiento-tipo';
 
+interface ProfesionalOption {
+  id: string;
+  nombre: string;
+}
+
 interface Props {
   initialSeguimientos: SeguimientoListItem[];
+  total: number;
+  page: number; // 0-based
+  pageSize: number;
   isAdmin: boolean;
   canWrite: boolean;
   currentUserId: string;
+  profesionales: ProfesionalOption[];
+  currentPrioridad: string;
+  currentArea: string;
+  currentSearch: string;
 }
 
 function TipoBadge({ tipo }: { tipo: TipoSeguimiento | null }) {
@@ -64,44 +77,90 @@ function formatDatetime(isoStr: string) {
 
 export default function SeguimientosTable({
   initialSeguimientos,
+  total,
+  page,
+  pageSize,
   isAdmin,
   canWrite,
   currentUserId,
+  profesionales,
+  currentPrioridad,
+  currentArea,
+  currentSearch,
 }: Props) {
-  const [seguimientos, setSeguimientos] = useState(initialSeguimientos);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [prioridadFilter, setPrioridadFilter] = useState('');
-  const [areaFilter, setAreaFilter] = useState('');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
-  function handleDeleted(id: string) {
-    setSeguimientos((prev) => prev.filter((s) => s.id !== id));
+  // Input de búsqueda controlado localmente (con debounce hacia la URL).
+  // Se sincroniza con la URL sin useEffect: si `currentSearch` (fuente de verdad)
+  // cambia por navegación externa, reseteamos el estado local durante el render.
+  const [searchInput, setSearchInput] = useState(currentSearch);
+  const [lastSyncedSearch, setLastSyncedSearch] = useState(currentSearch);
+  if (currentSearch !== lastSyncedSearch) {
+    setLastSyncedSearch(currentSearch);
+    setSearchInput(currentSearch);
+  }
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const seguimientos = initialSeguimientos;
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, totalPages - 1);
+
+  /** Construye una nueva URL a partir de los searchParams actuales con overrides. */
+  function buildUrl(updates: Record<string, string | null>) {
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === '') params.delete(key);
+      else params.set(key, value);
+    }
+    const qs = params.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
   }
 
-  // Unique list of professionals for area filter (admin only)
-  const profesionalesUnicos = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const s of initialSeguimientos) {
-      if (!map.has(s.profesionalId)) {
-        map.set(s.profesionalId, s.profesionalNombre);
-      }
-    }
-    return Array.from(map.entries()).map(([id, nombre]) => ({ id, nombre }));
-  }, [initialSeguimientos]);
-
-  const filtered = useMemo(() => {
-    return seguimientos.filter((s) => {
-      if (
-        searchQuery &&
-        !s.titulo.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !s.deportistaNombre.toLowerCase().includes(searchQuery.toLowerCase())
-      ) {
-        return false;
-      }
-      if (prioridadFilter && s.prioridad !== prioridadFilter) return false;
-      if (areaFilter && s.profesionalId !== areaFilter) return false;
-      return true;
+  function navigate(url: string, replace = false) {
+    startTransition(() => {
+      if (replace) router.replace(url);
+      else router.push(url);
     });
-  }, [seguimientos, searchQuery, prioridadFilter, areaFilter]);
+  }
+
+  function handlePrioridadChange(value: string) {
+    navigate(buildUrl({ prioridad: value || null, page: null }));
+  }
+
+  function handleAreaChange(value: string) {
+    navigate(buildUrl({ area: value || null, page: null }));
+  }
+
+  function handleSearchChange(value: string) {
+    setSearchInput(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      navigate(buildUrl({ q: value.trim() || null, page: null }), true);
+    }, 350);
+  }
+
+  function goToPage(target: number) {
+    const clamped = Math.max(0, Math.min(target, totalPages - 1));
+    navigate(buildUrl({ page: clamped === 0 ? null : String(clamped) }));
+  }
+
+  function handleDeleted() {
+    // El estado local ya no es la fuente de verdad: re-traemos la página actual.
+    startTransition(() => router.refresh());
+  }
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const from = total === 0 ? 0 : currentPage * pageSize + 1;
+  const to = Math.min(total, currentPage * pageSize + seguimientos.length);
 
   return (
     <div>
@@ -125,9 +184,9 @@ export default function SeguimientosTable({
       </div>
       <p className="text-[#6B7280] mb-6">
         Evaluaciones y seguimiento clínico de deportistas
-        {seguimientos.length > 0 && (
+        {total > 0 && (
           <span className="ml-2 text-xs font-medium bg-gray-100 text-[#6B7280] px-2 py-0.5 rounded-full">
-            {seguimientos.length} {seguimientos.length === 1 ? 'seguimiento' : 'seguimientos'}
+            {total} {total === 1 ? 'seguimiento' : 'seguimientos'}
           </span>
         )}
       </p>
@@ -141,16 +200,16 @@ export default function SeguimientosTable({
           />
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Buscar por título o deportista..."
             className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 bg-white"
           />
         </div>
 
         <CustomSelect
-          value={prioridadFilter}
-          onChange={(v) => setPrioridadFilter(v)}
+          value={currentPrioridad}
+          onChange={handlePrioridadChange}
           options={[
             { value: '', label: 'Todas las prioridades' },
             { value: 'BAJA', label: 'Baja' },
@@ -161,23 +220,26 @@ export default function SeguimientosTable({
           className="min-w-[160px]"
         />
 
-        {isAdmin && profesionalesUnicos.length > 0 && (
+        {isAdmin && profesionales.length > 0 && (
           <CustomSelect
-            value={areaFilter}
-            onChange={(v) => setAreaFilter(v)}
+            value={currentArea}
+            onChange={handleAreaChange}
+            searchable
             options={[
               { value: '', label: 'Todas las áreas' },
-              ...profesionalesUnicos.map((p) => ({ value: p.id, label: p.nombre })),
+              ...profesionales.map((p) => ({ value: p.id, label: p.nombre })),
             ]}
             className="min-w-[160px]"
           />
         )}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div
+        className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-opacity ${isPending ? 'opacity-60' : ''}`}
+      >
         {/* Mobile card list */}
         <ul className="lg:hidden divide-y divide-gray-100">
-          {filtered.length === 0 ? (
+          {seguimientos.length === 0 ? (
             <li className="px-4 py-12 text-center text-sm text-[#6B7280]">
               No hay seguimientos.{' '}
               {canWrite && (
@@ -187,7 +249,7 @@ export default function SeguimientosTable({
               )}
             </li>
           ) : (
-            filtered.map((s) => {
+            seguimientos.map((s) => {
               const canModifyRow = isAdmin || s.profesionalId === currentUserId;
               return (
                 <li key={s.id} className="px-4 py-4">
@@ -237,7 +299,7 @@ export default function SeguimientosTable({
                           <DeleteSeguimientoModal
                             seguimientoId={s.id}
                             seguimientoTitulo={s.titulo}
-                            onDeleted={() => handleDeleted(s.id)}
+                            onDeleted={handleDeleted}
                           />
                         </>
                       )}
@@ -265,7 +327,7 @@ export default function SeguimientosTable({
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {seguimientos.length === 0 ? (
                 <tr>
                   <td
                     colSpan={isAdmin ? 8 : 7}
@@ -283,7 +345,7 @@ export default function SeguimientosTable({
                   </td>
                 </tr>
               ) : (
-                filtered.map((s) => {
+                seguimientos.map((s) => {
                   const canModifyRow = isAdmin || s.profesionalId === currentUserId;
                   return (
                     <tr
@@ -346,7 +408,7 @@ export default function SeguimientosTable({
                               <DeleteSeguimientoModal
                                 seguimientoId={s.id}
                                 seguimientoTitulo={s.titulo}
-                                onDeleted={() => handleDeleted(s.id)}
+                                onDeleted={handleDeleted}
                               />
                             </>
                           )}
@@ -360,6 +422,40 @@ export default function SeguimientosTable({
           </table>
         </div>
       </div>
+
+      {/* Pagination controls */}
+      {total > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+          <p className="text-xs text-[#6B7280]">
+            Mostrando {from}–{to} de {total}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 0 || isPending}
+              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Página anterior"
+            >
+              <ChevronLeft size={14} />
+              Anterior
+            </button>
+            <span className="text-xs text-[#6B7280] whitespace-nowrap">
+              Página {currentPage + 1} de {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages - 1 || isPending}
+              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Página siguiente"
+            >
+              Siguiente
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

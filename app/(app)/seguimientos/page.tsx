@@ -1,8 +1,23 @@
 import { auth, currentUser, clerkClient } from '@clerk/nextjs/server';
 import { getSeguimientos } from '@/lib/queries/seguimientos';
+import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
+import type { PrioridadSeguimiento } from '@/lib/types/seguimientos';
 import SeguimientosTable from './_components/SeguimientosTable';
 
-export default async function SeguimientosPage() {
+const PAGE_SIZE = 25;
+const VALID_PRIORIDADES: PrioridadSeguimiento[] = ['BAJA', 'MEDIA', 'ALTA', 'URGENTE'];
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+export default async function SeguimientosPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
   const { userId } = await auth();
   const user = await currentUser();
   const role = String(user?.publicMetadata?.role ?? '');
@@ -10,14 +25,32 @@ export default async function SeguimientosPage() {
   const HEALTH_ROLES = ['medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'];
   const canWrite = isAdmin || HEALTH_ROLES.includes(role);
 
+  // --- Leer filtros / paginación de la URL ---
+  const pageRaw = parseInt(firstParam(sp.page) ?? '', 10);
+  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 0;
+
+  const prioridadRaw = firstParam(sp.prioridad);
+  const prioridad = VALID_PRIORIDADES.includes(prioridadRaw as PrioridadSeguimiento)
+    ? (prioridadRaw as PrioridadSeguimiento)
+    : undefined;
+
+  const area = firstParam(sp.area) || undefined; // profesionalId
+  const q = firstParam(sp.q)?.trim() || undefined;
+
   // Todos los roles ven todos los seguimientos (la regla de edición/eliminación
   // es por propiedad del registro, aplicada en el componente y en las Server Actions)
-  const seguimientos = await getSeguimientos({});
+  const { items, total } = await getSeguimientos({
+    page,
+    pageSize: PAGE_SIZE,
+    prioridad,
+    profesionalId: area,
+    search: q,
+  });
 
-  // Resolver nombres de todos los profesionales involucrados
+  // Resolver nombres de los profesionales presentes en ESTA página
   const profesionalesMap: Record<string, string> = {};
-  if (seguimientos.length > 0) {
-    const uniqueIds = [...new Set(seguimientos.map((s) => s.profesionalId))];
+  if (items.length > 0) {
+    const uniqueIds = [...new Set(items.map((s) => s.profesionalId))];
     const client = await clerkClient();
     const users = await Promise.all(
       uniqueIds.map((id) => client.users.getUser(id).catch(() => null)),
@@ -34,7 +67,7 @@ export default async function SeguimientosPage() {
     }
   }
 
-  const serialized = seguimientos.map((s) => ({
+  const serialized = items.map((s) => ({
     id: s.id,
     fecha: s.fecha.toISOString().split('T')[0],
     titulo: s.titulo,
@@ -51,14 +84,28 @@ export default async function SeguimientosPage() {
     deportistaNombre: `${s.deportista.apellido}, ${s.deportista.nombre}`,
   }));
 
+  // Dropdown de "Área responsable" (admin): lista completa, no derivada de la página actual.
+  const profesionalesRaw = isAdmin ? await getProfesionalesSeguimientos() : [];
+  const profesionales = profesionalesRaw.map((p) => ({
+    id: p.id,
+    nombre: `${p.apellido} ${p.nombre}`.trim() || p.id,
+  }));
+
   return (
     <div className="p-4 md:p-8">
       {/* currentUserId se pasa para aplicar la regla de propiedad en botones Editar/Eliminar */}
       <SeguimientosTable
         initialSeguimientos={serialized}
+        total={total}
+        page={page}
+        pageSize={PAGE_SIZE}
         isAdmin={isAdmin}
         canWrite={canWrite}
         currentUserId={userId!}
+        profesionales={profesionales}
+        currentPrioridad={prioridad ?? ''}
+        currentArea={area ?? ''}
+        currentSearch={q ?? ''}
       />
     </div>
   );
