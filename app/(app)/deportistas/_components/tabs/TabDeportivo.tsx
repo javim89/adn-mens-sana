@@ -3,7 +3,6 @@
 import EnumSelect from '../EnumSelect';
 import ClubAnteriorList from '../ClubAnteriorList';
 import {
-  DISCIPLINA_LABELS,
   ESTADO_LABELS,
   ACTIVIDAD_COMPLEMENTARIA_LABELS,
 } from '@/lib/utils/enum-labels';
@@ -14,7 +13,7 @@ interface TabDeportivoProps {
   errors?: Partial<Record<string, string>>;
   onChange: (patch: Partial<DeportistaFormData>) => void;
   disabled?: boolean;
-  categorias?: Array<{ id: string; nombre: string }>;
+  disciplinas?: Array<{ id: string; nombre: string; categorias: { id: string; nombre: string }[] }>;
 }
 
 function Field({
@@ -53,18 +52,32 @@ export default function TabDeportivo({
   data,
   onChange,
   disabled = false,
-  categorias = [],
+  disciplinas = [],
 }: TabDeportivoProps) {
+  const disciplinaOptions = Object.fromEntries(disciplinas.map((d) => [d.id, d.nombre]));
+  const selectedDisciplina = disciplinas.find((d) => d.id === data.disciplinaId);
+  const categorias = selectedDisciplina?.categorias ?? [];
   const categoriaOptions = Object.fromEntries(categorias.map((c) => [c.id, c.nombre]));
+  const hasDisciplina = !!data.disciplinaId;
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
       {/* Fila 1 */}
       <Field label="Disciplina" id="disciplina">
         <EnumSelect
           id="disciplina"
-          value={data.disciplina ?? ''}
-          onChange={(v) => onChange({ disciplina: v || undefined })}
-          options={DISCIPLINA_LABELS}
+          value={data.disciplinaId ?? ''}
+          onChange={(v) => {
+            const nextDisciplina = disciplinas.find((d) => d.id === v);
+            const categoriaValida =
+              !!data.categoriaId &&
+              !!nextDisciplina?.categorias.some((c) => c.id === data.categoriaId);
+            onChange({
+              disciplinaId: v || undefined,
+              categoriaId: categoriaValida ? data.categoriaId : undefined,
+            });
+          }}
+          options={disciplinaOptions}
           placeholder="Seleccionar disciplina..."
           disabled={disabled}
         />
@@ -76,8 +89,8 @@ export default function TabDeportivo({
           value={data.categoriaId ?? ''}
           onChange={(v) => onChange({ categoriaId: v || undefined })}
           options={categoriaOptions}
-          placeholder="Seleccionar categoría..."
-          disabled={disabled}
+          placeholder={hasDisciplina ? 'Seleccionar categoría...' : 'Seleccioná una disciplina primero'}
+          disabled={disabled || !hasDisciplina}
         />
       </Field>
 

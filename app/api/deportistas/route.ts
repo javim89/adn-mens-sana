@@ -12,13 +12,6 @@ const JSON_API_CONTENT_TYPE = 'application/vnd.api+json';
 // Zod schemas
 // ---------------------------------------------------------------------------
 
-const DisciplinaValues = [
-  'FUTBOL', 'FUTSAL', 'BASQUET', 'VOLEY', 'HANDBALL', 'NATACION', 'ATLETISMO',
-  'HOCKEY', 'RUGBY', 'TENIS', 'GIMNASIA', 'GIMNASIA_ARTISTICA', 'PATIN',
-  'ARTES_MARCIALES', 'COMBATE', 'INICIACION_DEPORTIVA', 'POWER_CHAIR', 'TIADE',
-  'AJEDREZ', 'BOXEO', 'OTRO',
-] as const;
-
 const EstadoValues = ['ACTIVO', 'INACTIVO', 'LESIONADO', 'SUSPENDIDO'] as const;
 const GeneroValues = ['MASCULINO', 'FEMENINO', 'NO_BINARIO', 'PREFIERO_NO_DECIR'] as const;
 const ActividadComplementariaValues = [
@@ -59,7 +52,7 @@ const getQuerySchema = z.object({
   'page[number]': z.coerce.number().int().min(1).default(1),
   'page[size]': z.coerce.number().int().min(1).max(100).default(20),
   'filter[search]': z.string().optional(),
-  'filter[disciplina]': z.enum(DisciplinaValues).optional(),
+  'filter[disciplina]': z.string().optional(),
   'filter[categoriaId]': z.string().optional(),
   'filter[estado]': z.enum(EstadoValues).optional(),
   sort: z.string().optional(),
@@ -81,7 +74,7 @@ const deportistaAttributesSchema = z.object({
   vivePensionClub: z.boolean().default(false),
   vivePensionExterna: z.boolean().default(false),
   observaciones: z.string().optional(),
-  disciplina: z.enum(DisciplinaValues).optional(),
+  disciplinaId: z.string().optional(),
   categoriaId: z.string().optional(),
   posicion: z.string().optional(),
   estado: z.enum(EstadoValues).default('ACTIVO'),
@@ -172,6 +165,7 @@ function serializeListItem(
       nombre: item.nombre,
       apellido: item.apellido,
       dni: item.dni,
+      disciplinaId: item.disciplinaId ?? null,
       disciplina: item.disciplina ?? null,
       categoriaId: item.categoriaId ?? null,
       categoria: item.categoria ?? null,
@@ -203,6 +197,7 @@ function serializeFullItem(
       vivePensionClub: item.vivePensionClub,
       vivePensionExterna: item.vivePensionExterna,
       observaciones: item.observaciones ?? null,
+      disciplinaId: item.disciplinaId ?? null,
       disciplina: item.disciplina ?? null,
       categoriaId: item.categoriaId ?? null,
       categoria: item.categoria ?? null,
@@ -359,7 +354,7 @@ export async function GET(request: Request) {
 
   const result = await getDeportistas({
     search,
-    disciplina: disciplina as import('@/lib/generated/prisma/enums').Disciplina | undefined,
+    disciplinaId: disciplina,
     categoriaId,
     estado: estado as import('@/lib/generated/prisma/enums').EstadoDeportista | undefined,
     page: pageNumber,
@@ -468,7 +463,7 @@ export async function POST(request: Request) {
       vivePensionClub: attrs.vivePensionClub ?? false,
       vivePensionExterna: attrs.vivePensionExterna ?? false,
       observaciones: attrs.observaciones?.trim() || null,
-      disciplina: attrs.disciplina || null,
+      disciplinaId: attrs.disciplinaId || null,
       categoriaId: attrs.categoriaId || null,
       posicion: attrs.posicion?.trim() || null,
       estado: attrs.estado,
@@ -663,6 +658,7 @@ export async function POST(request: Request) {
     const full = await prisma.deportista.findUnique({
       where: { id: deportistaId },
       include: {
+        disciplina: { select: { id: true, nombre: true } },
         categoria: { select: { id: true, nombre: true } },
         clubesAnteriores: true,
         historiaDeportiva: true,

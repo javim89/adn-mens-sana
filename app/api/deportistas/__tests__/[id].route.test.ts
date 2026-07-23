@@ -71,7 +71,8 @@ const mockDeportistaFull = {
   vivePensionClub: false,
   vivePensionExterna: false,
   observaciones: null,
-  disciplina: 'FUTBOL',
+  disciplinaId: 'disc-futbol',
+  disciplina: { id: 'disc-futbol', nombre: 'Fútbol' },
   categoriaId: 'cat-primera',
   categoria: { id: 'cat-primera', nombre: 'Primera' },
   posicion: null,
@@ -128,6 +129,9 @@ describe('GET /api/deportistas/[id]', () => {
     expect(body.data.type).toBe('deportistas');
     expect(body.data.id).toBe('cuid1');
     expect(body.data.attributes.apellido).toBe('Perez');
+    // Disciplina se serializa como objeto {id,nombre} + disciplinaId.
+    expect(body.data.attributes.disciplinaId).toBe('disc-futbol');
+    expect(body.data.attributes.disciplina).toEqual({ id: 'disc-futbol', nombre: 'Fútbol' });
   });
 });
 
@@ -232,6 +236,40 @@ describe('PATCH /api/deportistas/[id]', () => {
         data: expect.objectContaining({ categoriaId: 'cat-reserva' }),
       }),
     );
+  });
+
+  it('updates disciplinaId', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    vi.mocked(prisma.deportista.findUnique)
+      .mockResolvedValueOnce({ id: 'cuid1' } as never)
+      .mockResolvedValueOnce({
+        ...mockDeportistaFull,
+        disciplinaId: 'disc-basquet',
+        disciplina: { id: 'disc-basquet', nombre: 'Básquet' },
+      } as never);
+    vi.mocked(prisma.deportista.update).mockResolvedValue({} as never);
+
+    const body = {
+      data: { type: 'deportistas', id: 'cuid1', attributes: { disciplinaId: 'disc-basquet' } },
+    };
+
+    const res = await PATCH(
+      makeRequest('http://localhost/api/deportistas/cuid1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/vnd.api+json' },
+        body: JSON.stringify(body),
+      }),
+      makeParams('cuid1'),
+    );
+
+    expect(res.status).toBe(200);
+    expect(prisma.deportista.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ disciplinaId: 'disc-basquet' }),
+      }),
+    );
+    const resBody = await res.json();
+    expect(resBody.data.attributes.disciplina).toEqual({ id: 'disc-basquet', nombre: 'Básquet' });
   });
 
   it('clears categoriaId to null when empty string sent', async () => {

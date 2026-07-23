@@ -52,15 +52,37 @@ test.describe('Deportistas — List page', () => {
     await expect(page.getByRole('table')).toBeVisible();
   });
 
-  test('filtering by disciplina updates the URL with filter[disciplina] param', async ({ page }) => {
+  test('filtering by disciplina updates the URL with filter[disciplina] param (disciplinaId)', async ({ page }) => {
     await page.goto('/deportistas');
     await page.waitForSelector('table');
 
-    // Select FUTBOL in the disciplina dropdown
-    await page.getByRole('combobox').nth(0).selectOption('FUTBOL');
+    // El filtro de disciplina es un CustomSelect (button, no <select> nativo).
+    // Se abre con click y se elige la opción por su label visible.
+    await page.getByRole('button', { name: /todas las disciplinas/i }).click();
+    await page.getByRole('button', { name: 'Fútbol', exact: true }).click();
 
-    // URL must contain the JSON:API-style filter param (URL-encoded brackets)
-    await expect(page).toHaveURL(/filter%5Bdisciplina%5D=FUTBOL/);
+    // La URL contiene el filtro JSON:API con un disciplinaId (cuid), NO el enum "FUTBOL".
+    await expect(page).toHaveURL(/filter%5Bdisciplina%5D=[a-z0-9-]+/i);
+    await expect(page).not.toHaveURL(/filter%5Bdisciplina%5D=FUTBOL/);
+  });
+
+  test('choosing a disciplina enables/updates the nested categoría filter', async ({ page }) => {
+    await page.goto('/deportistas');
+    await page.waitForSelector('table');
+
+    // Sin disciplina el filtro de categoría está deshabilitado.
+    const categoriaFilter = page.getByRole('button', { name: /todas las categorías/i });
+    await expect(categoriaFilter).toBeDisabled();
+
+    // Al elegir una disciplina, el filtro de categoría se habilita (anidamiento).
+    await page.getByRole('button', { name: /todas las disciplinas/i }).click();
+    await page.getByRole('button', { name: 'Fútbol', exact: true }).click();
+
+    await expect(categoriaFilter).toBeEnabled();
+
+    // Y al abrirlo ofrece SOLO las categorías de la disciplina elegida.
+    await categoriaFilter.click();
+    await expect(page.getByRole('button', { name: 'Primera', exact: true })).toBeVisible();
   });
 });
 

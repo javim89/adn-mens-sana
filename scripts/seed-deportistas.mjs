@@ -157,7 +157,7 @@ const COLUMNS = [
   "provincia", "ciudad", "genero", "telefono", "email",
   "domicilio_actual", "nacionalidad", "contacto_emergencia",
   "vive_pension_club", "vive_pension_externa", "observaciones",
-  "disciplina", "categoria_id", "posicion", "estado",
+  "disciplina_id", "categoria_id", "posicion", "estado",
   "actividad_complementaria", "fecha_ingreso", "es_representante",
   "created_at", "updated_at",
 ];
@@ -172,6 +172,14 @@ async function main() {
     process.exit(1);
   }
   console.log(`  ✓ ${categorias.length} categorías encontradas`);
+
+  // 1b. Resolver la disciplina FUTBOL por codigo (ahora es FK, no enum).
+  const futbolRows = await sql.query('SELECT id FROM "disciplinas" WHERE codigo = $1', ["FUTBOL"]);
+  if (futbolRows.length === 0) {
+    console.error("No se encontró la disciplina FUTBOL. Corré primero: node scripts/seed-disciplinas.mjs");
+    process.exit(1);
+  }
+  const futbolId = futbolRows[0].id;
 
   // 2. Limpiar (BORRA TODOS los deportistas; cascade sobre turnos y seguimientos).
   await sql.query('DELETE FROM "deportistas"');
@@ -241,7 +249,7 @@ async function main() {
         vive_pension_club: vivePensionClub,
         vive_pension_externa: vivePensionExterna,
         observaciones: chance(0.25) ? "Sin observaciones relevantes." : null,
-        disciplina: "FUTBOL",
+        disciplina_id: futbolId,
         categoria_id: cat.id,
         posicion: rand(posiciones),
         estado: rand(estadosPonderados),

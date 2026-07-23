@@ -11,30 +11,6 @@ datasource db {
 // Enums
 // ---------------------------------------------------------------------------
 
-enum Disciplina {
-  FUTBOL
-  FUTSAL
-  BASQUET
-  VOLEY
-  HANDBALL
-  NATACION
-  ATLETISMO
-  HOCKEY
-  RUGBY
-  TENIS
-  GIMNASIA
-  GIMNASIA_ARTISTICA
-  PATIN
-  ARTES_MARCIALES
-  COMBATE
-  INICIACION_DEPORTIVA
-  POWER_CHAIR
-  TIADE
-  AJEDREZ
-  BOXEO
-  OTRO
-}
-
 enum EstadoDeportista {
   ACTIVO
   INACTIVO
@@ -138,8 +114,9 @@ model Deportista {
   vivePensionExterna      Boolean                  @default(false) @map("vive_pension_externa")
   observaciones           String?
 
-  // Sport fields (scalar — single discipline per athlete)
-  disciplina              Disciplina?
+  // Sport fields (single discipline per athlete)
+  disciplinaId            String?                  @map("disciplina_id")
+  disciplina              Disciplina?              @relation(fields: [disciplinaId], references: [id], onDelete: SetNull)
   categoriaId             String?                  @map("categoria_id")
   categoria               Categoria?               @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
   posicion                String?
@@ -540,13 +517,37 @@ model Equipo {
 }
 
 model Categoria {
-  id          String         @id @default(cuid())
-  nombre      String         @unique
+  id          String                 @id @default(cuid())
+  nombre      String                 @unique
   orden       Int
   eventos     EventoTorneo[]
   deportistas Deportista[]
+  disciplinas DisciplinaCategoria[]
 
   @@map("categorias")
+}
+
+model Disciplina {
+  id          String                @id @default(cuid())
+  nombre      String                @unique
+  codigo      String                @unique
+  orden       Int
+  categorias  DisciplinaCategoria[]
+  deportistas Deportista[]
+
+  @@map("disciplinas")
+}
+
+model DisciplinaCategoria {
+  id           String     @id @default(cuid())
+  disciplinaId String     @map("disciplina_id")
+  categoriaId  String     @map("categoria_id")
+
+  disciplina   Disciplina @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  categoria    Categoria  @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  @@unique([disciplinaId, categoriaId])
+  @@map("disciplina_categorias")
 }
 
 model DiaCalendario {

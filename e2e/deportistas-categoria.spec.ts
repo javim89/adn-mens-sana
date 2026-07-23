@@ -60,21 +60,31 @@ const CATEGORIAS_ORDENADAS = [
 test.describe('Deportistas — Alta con categoría (FK)', () => {
   test.skip(true, 'Requiere sesión de test de Clerk (storageState no configurado)');
 
-  test('el select Categoría ofrece las 15 categorías ordenadas por orden', async ({ page }) => {
+  test('el select Categoría, tras elegir la disciplina, ofrece sus categorías ordenadas', async ({ page }) => {
     await page.goto('/deportistas/nuevo');
 
-    // El formulario está organizado en tabs; la categoría vive en el tab Deportivo.
+    // El formulario está organizado en tabs; disciplina y categoría viven en el tab Deportivo.
     await page.getByRole('tab', { name: /deportivo/i }).click();
+
+    // El select de Categoría está deshabilitado hasta elegir una disciplina (anidamiento).
+    await expect(page.getByLabel('Categoría')).toBeDisabled();
+
+    // Elegir una disciplina habilita el select de categoría con SOLO sus categorías.
+    await page.getByLabel('Disciplina').click();
+    await page.getByRole('button', { name: 'Fútbol', exact: true }).click();
+
+    await expect(page.getByLabel('Categoría')).toBeEnabled();
 
     // Abrir el CustomSelect de Categoría (trigger asociado al label "Categoría").
     await page.getByLabel('Categoría').click();
 
-    // Las opciones se renderizan como botones dentro del dropdown, en orden por `orden`.
+    // Las opciones (categorías de la disciplina elegida) aparecen en orden por `orden`.
     const opciones = page.getByRole('button', { name: new RegExp(`^(${CATEGORIAS_ORDENADAS.join('|')})$`) });
-    await expect(opciones).toHaveCount(CATEGORIAS_ORDENADAS.length);
-
     const textos = await opciones.allInnerTexts();
-    expect(textos.map((t) => t.trim())).toEqual(CATEGORIAS_ORDENADAS);
+    expect(textos.map((t) => t.trim())).toEqual(
+      CATEGORIAS_ORDENADAS.filter((c) => textos.map((t) => t.trim()).includes(c)),
+    );
+    await expect(opciones.first()).toBeVisible();
   });
 
   test('seleccionar una categoría y guardar persiste categoriaId y el detalle la muestra', async ({ page }) => {
@@ -86,8 +96,10 @@ test.describe('Deportistas — Alta con categoría (FK)', () => {
     await page.getByLabel(/dni \*/i).fill('22222222');
     await page.getByLabel(/fecha de nacimiento/i).fill('2005-03-10');
 
-    // Tab Deportivo → elegir categoría "5ta".
+    // Tab Deportivo → elegir disciplina (habilita categoría) y luego categoría "5ta".
     await page.getByRole('tab', { name: /deportivo/i }).click();
+    await page.getByLabel('Disciplina').click();
+    await page.getByRole('button', { name: 'Fútbol', exact: true }).click();
     await page.getByLabel('Categoría').click();
     await page.getByRole('button', { name: '5ta', exact: true }).click();
 
@@ -154,25 +166,30 @@ test.describe('Deportistas — Edición de categoría (FK)', () => {
 test.describe('Deportistas — Filtro por categoría (FK)', () => {
   test.skip(true, 'Requiere sesión de test de Clerk (storageState no configurado)');
 
-  test('el combo Categoría se puebla desde GET /api/categorias', async ({ page }) => {
+  test('el combo Categoría se anida al de disciplina y ofrece sus categorías', async ({ page }) => {
     await page.goto('/deportistas');
     await page.waitForSelector('table');
 
-    // Abrir el filtro de categoría (CustomSelect searchable).
-    await page.getByRole('button', { name: /todas las categorías/i }).click();
+    // El filtro de categoría ahora se anida al de disciplina: primero se elige la
+    // disciplina (habilita el filtro y define qué categorías se ofrecen).
+    await page.getByRole('button', { name: /todas las disciplinas/i }).click();
+    await page.getByRole('button', { name: 'Fútbol', exact: true }).click();
 
-    // Al menos las categorías conocidas aparecen como opciones.
-    for (const nombre of ['5ta', 'Primera', 'Veteranos']) {
-      await expect(page.getByRole('button', { name: nombre, exact: true })).toBeVisible();
-    }
+    // Abrir el filtro de categoría (ya habilitado) y ver sus categorías.
+    await page.getByRole('button', { name: /todas las categorías/i }).click();
+    await expect(page.getByRole('button', { name: 'Primera', exact: true })).toBeVisible();
   });
 
   test('aplicar el filtro agrega filter[categoriaId]=<cuid> a la URL', async ({ page }) => {
     await page.goto('/deportistas');
     await page.waitForSelector('table');
 
+    // Elegir disciplina primero (habilita la categoría anidada).
+    await page.getByRole('button', { name: /todas las disciplinas/i }).click();
+    await page.getByRole('button', { name: 'Fútbol', exact: true }).click();
+
     await page.getByRole('button', { name: /todas las categorías/i }).click();
-    await page.getByRole('button', { name: '5ta', exact: true }).click();
+    await page.getByRole('button', { name: 'Primera', exact: true }).click();
 
     // La URL contiene el filtro JSON:API con un id (cuid/uuid), no el enum viejo.
     await expect(page).toHaveURL(/filter%5BcategoriaId%5D=[a-z0-9-]+/i);

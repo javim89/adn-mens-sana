@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import {
-  Disciplina,
   EstadoDeportista,
   Genero,
   ActividadComplementaria,
@@ -18,31 +17,8 @@ import {
 // matches the expected string value defined in prisma/schema.prisma.
 
 describe('Deportista enums', () => {
-  describe('Disciplina', () => {
-    it('has all 21 correct values', () => {
-      expect(Disciplina.FUTBOL).toBe('FUTBOL')
-      expect(Disciplina.FUTSAL).toBe('FUTSAL')
-      expect(Disciplina.BASQUET).toBe('BASQUET')
-      expect(Disciplina.VOLEY).toBe('VOLEY')
-      expect(Disciplina.HANDBALL).toBe('HANDBALL')
-      expect(Disciplina.NATACION).toBe('NATACION')
-      expect(Disciplina.ATLETISMO).toBe('ATLETISMO')
-      expect(Disciplina.HOCKEY).toBe('HOCKEY')
-      expect(Disciplina.RUGBY).toBe('RUGBY')
-      expect(Disciplina.TENIS).toBe('TENIS')
-      expect(Disciplina.GIMNASIA).toBe('GIMNASIA')
-      expect(Disciplina.GIMNASIA_ARTISTICA).toBe('GIMNASIA_ARTISTICA')
-      expect(Disciplina.PATIN).toBe('PATIN')
-      expect(Disciplina.ARTES_MARCIALES).toBe('ARTES_MARCIALES')
-      expect(Disciplina.COMBATE).toBe('COMBATE')
-      expect(Disciplina.INICIACION_DEPORTIVA).toBe('INICIACION_DEPORTIVA')
-      expect(Disciplina.POWER_CHAIR).toBe('POWER_CHAIR')
-      expect(Disciplina.TIADE).toBe('TIADE')
-      expect(Disciplina.AJEDREZ).toBe('AJEDREZ')
-      expect(Disciplina.BOXEO).toBe('BOXEO')
-      expect(Disciplina.OTRO).toBe('OTRO')
-    })
-  })
+  // El enum Disciplina se eliminó: la disciplina del deportista es ahora una
+  // relación FK al catálogo `disciplinas` (modelo DB con M:N a categorías).
 
   // El enum Categoria se eliminó: la categoría del deportista es ahora una
   // relación FK al catálogo `categorias` (ver refactor categoria-enum-to-fk).

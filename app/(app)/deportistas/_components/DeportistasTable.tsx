@@ -6,17 +6,11 @@ import { Search, Plus, ChevronRight, X } from 'lucide-react';
 import { useCallback, useState, useTransition } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CustomSelect } from '@/app/components/ui/custom-select';
-import { fetchDeportistas, fetchCategorias } from '@/lib/api/deportistas';
+import { fetchDeportistas, fetchDisciplinas } from '@/lib/api/deportistas';
 import type { FetchDeportistasParams } from '@/lib/api/deportistas';
-import {
-  DISCIPLINA_LABELS,
-  ESTADO_LABELS,
-} from '@/lib/utils/enum-labels';
-import {
-  Disciplina,
-  EstadoDeportista,
-} from '@/lib/generated/prisma/enums';
-import type { Disciplina as DisciplinaType, EstadoDeportista as EstadoType } from '@/lib/generated/prisma/enums';
+import { ESTADO_LABELS } from '@/lib/utils/enum-labels';
+import { EstadoDeportista } from '@/lib/generated/prisma/enums';
+import type { EstadoDeportista as EstadoType } from '@/lib/generated/prisma/enums';
 
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -63,11 +57,14 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
     queryFn: () => fetchDeportistas(queryParams),
   });
 
-  const { data: categorias = [] } = useQuery({
-    queryKey: ['categorias'],
-    queryFn: fetchCategorias,
+  const { data: disciplinas = [] } = useQuery({
+    queryKey: ['disciplinas'],
+    queryFn: fetchDisciplinas,
     staleTime: Infinity,
   });
+
+  const categoriasFiltro =
+    disciplinas.find((d) => d.id === filterDisciplina)?.categorias ?? [];
 
   const deportistas = data?.data ?? [];
   const total = data?.meta.total ?? 0;
@@ -170,11 +167,15 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
           <CustomSelect
             value={filterDisciplina || '__all__'}
             onChange={(v) =>
-              pushFilters({ 'filter[disciplina]': v === '__all__' ? undefined : v, 'page[number]': '1' })
+              pushFilters({
+                'filter[disciplina]': v === '__all__' ? undefined : v,
+                'filter[categoriaId]': undefined,
+                'page[number]': '1',
+              })
             }
             options={[
               { value: '__all__', label: 'Todas las disciplinas' },
-              ...Object.values(Disciplina).map((d) => ({ value: d, label: DISCIPLINA_LABELS[d] })),
+              ...disciplinas.map((d) => ({ value: d.id, label: d.nombre })),
             ]}
             searchable
             className="min-w-[160px]"
@@ -188,9 +189,10 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
             }
             options={[
               { value: '__all__', label: 'Todas las categorías' },
-              ...categorias.map((c) => ({ value: c.id, label: c.nombre })),
+              ...categoriasFiltro.map((c) => ({ value: c.id, label: c.nombre })),
             ]}
             searchable
+            disabled={!filterDisciplina}
             className="min-w-[160px]"
           />
 
@@ -264,7 +266,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                         </span>
                         {item.attributes.disciplina && (
                           <span className="text-xs text-[#6B7280]">
-                            {DISCIPLINA_LABELS[item.attributes.disciplina as DisciplinaType]}
+                            {item.attributes.disciplina.nombre}
                           </span>
                         )}
                         {item.attributes.categoria && (
@@ -334,9 +336,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                       </td>
                       <td className="px-5 py-3.5 text-sm text-[#6B7280]">{item.attributes.dni}</td>
                       <td className="px-5 py-3.5 text-sm text-[#6B7280]">
-                        {item.attributes.disciplina
-                          ? DISCIPLINA_LABELS[item.attributes.disciplina as DisciplinaType]
-                          : '—'}
+                        {item.attributes.disciplina?.nombre ?? '—'}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-[#6B7280]">
                         {item.attributes.categoria
