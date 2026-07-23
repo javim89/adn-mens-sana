@@ -15,8 +15,9 @@
     "seed:deportistas": "node scripts/seed-deportistas.mjs",
     "seed:datos-deportistas": "node scripts/seed-datos-deportistas.mjs",
     "seed:seguimientos": "node scripts/seed-seguimientos.mjs",
+    "seed:turnos": "node scripts/seed-turnos.mjs",
     "seed:deportistas:full": "npm run seed:deportistas && npm run seed:datos-deportistas",
-    "seed:all": "npm run seed:categorias && npm run seed:calendario && npm run seed:deportistas:full && npm run seed:seguimientos"
+    "seed:all": "npm run seed:categorias && npm run seed:calendario && npm run seed:deportistas:full && npm run seed:seguimientos && npm run seed:turnos"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.4.3",
