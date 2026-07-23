@@ -13,6 +13,7 @@
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
+import { catalogoCategorias } from "./seed-categorias.mjs";
 
 config({ path: ".env.local" });
 
@@ -26,25 +27,8 @@ const sql = neon(url);
 const LP = "GIMNASIA (LP)";
 
 // --- Categorías -------------------------------------------------------------
-// Catálogo completo (15). Las 6 de torneo (orden 1..6) alimentan el fixture; las
-// nuevas (orden 7..15) sólo pobla el catálogo para el ABM de deportistas.
-const catalogoCategorias = [
-  { nombre: "4ta", orden: 1 },
-  { nombre: "5ta", orden: 2 },
-  { nombre: "6ta", orden: 3 },
-  { nombre: "7ma", orden: 4 },
-  { nombre: "8va", orden: 5 },
-  { nombre: "9na", orden: 6 },
-  { nombre: "SUB-12", orden: 7 },
-  { nombre: "SUB-14", orden: 8 },
-  { nombre: "SUB-16", orden: 9 },
-  { nombre: "SUB-18", orden: 10 },
-  { nombre: "Reserva", orden: 11 },
-  { nombre: "División de Honor", orden: 12 },
-  { nombre: "Primera", orden: 13 },
-  { nombre: "Senior", orden: 14 },
-  { nombre: "Veteranos", orden: 15 },
-];
+// El catálogo (15 categorías) vive en seed-categorias.mjs (fuente de verdad).
+// Acá se importa y se upserta para que este seed sea autosuficiente.
 
 // La pertenencia 4-5-6 / 7-8-9 ya no vive en la DB: se hardcodea acá para el fixture.
 const grupo456 = new Set(["4ta", "5ta", "6ta"]);

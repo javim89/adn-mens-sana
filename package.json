@@ -10,7 +10,12 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "seed:calendario": "node scripts/seed-calendario.mjs"
+    "seed:categorias": "node scripts/seed-categorias.mjs",
+    "seed:calendario": "node scripts/seed-calendario.mjs",
+    "seed:deportistas": "node scripts/seed-deportistas.mjs",
+    "seed:datos-deportistas": "node scripts/seed-datos-deportistas.mjs",
+    "seed:deportistas:full": "npm run seed:deportistas && npm run seed:datos-deportistas",
+    "seed:all": "npm run seed:categorias && npm run seed:calendario && npm run seed:deportistas:full"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.4.3",
