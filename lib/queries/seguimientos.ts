@@ -44,6 +44,7 @@ export async function getSeguimientoById(id: string) {
       historiaClinica: true,
       evaluacionPsicologica: true,
       evaluacionCardiologica: true,
+      antropometria: true,
     },
   });
 }

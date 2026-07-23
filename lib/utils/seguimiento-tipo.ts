@@ -6,7 +6,7 @@ import type { TipoSeguimiento, PrioridadSeguimiento } from '@/lib/types/seguimie
  * - `badge`: clases del chip (bg + text).
  * - `dot`: color del punto/línea del timeline.
  *
- * El verde queda reservado por si más adelante se agrega un tipo Nutrición.
+ * El verde queda reservado para los tipos de nutrición (Antropometría).
  */
 export const TIPO_SEGUIMIENTO_META: Record<
   TipoSeguimiento,
@@ -36,6 +36,11 @@ export const TIPO_SEGUIMIENTO_META: Record<
     label: 'Historia Clínica',
     badge: 'bg-teal-50 text-teal-700',
     dot: 'bg-teal-500',
+  },
+  ANTROPOMETRIA: {
+    label: 'Antropometría',
+    badge: 'bg-green-50 text-green-700',
+    dot: 'bg-green-500',
   },
 };
 

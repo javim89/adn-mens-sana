@@ -39,6 +39,11 @@ const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma, mockClerkClie
         upsert: vi.fn().mockResolvedValue({}),
         deleteMany: vi.fn().mockResolvedValue({}),
       },
+      seguimientoAntropometria: {
+        create: vi.fn().mockResolvedValue({}),
+        upsert: vi.fn().mockResolvedValue({}),
+        deleteMany: vi.fn().mockResolvedValue({}),
+      },
     };
 
     const mockTransaction = vi.fn().mockImplementation(
@@ -102,6 +107,11 @@ function setCallerAsCardiologo(userId = 'user_cardiologo_123') {
   mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'cardiologo' } });
 }
 
+function setCallerAsNutricionista(userId = 'user_nutri_123') {
+  mockAuth.mockResolvedValue({ userId });
+  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'nutricionista' } });
+}
+
 function setCallerAsAdmin(userId = 'user_admin_456') {
   mockAuth.mockResolvedValue({ userId });
   mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
@@ -127,6 +137,7 @@ describe('createSeguimiento', () => {
     tx.seguimientoHistoriaClinica.create.mockResolvedValue({});
     tx.seguimientoEvaluacionPsicologica.create.mockResolvedValue({});
     tx.seguimientoEvaluacionCardiologica.create.mockResolvedValue({});
+    tx.seguimientoAntropometria.create.mockResolvedValue({});
     mockPrisma.$transaction.mockImplementation(
       async (fn: (tx: unknown) => Promise<unknown>) => fn(tx),
     );
@@ -322,6 +333,68 @@ describe('createSeguimiento', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  test('23. nutricionista crea ANTROPOMETRIA — recalcula imc y sumatoriaPliegues server-side', async () => {
+    setCallerAsNutricionista('user_nutri_123');
+    const result = await createSeguimiento({
+      ...validData,
+      tipoSeguimiento: 'ANTROPOMETRIA',
+      datosEspecificos: {
+        tipo: 'ANTROPOMETRIA',
+        datos: {
+          peso: 70,
+          talla: 175,
+          pliegueTriceps: 10,
+          pliegueSubescapular: 12,
+          // valores del cliente que deben ser ignorados/recalculados
+          imc: 999,
+          sumatoriaPliegues: 999,
+        },
+      },
+    });
+    expect(result.success).toBe(true);
+    const tx = getMockTx();
+    expect(tx.seguimientoAntropometria.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          seguimientoId: 'new-seguimiento-id',
+          peso: 70,
+          talla: 175,
+          imc: 22.9,
+          sumatoriaPliegues: 22,
+        }),
+      }),
+    );
+  });
+
+  test('24. cardiólogo NO puede crear ANTROPOMETRIA', async () => {
+    setCallerAsCardiologo('user_cardiologo_123');
+    const result = await createSeguimiento({
+      ...validData,
+      tipoSeguimiento: 'ANTROPOMETRIA',
+      datosEspecificos: { tipo: 'ANTROPOMETRIA', datos: { peso: 70, talla: 175 } },
+    });
+    expect(result.success).toBe(false);
+    expect((result as { success: false; error: string }).error).toContain('cardiologo');
+    const tx = getMockTx();
+    expect(tx.seguimientoAntropometria.create).not.toHaveBeenCalled();
+  });
+
+  test('25. ANTROPOMETRIA sin peso/talla persiste imc/sumatoria como null', async () => {
+    setCallerAsNutricionista('user_nutri_123');
+    const result = await createSeguimiento({
+      ...validData,
+      tipoSeguimiento: 'ANTROPOMETRIA',
+      datosEspecificos: { tipo: 'ANTROPOMETRIA', datos: { tsen: 3 } },
+    });
+    expect(result.success).toBe(true);
+    const tx = getMockTx();
+    expect(tx.seguimientoAntropometria.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ imc: null, sumatoriaPliegues: null }),
+      }),
+    );
+  });
 });
 
 // ─── updateSeguimiento ────────────────────────────────────────────────────────
@@ -341,10 +414,12 @@ describe('updateSeguimiento', () => {
     tx.seguimientoHistoriaClinica.upsert.mockResolvedValue({});
     tx.seguimientoEvaluacionPsicologica.upsert.mockResolvedValue({});
     tx.seguimientoEvaluacionCardiologica.upsert.mockResolvedValue({});
+    tx.seguimientoAntropometria.upsert.mockResolvedValue({});
     tx.seguimientoTraumatologia.deleteMany.mockResolvedValue({});
     tx.seguimientoHistoriaClinica.deleteMany.mockResolvedValue({});
     tx.seguimientoEvaluacionPsicologica.deleteMany.mockResolvedValue({});
     tx.seguimientoEvaluacionCardiologica.deleteMany.mockResolvedValue({});
+    tx.seguimientoAntropometria.deleteMany.mockResolvedValue({});
     mockPrisma.$transaction.mockImplementation(
       async (fn: (tx: unknown) => Promise<unknown>) => fn(tx),
     );
@@ -406,6 +481,50 @@ describe('updateSeguimiento', () => {
       where: { seguimientoId: 'existing-id' },
     });
     expect(tx.seguimientoHistoriaClinica.upsert).toHaveBeenCalled();
+  });
+
+  test('26. upsert satélite ANTROPOMETRIA en update recalcula sumatorias', async () => {
+    setCallerAsNutricionista('user_nutri_123');
+    mockPrisma.seguimiento.findUnique.mockResolvedValue({
+      id: 'existing-id',
+      profesionalId: 'user_nutri_123',
+      tipoSeguimiento: 'ANTROPOMETRIA',
+    });
+    const result = await updateSeguimiento('existing-id', {
+      ...validData,
+      tipoSeguimiento: 'ANTROPOMETRIA',
+      datosEspecificos: {
+        tipo: 'ANTROPOMETRIA',
+        datos: { peso: 80, talla: 200, pliegueTriceps: 5, imc: 1 },
+      },
+    });
+    expect(result.success).toBe(true);
+    const tx = getMockTx();
+    expect(tx.seguimientoAntropometria.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { seguimientoId: 'existing-id' },
+        update: expect.objectContaining({ imc: 20, sumatoriaPliegues: 5 }),
+      }),
+    );
+  });
+
+  test('27. cambio de ANTROPOMETRIA a GENERICO borra la fila satélite', async () => {
+    setCallerAsNutricionista('user_nutri_123');
+    mockPrisma.seguimiento.findUnique.mockResolvedValue({
+      id: 'existing-id',
+      profesionalId: 'user_nutri_123',
+      tipoSeguimiento: 'ANTROPOMETRIA',
+    });
+    const result = await updateSeguimiento('existing-id', {
+      ...validData,
+      tipoSeguimiento: 'GENERICO',
+      datosEspecificos: { tipo: 'GENERICO', datos: {} },
+    });
+    expect(result.success).toBe(true);
+    const tx = getMockTx();
+    expect(tx.seguimientoAntropometria.deleteMany).toHaveBeenCalledWith({
+      where: { seguimientoId: 'existing-id' },
+    });
   });
 });
 

@@ -367,6 +367,7 @@ enum TipoSeguimiento {
   HISTORIA_CLINICA
   EVALUACION_PSICOLOGICA
   EVALUACION_CARDIOLOGICA
+  ANTROPOMETRIA
 }
 
 // ---------------------------------------------------------------------------
@@ -392,6 +393,7 @@ model Seguimiento {
   historiaClinica          SeguimientoHistoriaClinica?
   evaluacionPsicologica    SeguimientoEvaluacionPsicologica?
   evaluacionCardiologica   SeguimientoEvaluacionCardiologica?
+  antropometria            SeguimientoAntropometria?
 
   createdAt            DateTime             @default(now()) @map("created_at")
   updatedAt            DateTime             @updatedAt @map("updated_at")
@@ -466,6 +468,31 @@ model SeguimientoEvaluacionCardiologica {
   seguimiento        Seguimiento @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
 
   @@map("seguimientos_evaluacion_cardiologica")
+}
+
+model SeguimientoAntropometria {
+  id                   String      @id @default(cuid())
+  seguimientoId        String      @unique @map("seguimiento_id")
+  peso                 Float?
+  talla                Float?
+  tsen                 Float?
+  perimetroBrazo       Float?      @map("perimetro_brazo")
+  perimetroMusloMedio  Float?      @map("perimetro_muslo_medio")
+  perimetroPantorrilla Float?      @map("perimetro_pantorrilla")
+  cinturaMinima        Float?      @map("cintura_minima")
+  caderaMaxima         Float?      @map("cadera_maxima")
+  pliegueTriceps       Float?      @map("pliegue_triceps")
+  pliegueSubescapular  Float?      @map("pliegue_subescapular")
+  pliegueSupraespinal  Float?      @map("pliegue_supraespinal")
+  pliegueAbdominal     Float?      @map("pliegue_abdominal")
+  pliegueMuslo         Float?      @map("pliegue_muslo")
+  plieguePantorrilla   Float?      @map("pliegue_pantorrilla")
+  imc                  Float?
+  sumatoriaPliegues    Float?      @map("sumatoria_pliegues")
+
+  seguimiento          Seguimiento @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+
+  @@map("seguimientos_antropometria")
 }
 
 enum AntecedenteEnfermedadFamiliar {

@@ -29,6 +29,7 @@ const TIPO_LABELS: Record<string, string> = {
   HISTORIA_CLINICA: 'Historia Clínica',
   EVALUACION_PSICOLOGICA: 'Evaluación Psicológica',
   EVALUACION_CARDIOLOGICA: 'Evaluación Cardiológica',
+  ANTROPOMETRIA: 'Antropometría',
 };
 
 function formatDatetime(isoStr: string) {
@@ -73,6 +74,19 @@ function FieldGrid({ items }: { items: { label: string; value: string | null | u
   );
 }
 
+function SumatoriaReadout({ label, value, suffix }: { label: string; value: number | null | undefined; suffix?: string }) {
+  const hasValue = value !== null && value !== undefined;
+  return (
+    <div className="rounded-lg bg-[#F3F4F6] px-4 py-3">
+      <dt className="text-xs font-medium text-[#6B7280] mb-1">{label}</dt>
+      <dd className="font-mono text-2xl font-semibold leading-none text-[#121A61]">
+        {hasValue ? value : <span className="text-[#6B7280]">—</span>}
+        {hasValue && suffix ? <span className="ml-1 text-sm font-normal text-[#6B7280]">{suffix}</span> : null}
+      </dd>
+    </div>
+  );
+}
+
 function NumericField({ label, value, suffix }: { label: string; value: number | null | undefined; suffix: string }) {
   if (value === null || value === undefined) return null;
   return (
@@ -114,6 +128,7 @@ export default async function SeguimientoDetallePage({ params }: Props) {
   const hc = seguimiento.historiaClinica;
   const ps = seguimiento.evaluacionPsicologica;
   const ca = seguimiento.evaluacionCardiologica;
+  const an = seguimiento.antropometria;
 
   return (
     <div className="p-4 md:p-8">
@@ -342,6 +357,47 @@ export default async function SeguimientoDetallePage({ params }: Props) {
           </DetailCard>
         )}
 
+        {/* Antropometría */}
+        {tipo === 'ANTROPOMETRIA' && an && (
+          <>
+            <DetailCard title="Sumatorias">
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <SumatoriaReadout label="IMC" value={an.imc} />
+                <SumatoriaReadout label="Sumatoria de Pliegues" value={an.sumatoriaPliegues} suffix="mm" />
+              </dl>
+            </DetailCard>
+
+            <DetailCard title="Básicos">
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                <NumericField label="Peso" value={an.peso} suffix="kg" />
+                <NumericField label="Talla" value={an.talla} suffix="cm" />
+                <NumericField label="Tsen" value={an.tsen} suffix="cm" />
+              </dl>
+            </DetailCard>
+
+            <DetailCard title="Perímetros">
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                <NumericField label="Brazo" value={an.perimetroBrazo} suffix="cm" />
+                <NumericField label="Muslo Medio" value={an.perimetroMusloMedio} suffix="cm" />
+                <NumericField label="Pantorrilla" value={an.perimetroPantorrilla} suffix="cm" />
+                <NumericField label="Cintura Mínima" value={an.cinturaMinima} suffix="cm" />
+                <NumericField label="Cadera Máxima" value={an.caderaMaxima} suffix="cm" />
+              </dl>
+            </DetailCard>
+
+            <DetailCard title="Pliegues">
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                <NumericField label="Tríceps" value={an.pliegueTriceps} suffix="mm" />
+                <NumericField label="Subescapular" value={an.pliegueSubescapular} suffix="mm" />
+                <NumericField label="Supraespinal" value={an.pliegueSupraespinal} suffix="mm" />
+                <NumericField label="Abdominal" value={an.pliegueAbdominal} suffix="mm" />
+                <NumericField label="Muslo" value={an.pliegueMuslo} suffix="mm" />
+                <NumericField label="Pantorrilla" value={an.plieguePantorrilla} suffix="mm" />
+              </dl>
+            </DetailCard>
+          </>
+        )}
+
         {!seguimiento.descripcion &&
           !seguimiento.recomendaciones &&
           !seguimiento.resultadosEvaluacion &&
@@ -350,7 +406,8 @@ export default async function SeguimientoDetallePage({ params }: Props) {
           !t &&
           !hc &&
           !ps &&
-          !ca && (
+          !ca &&
+          !an && (
             <p className="text-sm text-[#6B7280] italic">
               No hay información adicional registrada para este seguimiento.
             </p>

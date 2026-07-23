@@ -5,7 +5,8 @@ export type TipoSeguimiento =
   | 'TRAUMATOLOGIA'
   | 'HISTORIA_CLINICA'
   | 'EVALUACION_PSICOLOGICA'
-  | 'EVALUACION_CARDIOLOGICA';
+  | 'EVALUACION_CARDIOLOGICA'
+  | 'ANTROPOMETRIA';
 
 // ---------------------------------------------------------------------------
 // Satellite data shapes
@@ -56,11 +57,31 @@ export interface EvaluacionCardiologicaData {
   observaciones?: string;
 }
 
+export interface AntropometriaData {
+  peso?: number;
+  talla?: number;
+  tsen?: number;
+  perimetroBrazo?: number;
+  perimetroMusloMedio?: number;
+  perimetroPantorrilla?: number;
+  cinturaMinima?: number;
+  caderaMaxima?: number;
+  pliegueTriceps?: number;
+  pliegueSubescapular?: number;
+  pliegueSupraespinal?: number;
+  pliegueAbdominal?: number;
+  pliegueMuslo?: number;
+  plieguePantorrilla?: number;
+  imc?: number;
+  sumatoriaPliegues?: number;
+}
+
 export type DatosEspecificosSeguimiento =
   | { tipo: 'TRAUMATOLOGIA'; datos: TraumatologiaData }
   | { tipo: 'HISTORIA_CLINICA'; datos: HistoriaClinicaData }
   | { tipo: 'EVALUACION_PSICOLOGICA'; datos: EvaluacionPsicologicaData }
   | { tipo: 'EVALUACION_CARDIOLOGICA'; datos: EvaluacionCardiologicaData }
+  | { tipo: 'ANTROPOMETRIA'; datos: AntropometriaData }
   | { tipo: 'GENERICO'; datos: Record<string, never> };
 
 // ---------------------------------------------------------------------------
@@ -110,6 +131,7 @@ export interface SeguimientoDetalle extends SeguimientoListItem {
   historiaClinica: HistoriaClinicaData | null;
   evaluacionPsicologica: EvaluacionPsicologicaData | null;
   evaluacionCardiologica: EvaluacionCardiologicaData | null;
+  antropometria: AntropometriaData | null;
 }
 
 export interface Profesional {
