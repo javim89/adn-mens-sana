@@ -45,8 +45,10 @@ const mockDeportistaListItem = {
   nombre: 'Juan',
   apellido: 'Perez',
   dni: '12345678',
-  disciplina: 'FUTBOL',
-  categoria: 'PRIMERA',
+  disciplinaId: 'disc-futbol',
+  disciplina: { id: 'disc-futbol', nombre: 'Fútbol' },
+  categoriaId: 'cat-primera',
+  categoria: { id: 'cat-primera', nombre: 'Primera' },
   estado: 'ACTIVO',
   fechaIngreso: new Date('2023-01-01'),
 };
@@ -68,8 +70,10 @@ const mockDeportistaFull = {
   vivePensionClub: false,
   vivePensionExterna: false,
   observaciones: null,
-  disciplina: 'FUTBOL',
-  categoria: 'PRIMERA',
+  disciplinaId: 'disc-futbol',
+  disciplina: { id: 'disc-futbol', nombre: 'Fútbol' },
+  categoriaId: 'cat-primera',
+  categoria: { id: 'cat-primera', nombre: 'Primera' },
   posicion: null,
   estado: 'ACTIVO',
   actividadComplementaria: null,
@@ -124,6 +128,11 @@ describe('GET /api/deportistas', () => {
     expect(body.data[0].type).toBe('deportistas');
     expect(body.data[0].id).toBe('cuid1');
     expect(body.data[0].attributes.apellido).toBe('Perez');
+    expect(body.data[0].attributes.categoriaId).toBe('cat-primera');
+    expect(body.data[0].attributes.categoria).toEqual({ id: 'cat-primera', nombre: 'Primera' });
+    // Disciplina se serializa como objeto {id,nombre} + disciplinaId (ya no un string enum).
+    expect(body.data[0].attributes.disciplinaId).toBe('disc-futbol');
+    expect(body.data[0].attributes.disciplina).toEqual({ id: 'disc-futbol', nombre: 'Fútbol' });
     expect(body.meta.total).toBe(1);
     expect(body.links).toBeDefined();
     expect(body.links.self).toBeDefined();
@@ -145,6 +154,41 @@ describe('GET /api/deportistas', () => {
 
     expect(getDeportistas).toHaveBeenCalledWith(
       expect.objectContaining({ search: 'Juan' }),
+    );
+  });
+
+  it('applies filter[categoriaId] param', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    vi.mocked(getDeportistas).mockResolvedValue({
+      deportistas: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    });
+
+    const req = makeRequest('http://localhost/api/deportistas?filter%5BcategoriaId%5D=cat-primera');
+    await GET(req);
+
+    expect(getDeportistas).toHaveBeenCalledWith(
+      expect.objectContaining({ categoriaId: 'cat-primera' }),
+    );
+  });
+
+  it('applies filter[disciplina] param as disciplinaId', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    vi.mocked(getDeportistas).mockResolvedValue({
+      deportistas: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    });
+
+    // El filtro de disciplina ahora recibe un disciplinaId (cuid), no el enum viejo.
+    const req = makeRequest('http://localhost/api/deportistas?filter%5Bdisciplina%5D=disc-futbol');
+    await GET(req);
+
+    expect(getDeportistas).toHaveBeenCalledWith(
+      expect.objectContaining({ disciplinaId: 'disc-futbol' }),
     );
   });
 
@@ -200,6 +244,8 @@ const validBody = {
       dni: '12345678',
       fechaNacimiento: '2000-01-01',
       estado: 'ACTIVO',
+      disciplinaId: 'disc-futbol',
+      categoriaId: 'cat-primera',
       vivePensionClub: false,
       vivePensionExterna: false,
       esRepresentante: false,
@@ -293,5 +339,16 @@ describe('POST /api/deportistas', () => {
     const resBody = await res.json();
     expect(resBody.data.type).toBe('deportistas');
     expect(resBody.data.id).toBeDefined();
+    expect(resBody.data.attributes.categoria).toEqual({ id: 'cat-primera', nombre: 'Primera' });
+    expect(resBody.data.attributes.disciplina).toEqual({ id: 'disc-futbol', nombre: 'Fútbol' });
+    expect(resBody.data.attributes.disciplinaId).toBe('disc-futbol');
+    expect(prisma.deportista.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          categoriaId: 'cat-primera',
+          disciplinaId: 'disc-futbol',
+        }),
+      }),
+    );
   });
 });

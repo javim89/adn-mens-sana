@@ -100,6 +100,26 @@ export default async function EditarSeguimientoPage({ params }: Props) {
             observaciones: seguimiento.evaluacionCardiologica.observaciones ?? undefined,
           }
         : null,
+      antropometria: seguimiento.antropometria
+        ? {
+            peso: seguimiento.antropometria.peso ?? undefined,
+            talla: seguimiento.antropometria.talla ?? undefined,
+            tsen: seguimiento.antropometria.tsen ?? undefined,
+            perimetroBrazo: seguimiento.antropometria.perimetroBrazo ?? undefined,
+            perimetroMusloMedio: seguimiento.antropometria.perimetroMusloMedio ?? undefined,
+            perimetroPantorrilla: seguimiento.antropometria.perimetroPantorrilla ?? undefined,
+            cinturaMinima: seguimiento.antropometria.cinturaMinima ?? undefined,
+            caderaMaxima: seguimiento.antropometria.caderaMaxima ?? undefined,
+            pliegueTriceps: seguimiento.antropometria.pliegueTriceps ?? undefined,
+            pliegueSubescapular: seguimiento.antropometria.pliegueSubescapular ?? undefined,
+            pliegueSupraespinal: seguimiento.antropometria.pliegueSupraespinal ?? undefined,
+            pliegueAbdominal: seguimiento.antropometria.pliegueAbdominal ?? undefined,
+            pliegueMuslo: seguimiento.antropometria.pliegueMuslo ?? undefined,
+            plieguePantorrilla: seguimiento.antropometria.plieguePantorrilla ?? undefined,
+            imc: seguimiento.antropometria.imc ?? undefined,
+            sumatoriaPliegues: seguimiento.antropometria.sumatoriaPliegues ?? undefined,
+          }
+        : null,
     },
   };
 

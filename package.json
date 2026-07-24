@@ -9,10 +9,22 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "seed:categorias": "node scripts/seed-categorias.mjs",
+    "seed:calendario": "node scripts/seed-calendario.mjs",
+    "seed:deportistas": "node scripts/seed-deportistas.mjs",
+    "seed:datos-deportistas": "node scripts/seed-datos-deportistas.mjs",
+    "seed:seguimientos": "node scripts/seed-seguimientos.mjs",
+    "seed:turnos": "node scripts/seed-turnos.mjs",
+    "seed:deportistas:full": "npm run seed:deportistas && npm run seed:datos-deportistas",
+    "seed:all": "npm run seed:categorias && npm run seed:calendario && npm run seed:deportistas:full && npm run seed:seguimientos && npm run seed:turnos"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.4.3",
+    "@fullcalendar/core": "^6.1.21",
+    "@fullcalendar/daygrid": "^6.1.21",
+    "@fullcalendar/multimonth": "^6.1.21",
+    "@fullcalendar/react": "^6.1.21",
     "@hookform/resolvers": "^5.4.0",
     "@neondatabase/serverless": "^1.1.0",
     "@prisma/adapter-neon": "^7.8.0",

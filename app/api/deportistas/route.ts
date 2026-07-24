@@ -12,19 +12,6 @@ const JSON_API_CONTENT_TYPE = 'application/vnd.api+json';
 // Zod schemas
 // ---------------------------------------------------------------------------
 
-const DisciplinaValues = [
-  'FUTBOL', 'FUTSAL', 'BASQUET', 'VOLEY', 'HANDBALL', 'NATACION', 'ATLETISMO',
-  'HOCKEY', 'RUGBY', 'TENIS', 'GIMNASIA', 'GIMNASIA_ARTISTICA', 'PATIN',
-  'ARTES_MARCIALES', 'COMBATE', 'INICIACION_DEPORTIVA', 'POWER_CHAIR', 'TIADE',
-  'AJEDREZ', 'BOXEO', 'OTRO',
-] as const;
-
-const CategoriaValues = [
-  'SUB_12', 'SUB_14', 'SUB_16', 'SUB_18', 'NOVENA', 'OCTAVA', 'SEPTIMA',
-  'SEXTA', 'QUINTA', 'CUARTA', 'RESERVA', 'DIVISION_DE_HONOR', 'PRIMERA',
-  'SENIOR', 'VETERANOS',
-] as const;
-
 const EstadoValues = ['ACTIVO', 'INACTIVO', 'LESIONADO', 'SUSPENDIDO'] as const;
 const GeneroValues = ['MASCULINO', 'FEMENINO', 'NO_BINARIO', 'PREFIERO_NO_DECIR'] as const;
 const ActividadComplementariaValues = [
@@ -65,8 +52,8 @@ const getQuerySchema = z.object({
   'page[number]': z.coerce.number().int().min(1).default(1),
   'page[size]': z.coerce.number().int().min(1).max(100).default(20),
   'filter[search]': z.string().optional(),
-  'filter[disciplina]': z.enum(DisciplinaValues).optional(),
-  'filter[categoria]': z.enum(CategoriaValues).optional(),
+  'filter[disciplina]': z.string().optional(),
+  'filter[categoriaId]': z.string().optional(),
   'filter[estado]': z.enum(EstadoValues).optional(),
   sort: z.string().optional(),
 });
@@ -87,8 +74,8 @@ const deportistaAttributesSchema = z.object({
   vivePensionClub: z.boolean().default(false),
   vivePensionExterna: z.boolean().default(false),
   observaciones: z.string().optional(),
-  disciplina: z.enum(DisciplinaValues).optional(),
-  categoria: z.enum(CategoriaValues).optional(),
+  disciplinaId: z.string().optional(),
+  categoriaId: z.string().optional(),
   posicion: z.string().optional(),
   estado: z.enum(EstadoValues).default('ACTIVO'),
   actividadComplementaria: z.enum(ActividadComplementariaValues).optional(),
@@ -178,7 +165,9 @@ function serializeListItem(
       nombre: item.nombre,
       apellido: item.apellido,
       dni: item.dni,
+      disciplinaId: item.disciplinaId ?? null,
       disciplina: item.disciplina ?? null,
+      categoriaId: item.categoriaId ?? null,
       categoria: item.categoria ?? null,
       estado: item.estado,
       fechaIngreso: item.fechaIngreso ? item.fechaIngreso.toISOString() : null,
@@ -208,7 +197,9 @@ function serializeFullItem(
       vivePensionClub: item.vivePensionClub,
       vivePensionExterna: item.vivePensionExterna,
       observaciones: item.observaciones ?? null,
+      disciplinaId: item.disciplinaId ?? null,
       disciplina: item.disciplina ?? null,
+      categoriaId: item.categoriaId ?? null,
       categoria: item.categoria ?? null,
       posicion: item.posicion ?? null,
       estado: item.estado,
@@ -357,14 +348,14 @@ export async function GET(request: Request) {
     'page[size]': pageSize,
     'filter[search]': search,
     'filter[disciplina]': disciplina,
-    'filter[categoria]': categoria,
+    'filter[categoriaId]': categoriaId,
     'filter[estado]': estado,
   } = parsed.data;
 
   const result = await getDeportistas({
     search,
-    disciplina: disciplina as import('@/lib/generated/prisma/enums').Disciplina | undefined,
-    categoria: categoria as import('@/lib/generated/prisma/enums').Categoria | undefined,
+    disciplinaId: disciplina,
+    categoriaId,
     estado: estado as import('@/lib/generated/prisma/enums').EstadoDeportista | undefined,
     page: pageNumber,
     pageSize,
@@ -472,8 +463,8 @@ export async function POST(request: Request) {
       vivePensionClub: attrs.vivePensionClub ?? false,
       vivePensionExterna: attrs.vivePensionExterna ?? false,
       observaciones: attrs.observaciones?.trim() || null,
-      disciplina: attrs.disciplina || null,
-      categoria: attrs.categoria || null,
+      disciplinaId: attrs.disciplinaId || null,
+      categoriaId: attrs.categoriaId || null,
       posicion: attrs.posicion?.trim() || null,
       estado: attrs.estado,
       actividadComplementaria: attrs.actividadComplementaria || null,
@@ -667,6 +658,8 @@ export async function POST(request: Request) {
     const full = await prisma.deportista.findUnique({
       where: { id: deportistaId },
       include: {
+        disciplina: { select: { id: true, nombre: true } },
+        categoria: { select: { id: true, nombre: true } },
         clubesAnteriores: true,
         historiaDeportiva: true,
         datosEscolares: true,

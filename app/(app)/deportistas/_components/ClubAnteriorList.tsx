@@ -55,7 +55,7 @@ export default function ClubAnteriorList({ clubs, onChange, disabled = false }: 
                 onChange={(e) => updateClub(index, 'nombre', e.target.value)}
                 placeholder="Nombre del club"
                 disabled={disabled}
-                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 disabled:cursor-not-allowed"
+                className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 disabled:cursor-not-allowed"
               />
               <input
                 type="text"
@@ -63,7 +63,7 @@ export default function ClubAnteriorList({ clubs, onChange, disabled = false }: 
                 onChange={(e) => updateClub(index, 'periodo', e.target.value)}
                 placeholder="Período (ej: 2019-2021)"
                 disabled={disabled}
-                className="w-36 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 disabled:cursor-not-allowed"
+                className="w-28 shrink-0 sm:w-36 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 disabled:cursor-not-allowed"
               />
               <button
                 type="button"

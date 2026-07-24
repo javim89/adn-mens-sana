@@ -1,12 +1,15 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
+import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import DeportistaForm from '../_components/DeportistaForm';
 
 export default async function NuevoDeportistaPage() {
   const user = await currentUser();
   const role = String(user?.publicMetadata?.role ?? '');
   if (role === 'social') redirect('/deportistas');
+
+  const disciplinas = await getDisciplinasConCategorias();
 
   return (
     <div className="p-8">
@@ -24,7 +27,7 @@ export default async function NuevoDeportistaPage() {
       >
         Nuevo deportista
       </h1>
-      <DeportistaForm mode="create" />
+      <DeportistaForm mode="create" disciplinas={disciplinas} />
     </div>
   );
 }

@@ -2,23 +2,15 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Search, Plus, ChevronRight, X } from 'lucide-react';
+import { Search, Plus, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useCallback, useState, useTransition } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CustomSelect } from '@/app/components/ui/custom-select';
-import { fetchDeportistas } from '@/lib/api/deportistas';
+import { fetchDeportistas, fetchDisciplinas } from '@/lib/api/deportistas';
 import type { FetchDeportistasParams } from '@/lib/api/deportistas';
-import {
-  DISCIPLINA_LABELS,
-  CATEGORIA_LABELS,
-  ESTADO_LABELS,
-} from '@/lib/utils/enum-labels';
-import {
-  Disciplina,
-  Categoria,
-  EstadoDeportista,
-} from '@/lib/generated/prisma/enums';
-import type { Disciplina as DisciplinaType, Categoria as CategoriaType, EstadoDeportista as EstadoType } from '@/lib/generated/prisma/enums';
+import { ESTADO_LABELS } from '@/lib/utils/enum-labels';
+import { EstadoDeportista } from '@/lib/generated/prisma/enums';
+import type { EstadoDeportista as EstadoType } from '@/lib/generated/prisma/enums';
 
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -46,7 +38,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
   const pageSize = Number(searchParams.get('page[size]') ?? '20');
   const filterSearch = searchParams.get('filter[search]') ?? '';
   const filterDisciplina = searchParams.get('filter[disciplina]') ?? '';
-  const filterCategoria = searchParams.get('filter[categoria]') ?? '';
+  const filterCategoria = searchParams.get('filter[categoriaId]') ?? '';
   const filterEstado = searchParams.get('filter[estado]') ?? '';
 
   const [localSearch, setLocalSearch] = useState(filterSearch);
@@ -56,7 +48,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
     'page[size]': pageSize,
     ...(filterSearch ? { 'filter[search]': filterSearch } : {}),
     ...(filterDisciplina ? { 'filter[disciplina]': filterDisciplina } : {}),
-    ...(filterCategoria ? { 'filter[categoria]': filterCategoria } : {}),
+    ...(filterCategoria ? { 'filter[categoriaId]': filterCategoria } : {}),
     ...(filterEstado ? { 'filter[estado]': filterEstado } : {}),
   };
 
@@ -65,9 +57,20 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
     queryFn: () => fetchDeportistas(queryParams),
   });
 
+  const { data: disciplinas = [] } = useQuery({
+    queryKey: ['disciplinas'],
+    queryFn: fetchDisciplinas,
+    staleTime: Infinity,
+  });
+
+  const categoriasFiltro =
+    disciplinas.find((d) => d.id === filterDisciplina)?.categorias ?? [];
+
   const deportistas = data?.data ?? [];
   const total = data?.meta.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const from = total === 0 ? 0 : (pageNumber - 1) * pageSize + 1;
+  const to = Math.min(total, (pageNumber - 1) * pageSize + deportistas.length);
 
   const hasFilters = !!(filterSearch || filterDisciplina || filterCategoria || filterEstado);
 
@@ -75,7 +78,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
     (overrides: {
       'filter[search]'?: string;
       'filter[disciplina]'?: string;
-      'filter[categoria]'?: string;
+      'filter[categoriaId]'?: string;
       'filter[estado]'?: string;
       'page[number]'?: string;
     }) => {
@@ -83,14 +86,14 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
       const merged = {
         'filter[search]': filterSearch,
         'filter[disciplina]': filterDisciplina,
-        'filter[categoria]': filterCategoria,
+        'filter[categoriaId]': filterCategoria,
         'filter[estado]': filterEstado,
         'page[number]': String(pageNumber),
         ...overrides,
       };
       if (merged['filter[search]']) params.set('filter[search]', merged['filter[search]']);
       if (merged['filter[disciplina]']) params.set('filter[disciplina]', merged['filter[disciplina]']);
-      if (merged['filter[categoria]']) params.set('filter[categoria]', merged['filter[categoria]']);
+      if (merged['filter[categoriaId]']) params.set('filter[categoriaId]', merged['filter[categoriaId]']);
       if (merged['filter[estado]']) params.set('filter[estado]', merged['filter[estado]']);
       params.set('page[number]', merged['page[number]'] ?? '1');
       params.set('page[size]', String(pageSize));
@@ -166,11 +169,15 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
           <CustomSelect
             value={filterDisciplina || '__all__'}
             onChange={(v) =>
-              pushFilters({ 'filter[disciplina]': v === '__all__' ? undefined : v, 'page[number]': '1' })
+              pushFilters({
+                'filter[disciplina]': v === '__all__' ? undefined : v,
+                'filter[categoriaId]': undefined,
+                'page[number]': '1',
+              })
             }
             options={[
               { value: '__all__', label: 'Todas las disciplinas' },
-              ...Object.values(Disciplina).map((d) => ({ value: d, label: DISCIPLINA_LABELS[d] })),
+              ...disciplinas.map((d) => ({ value: d.id, label: d.nombre })),
             ]}
             searchable
             className="min-w-[160px]"
@@ -180,13 +187,14 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
           <CustomSelect
             value={filterCategoria || '__all__'}
             onChange={(v) =>
-              pushFilters({ 'filter[categoria]': v === '__all__' ? undefined : v, 'page[number]': '1' })
+              pushFilters({ 'filter[categoriaId]': v === '__all__' ? undefined : v, 'page[number]': '1' })
             }
             options={[
               { value: '__all__', label: 'Todas las categorías' },
-              ...Object.values(Categoria).map((c) => ({ value: c, label: CATEGORIA_LABELS[c] })),
+              ...categoriasFiltro.map((c) => ({ value: c.id, label: c.nombre })),
             ]}
             searchable
+            disabled={!filterDisciplina}
             className="min-w-[160px]"
           />
 
@@ -260,12 +268,12 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                         </span>
                         {item.attributes.disciplina && (
                           <span className="text-xs text-[#6B7280]">
-                            {DISCIPLINA_LABELS[item.attributes.disciplina as DisciplinaType]}
+                            {item.attributes.disciplina.nombre}
                           </span>
                         )}
                         {item.attributes.categoria && (
                           <span className="text-xs text-[#6B7280]">
-                            {CATEGORIA_LABELS[item.attributes.categoria as CategoriaType]}
+                            {item.attributes.categoria.nombre}
                           </span>
                         )}
                       </div>
@@ -330,13 +338,11 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                       </td>
                       <td className="px-5 py-3.5 text-sm text-[#6B7280]">{item.attributes.dni}</td>
                       <td className="px-5 py-3.5 text-sm text-[#6B7280]">
-                        {item.attributes.disciplina
-                          ? DISCIPLINA_LABELS[item.attributes.disciplina as DisciplinaType]
-                          : '—'}
+                        {item.attributes.disciplina?.nombre ?? '—'}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-[#6B7280]">
                         {item.attributes.categoria
-                          ? CATEGORIA_LABELS[item.attributes.categoria as CategoriaType]
+                          ? item.attributes.categoria.nombre
                           : '—'}
                       </td>
                       <td className="px-5 py-3.5">
@@ -367,24 +373,33 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
-            <span className="text-sm text-[#6B7280]">
-              Página {pageNumber} de {totalPages} ({total} deportistas)
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-gray-100 bg-gray-50">
+            <span className="text-xs text-[#6B7280]">
+              Mostrando {from}–{to} de {total}
             </span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <button
+                type="button"
                 disabled={pageNumber <= 1}
                 onClick={() => pushFilters({ 'page[number]': String(pageNumber - 1) })}
-                className="text-sm px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white transition-colors"
+                className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Página anterior"
               >
+                <ChevronLeft size={14} />
                 Anterior
               </button>
+              <span className="text-xs text-[#6B7280] whitespace-nowrap">
+                Página {pageNumber} de {totalPages}
+              </span>
               <button
+                type="button"
                 disabled={pageNumber >= totalPages}
                 onClick={() => pushFilters({ 'page[number]': String(pageNumber + 1) })}
-                className="text-sm px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white transition-colors"
+                className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Página siguiente"
               >
                 Siguiente
+                <ChevronRight size={14} />
               </button>
             </div>
           </div>

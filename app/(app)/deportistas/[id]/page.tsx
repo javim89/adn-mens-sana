@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getDeportistaById } from '@/lib/queries/deportistas';
-import DeportistaDetail from '../_components/DeportistaDetail';
+import { getSeguimientos } from '@/lib/queries/seguimientos';
+import DeportistaDetailTabs from '../_components/DeportistaDetailTabs';
 import DeleteDeportistaModal from '../_components/DeleteDeportistaModal';
 import { ESTADO_LABELS } from '@/lib/utils/enum-labels';
 import type { EstadoDeportista } from '@/lib/generated/prisma/enums';
@@ -19,6 +20,20 @@ export default async function DeportistaDetailPage({
 }) {
   const { id } = await params;
   const deportista = await getDeportistaById(id);
+
+  const { items: seguimientosRaw } = await getSeguimientos({
+    deportistaId: id,
+    pageSize: 500,
+  });
+  const seguimientos = seguimientosRaw.map((s) => ({
+    id: s.id,
+    fecha: s.fecha.toISOString().split('T')[0],
+    titulo: s.titulo,
+    descripcion: s.descripcion,
+    prioridad: s.prioridad,
+    proximaCita: s.proximaCita?.toISOString() ?? null,
+    tipoSeguimiento: s.tipoSeguimiento ?? null,
+  }));
 
   const nombreCompleto = `${deportista.apellido}, ${deportista.nombre}`;
 
@@ -67,7 +82,7 @@ export default async function DeportistaDetailPage({
         </div>
       </div>
 
-      <DeportistaDetail deportista={deportista} />
+      <DeportistaDetailTabs deportista={deportista} seguimientos={seguimientos} />
     </div>
   );
 }

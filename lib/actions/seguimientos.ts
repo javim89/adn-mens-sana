@@ -8,7 +8,9 @@ import type {
   Profesional,
   TipoSeguimiento,
   DatosEspecificosSeguimiento,
+  AntropometriaData,
 } from '@/lib/types/seguimientos';
+import { computeAntropometriaSumatorias } from '@/lib/utils/antropometria';
 
 const HEALTH_ROLES = ['medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'];
 const CAN_WRITE_ROLES = ['admin', ...HEALTH_ROLES];
@@ -18,11 +20,19 @@ const TIPOS_POR_ROL: Record<string, TipoSeguimiento[]> = {
   medico: ['GENERICO', 'TRAUMATOLOGIA', 'HISTORIA_CLINICA'],
   psicologo: ['GENERICO', 'EVALUACION_PSICOLOGICA'],
   cardiologo: ['GENERICO', 'EVALUACION_CARDIOLOGICA'],
+  nutricionista: ['GENERICO', 'ANTROPOMETRIA'],
 };
 
 function getTiposPermitidos(role: string): TipoSeguimiento[] {
   if (role === 'admin') {
-    return ['GENERICO', 'TRAUMATOLOGIA', 'HISTORIA_CLINICA', 'EVALUACION_PSICOLOGICA', 'EVALUACION_CARDIOLOGICA'];
+    return [
+      'GENERICO',
+      'TRAUMATOLOGIA',
+      'HISTORIA_CLINICA',
+      'EVALUACION_PSICOLOGICA',
+      'EVALUACION_CARDIOLOGICA',
+      'ANTROPOMETRIA',
+    ];
   }
   return TIPOS_POR_ROL[role] ?? ['GENERICO'];
 }
@@ -37,6 +47,23 @@ async function getCallerInfo() {
 }
 
 type PrismaTx = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+
+/**
+ * Construye el payload persistible de antropometría recalculando imc/sumatoriaPliegues
+ * server-side. Los valores enviados por el cliente para las sumatorias se descartan.
+ */
+function buildAntropometriaPayload(datos: AntropometriaData) {
+  // Descartamos imc/sumatoriaPliegues del cliente: son fuente de verdad server-side.
+  const mediciones: Omit<AntropometriaData, 'imc' | 'sumatoriaPliegues'> = { ...datos };
+  delete (mediciones as AntropometriaData).imc;
+  delete (mediciones as AntropometriaData).sumatoriaPliegues;
+  const { imc, sumatoriaPliegues } = computeAntropometriaSumatorias(mediciones);
+  return {
+    ...mediciones,
+    imc: imc ?? null,
+    sumatoriaPliegues: sumatoriaPliegues ?? null,
+  };
+}
 
 async function createDatosEspecificos(
   tx: PrismaTx,
@@ -82,6 +109,14 @@ async function createDatosEspecificos(
         data: {
           seguimientoId,
           ...datosEspecificos.datos,
+        },
+      });
+      break;
+    case 'ANTROPOMETRIA':
+      await tx.seguimientoAntropometria.create({
+        data: {
+          seguimientoId,
+          ...buildAntropometriaPayload(datosEspecificos.datos),
         },
       });
       break;
@@ -141,6 +176,15 @@ async function upsertDatosEspecificos(
         update: { ...datosEspecificos.datos },
       });
       break;
+    case 'ANTROPOMETRIA': {
+      const payload = buildAntropometriaPayload(datosEspecificos.datos);
+      await tx.seguimientoAntropometria.upsert({
+        where: { seguimientoId },
+        create: { seguimientoId, ...payload },
+        update: { ...payload },
+      });
+      break;
+    }
   }
 }
 
@@ -161,6 +205,9 @@ async function deleteOldSatellite(
       break;
     case 'EVALUACION_CARDIOLOGICA':
       await tx.seguimientoEvaluacionCardiologica.deleteMany({ where: { seguimientoId } });
+      break;
+    case 'ANTROPOMETRIA':
+      await tx.seguimientoAntropometria.deleteMany({ where: { seguimientoId } });
       break;
     case 'GENERICO':
       break;

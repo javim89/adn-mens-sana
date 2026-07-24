@@ -6,8 +6,6 @@
 import type { JsonApiCollection, JsonApiSingle } from '@/lib/types/jsonapi';
 import type { DeportistaFormData } from '@/lib/types/deportistas';
 import type {
-  Disciplina,
-  Categoria,
   EstadoDeportista,
   Genero,
   ActividadComplementaria,
@@ -26,12 +24,26 @@ import type {
 // Attribute types (mirrors Prisma model shapes, without `id`)
 // ---------------------------------------------------------------------------
 
+export type CategoriaRef = { id: string; nombre: string } | null;
+
+export type DisciplinaRef = { id: string; nombre: string } | null;
+
+export type CategoriaOption = { id: string; nombre: string; orden: number };
+
+export type DisciplinaOption = {
+  id: string;
+  nombre: string;
+  categorias: { id: string; nombre: string }[];
+};
+
 export type DeportistaListAttributes = {
   nombre: string;
   apellido: string;
   dni: string;
-  disciplina: Disciplina | null;
-  categoria: Categoria | null;
+  disciplinaId: string | null;
+  disciplina: DisciplinaRef;
+  categoriaId: string | null;
+  categoria: CategoriaRef;
   estado: EstadoDeportista;
   fechaIngreso: string | null;
 };
@@ -52,8 +64,10 @@ export type DeportistaDetailAttributes = {
   vivePensionClub: boolean;
   vivePensionExterna: boolean;
   observaciones: string | null;
-  disciplina: Disciplina | null;
-  categoria: Categoria | null;
+  disciplinaId: string | null;
+  disciplina: DisciplinaRef;
+  categoriaId: string | null;
+  categoria: CategoriaRef;
   posicion: string | null;
   estado: EstadoDeportista;
   actividadComplementaria: ActividadComplementaria | null;
@@ -124,7 +138,7 @@ export type FetchDeportistasParams = {
   'page[size]'?: number;
   'filter[search]'?: string;
   'filter[disciplina]'?: string;
-  'filter[categoria]'?: string;
+  'filter[categoriaId]'?: string;
   'filter[estado]'?: string;
   sort?: string;
 };
@@ -174,6 +188,40 @@ export async function fetchDeportistas(
   });
   await throwIfNotOk(res);
   return res.json() as Promise<JsonApiCollection<DeportistaListAttributes>>;
+}
+
+/**
+ * GET /api/categorias
+ * Catálogo de categorías ordenado por `orden`. Alimenta el filtro de la tabla.
+ */
+export async function fetchCategorias(): Promise<CategoriaOption[]> {
+  const res = await fetch('/api/categorias', {
+    headers: { Accept: JSON_API_CONTENT_TYPE },
+  });
+  await throwIfNotOk(res);
+  const body = (await res.json()) as JsonApiCollection<{ nombre: string; orden: number }>;
+  return body.data.map((c) => ({ id: c.id, nombre: c.attributes.nombre, orden: c.attributes.orden }));
+}
+
+/**
+ * GET /api/disciplinas
+ * Catálogo de disciplinas con sus categorías anidadas, ordenado por `orden`.
+ * Alimenta el select de disciplina que anida el de categoría.
+ */
+export async function fetchDisciplinas(): Promise<DisciplinaOption[]> {
+  const res = await fetch('/api/disciplinas', {
+    headers: { Accept: JSON_API_CONTENT_TYPE },
+  });
+  await throwIfNotOk(res);
+  const body = (await res.json()) as JsonApiCollection<{
+    nombre: string;
+    categorias: { id: string; nombre: string }[];
+  }>;
+  return body.data.map((d) => ({
+    id: d.id,
+    nombre: d.attributes.nombre,
+    categorias: d.attributes.categorias,
+  }));
 }
 
 /**

@@ -84,3 +84,201 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Oculta la scrollbar manteniendo el scroll funcional (Firefox, IE y WebKit). */
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Calendario (FullCalendar v6) — branding club Gimnasia y Esgrima La Plata
+   Paleta: azul marino #121A61 (primary) + dorado #C9A84C (acento moderado).
+   Colores de día = semánticos (verde/amarillo/gris/rojo), tonos suaves.
+   Todos los overrides van scopeados bajo `.fc` para no filtrar estilos globales.
+--------------------------------------------------------------------------- */
+
+/* Contenedor del calendario: tipografía Inter para el cuerpo */
+.fc {
+  --fc-border-color: #e5e7eb;
+  --fc-today-bg-color: rgba(51, 70, 204, 0.06);
+  --fc-neutral-bg-color: #f3f4f6;
+  --fc-page-bg-color: #ffffff;
+  font-family: var(--font-inter), var(--font-sans), Arial, Helvetica, sans-serif;
+  font-size: 0.875rem;
+}
+
+/* Título del mes/año en Oswald, azul marino */
+.fc .fc-toolbar-title {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  color: #121a61;
+  letter-spacing: 0.01em;
+}
+
+/* Botones del toolbar en azul marino */
+.fc .fc-button-primary {
+  background-color: #121a61;
+  border-color: #121a61;
+  color: #ffffff;
+  text-transform: capitalize;
+  font-weight: 500;
+  box-shadow: none;
+}
+.fc .fc-button-primary:hover {
+  background-color: #1e2a8a;
+  border-color: #1e2a8a;
+}
+.fc .fc-button-primary:disabled {
+  background-color: #121a61;
+  border-color: #121a61;
+  opacity: 0.5;
+}
+.fc .fc-button-primary:not(:disabled):focus,
+.fc .fc-button-primary:focus {
+  box-shadow: 0 0 0 2px rgba(51, 70, 204, 0.3);
+}
+/* Botón de vista activo: acento dorado */
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background-color: #1e2a8a;
+  border-color: #c9a84c;
+  box-shadow: inset 0 0 0 1px #c9a84c;
+}
+
+/* Encabezados de día de la semana */
+.fc .fc-col-header-cell-cushion {
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  padding: 6px 4px;
+}
+
+/* Número de día */
+.fc .fc-daygrid-day-number {
+  color: #1c1c1c;
+  font-weight: 500;
+}
+
+/* --- Coloreo de celdas de día por tipo (aplicado vía dayCellClassNames) --- */
+.fc .fc-daygrid-day.cal-dia-torneo {
+  background-color: #dcfce7;
+}
+.fc .fc-daygrid-day.cal-dia-torneo .fc-daygrid-day-number {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.fc .fc-daygrid-day.cal-dia-receso {
+  background-color: #fef9c3;
+}
+.fc .fc-daygrid-day.cal-dia-receso .fc-daygrid-day-number {
+  color: #a16207;
+  font-weight: 700;
+}
+
+.fc .fc-daygrid-day.cal-dia-recupero {
+  background-color: #e5e7eb;
+}
+.fc .fc-daygrid-day.cal-dia-recupero .fc-daygrid-day-number {
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.fc .fc-daygrid-day.cal-dia-sin-actividad {
+  background-color: #fee2e2;
+}
+.fc .fc-daygrid-day.cal-dia-sin-actividad .fc-daygrid-day-number {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+/* --- Eventos (partidos) --- */
+.fc .cal-evento {
+  background-color: #121a61;
+  border-color: #121a61;
+  border-left: 3px solid #c9a84c;
+  color: #ffffff;
+  font-weight: 500;
+  padding: 1px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.fc .cal-evento .fc-event-title,
+.fc .cal-evento .fc-event-time {
+  color: #ffffff;
+  white-space: normal;
+}
+
+/* Evento suspendido: atenuado + tachado */
+.fc .cal-evento-suspendido {
+  background-color: #9ca3af;
+  border-color: #9ca3af;
+  border-left-color: #6b7280;
+  opacity: 0.75;
+}
+.fc .cal-evento-suspendido .fc-event-title {
+  text-decoration: line-through;
+}
+
+/* Evento reprogramado: atenuado, borde dorado punteado */
+.fc .cal-evento-reprogramado {
+  background-color: #1e2a8a;
+  border-color: #c9a84c;
+  border-left: 3px dashed #c9a84c;
+  opacity: 0.85;
+  font-style: italic;
+}
+
+/* --- Leyenda de colores --- */
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+}
+.cal-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+.cal-swatch-torneo,
+.cal-swatch-receso,
+.cal-swatch-recupero,
+.cal-swatch-sin-actividad {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 0.2rem;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.cal-swatch-torneo {
+  background-color: #dcfce7;
+}
+.cal-swatch-receso {
+  background-color: #fef9c3;
+}
+.cal-swatch-recupero {
+  background-color: #e5e7eb;
+}
+.cal-swatch-sin-actividad {
+  background-color: #fee2e2;
+}
+
+/* Vista Año (multiMonth): compacta y legible en desktop */
+.fc .fc-multimonth-title {
+  font-family: 'Oswald', sans-serif;
+  color: #121a61;
+  font-weight: 600;
+}
+.fc .fc-multimonth {
+  border-color: #e5e7eb;
+}

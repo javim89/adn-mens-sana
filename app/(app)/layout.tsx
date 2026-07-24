@@ -16,7 +16,7 @@ export default async function AppLayout({
 
   return (
     <Providers>
-      <div className="flex flex-col min-h-screen flex-1">
+      <div className="flex flex-col min-h-screen flex-1 min-w-0">
         <AppShell navItems={navItems}>{children}</AppShell>
       </div>
     </Providers>

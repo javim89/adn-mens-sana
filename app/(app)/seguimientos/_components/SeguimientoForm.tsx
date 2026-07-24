@@ -22,6 +22,7 @@ import { TraumatologiaSection } from './sections/TraumatologiaSection';
 import { HistoriaClinicaSection } from './sections/HistoriaClinicaSection';
 import { EvaluacionPsicologicaSection } from './sections/EvaluacionPsicologicaSection';
 import { EvaluacionCardiologicaSection } from './sections/EvaluacionCardiologicaSection';
+import { AntropometriaSection } from './sections/AntropometriaSection';
 
 interface DeportistaOption {
   id: string;
@@ -50,13 +51,15 @@ const TIPO_OPTIONS_ALL = [
   { value: 'HISTORIA_CLINICA', label: 'Historia Clínica' },
   { value: 'EVALUACION_PSICOLOGICA', label: 'Evaluación Psicológica' },
   { value: 'EVALUACION_CARDIOLOGICA', label: 'Evaluación Cardiológica' },
+  { value: 'ANTROPOMETRIA', label: 'Antropometría' },
 ];
 
 const TIPOS_POR_ROL: Record<string, TipoSeguimiento[]> = {
   medico: ['GENERICO', 'TRAUMATOLOGIA', 'HISTORIA_CLINICA'],
   psicologo: ['GENERICO', 'EVALUACION_PSICOLOGICA'],
   cardiologo: ['GENERICO', 'EVALUACION_CARDIOLOGICA'],
-  admin: ['GENERICO', 'TRAUMATOLOGIA', 'HISTORIA_CLINICA', 'EVALUACION_PSICOLOGICA', 'EVALUACION_CARDIOLOGICA'],
+  nutricionista: ['GENERICO', 'ANTROPOMETRIA'],
+  admin: ['GENERICO', 'TRAUMATOLOGIA', 'HISTORIA_CLINICA', 'EVALUACION_PSICOLOGICA', 'EVALUACION_CARDIOLOGICA', 'ANTROPOMETRIA'],
 };
 
 function getTiposDisponibles(role: string) {
@@ -66,6 +69,7 @@ function getTiposDisponibles(role: string) {
 
 const cprdField = z.number().int().min(0, 'Mínimo 0').max(36, 'Máximo 36').optional().or(z.nan().transform(() => undefined));
 const staiField = z.number().int().min(0, 'Mínimo 0').max(80, 'Máximo 80').optional().or(z.nan().transform(() => undefined));
+const antropometriaField = z.number().min(0, 'Mínimo 0').optional().or(z.nan().transform(() => undefined));
 
 function buildSchema(isAdmin: boolean) {
   return z
@@ -118,6 +122,21 @@ function buildSchema(isAdmin: boolean) {
       cardiologica_estudiosAnteriores: z.string().optional(),
       cardiologica_diagnostico: z.string().optional(),
       cardiologica_observaciones: z.string().optional(),
+      // Antropometría fields
+      antropometria_peso: antropometriaField,
+      antropometria_talla: antropometriaField,
+      antropometria_tsen: antropometriaField,
+      antropometria_perimetroBrazo: antropometriaField,
+      antropometria_perimetroMusloMedio: antropometriaField,
+      antropometria_perimetroPantorrilla: antropometriaField,
+      antropometria_cinturaMinima: antropometriaField,
+      antropometria_caderaMaxima: antropometriaField,
+      antropometria_pliegueTriceps: antropometriaField,
+      antropometria_pliegueSubescapular: antropometriaField,
+      antropometria_pliegueSupraespinal: antropometriaField,
+      antropometria_pliegueAbdominal: antropometriaField,
+      antropometria_pliegueMuslo: antropometriaField,
+      antropometria_plieguePantorrilla: antropometriaField,
     })
     .superRefine((data, ctx) => {
       if (isAdmin && !data.profesionalId) {
@@ -165,6 +184,7 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, in
   const historiaClinica = d?.historiaClinica ?? null;
   const evaluacionPsicologica = d?.evaluacionPsicologica ?? null;
   const evaluacionCardiologica = d?.evaluacionCardiologica ?? null;
+  const antropometria = d?.antropometria ?? null;
 
   const {
     register,
@@ -223,6 +243,21 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, in
       cardiologica_estudiosAnteriores: evaluacionCardiologica?.estudiosAnteriores ?? '',
       cardiologica_diagnostico: evaluacionCardiologica?.diagnostico ?? '',
       cardiologica_observaciones: evaluacionCardiologica?.observaciones ?? '',
+      // Antropometría
+      antropometria_peso: antropometria?.peso ?? undefined,
+      antropometria_talla: antropometria?.talla ?? undefined,
+      antropometria_tsen: antropometria?.tsen ?? undefined,
+      antropometria_perimetroBrazo: antropometria?.perimetroBrazo ?? undefined,
+      antropometria_perimetroMusloMedio: antropometria?.perimetroMusloMedio ?? undefined,
+      antropometria_perimetroPantorrilla: antropometria?.perimetroPantorrilla ?? undefined,
+      antropometria_cinturaMinima: antropometria?.cinturaMinima ?? undefined,
+      antropometria_caderaMaxima: antropometria?.caderaMaxima ?? undefined,
+      antropometria_pliegueTriceps: antropometria?.pliegueTriceps ?? undefined,
+      antropometria_pliegueSubescapular: antropometria?.pliegueSubescapular ?? undefined,
+      antropometria_pliegueSupraespinal: antropometria?.pliegueSupraespinal ?? undefined,
+      antropometria_pliegueAbdominal: antropometria?.pliegueAbdominal ?? undefined,
+      antropometria_pliegueMuslo: antropometria?.pliegueMuslo ?? undefined,
+      antropometria_plieguePantorrilla: antropometria?.plieguePantorrilla ?? undefined,
     },
   });
 
@@ -295,6 +330,29 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, in
             observaciones: values.cardiologica_observaciones || undefined,
           },
         };
+      case 'ANTROPOMETRIA': {
+        const num = (v: number | undefined) =>
+          typeof v === 'number' && !isNaN(v) ? v : undefined;
+        return {
+          tipo: 'ANTROPOMETRIA',
+          datos: {
+            peso: num(values.antropometria_peso),
+            talla: num(values.antropometria_talla),
+            tsen: num(values.antropometria_tsen),
+            perimetroBrazo: num(values.antropometria_perimetroBrazo),
+            perimetroMusloMedio: num(values.antropometria_perimetroMusloMedio),
+            perimetroPantorrilla: num(values.antropometria_perimetroPantorrilla),
+            cinturaMinima: num(values.antropometria_cinturaMinima),
+            caderaMaxima: num(values.antropometria_caderaMaxima),
+            pliegueTriceps: num(values.antropometria_pliegueTriceps),
+            pliegueSubescapular: num(values.antropometria_pliegueSubescapular),
+            pliegueSupraespinal: num(values.antropometria_pliegueSupraespinal),
+            pliegueAbdominal: num(values.antropometria_pliegueAbdominal),
+            pliegueMuslo: num(values.antropometria_pliegueMuslo),
+            plieguePantorrilla: num(values.antropometria_plieguePantorrilla),
+          },
+        };
+      }
       default:
         return { tipo: 'GENERICO', datos: {} };
     }
@@ -510,6 +568,18 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, in
               Evaluación cardiológica
             </p>
             <EvaluacionCardiologicaSection register={register} errors={errors} />
+          </div>
+        </>
+      )}
+
+      {watchedTipo === 'ANTROPOMETRIA' && (
+        <>
+          <hr className="border-gray-100" />
+          <div>
+            <p className="text-xs font-semibold uppercase text-[#6B7280] mb-3 tracking-wide">
+              Antropometría
+            </p>
+            <AntropometriaSection register={register} watch={watch} errors={errors} />
           </div>
         </>
       )}

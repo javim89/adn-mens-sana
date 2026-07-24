@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DeportistasTable from '../_components/DeportistasTable';
@@ -21,16 +21,35 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-// Mock the fetch helper
+// Mock the fetch helpers
 vi.mock('@/lib/api/deportistas', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/lib/api/deportistas')>();
   return {
     ...original,
     fetchDeportistas: vi.fn(),
+    fetchDisciplinas: vi.fn(),
   };
 });
 
-import { fetchDeportistas } from '@/lib/api/deportistas';
+import { fetchDeportistas, fetchDisciplinas } from '@/lib/api/deportistas';
+
+// El filtro de categoría se anida al de disciplina: cada disciplina trae sus
+// categorías. La tabla usa fetchDisciplinas() (no fetchCategorias).
+const mockDisciplinas = [
+  {
+    id: 'disc-futbol',
+    nombre: 'Fútbol',
+    categorias: [
+      { id: 'cat-primera', nombre: 'Primera' },
+      { id: 'cat-reserva', nombre: 'Reserva' },
+    ],
+  },
+  {
+    id: 'disc-basquet',
+    nombre: 'Básquet',
+    categorias: [],
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -56,8 +75,10 @@ const mockItem1: DeportistaListAttributes = {
   nombre: 'Juan',
   apellido: 'García',
   dni: '12345678',
-  disciplina: 'FUTBOL',
-  categoria: 'PRIMERA',
+  disciplinaId: 'disc-futbol',
+  disciplina: { id: 'disc-futbol', nombre: 'Fútbol' },
+  categoriaId: 'cat-primera',
+  categoria: { id: 'cat-primera', nombre: 'Primera' },
   estado: 'ACTIVO',
   fechaIngreso: '2022-01-01T00:00:00.000Z',
 };
@@ -66,8 +87,10 @@ const mockItem2: DeportistaListAttributes = {
   nombre: 'María',
   apellido: 'López',
   dni: '87654321',
-  disciplina: 'BASQUET',
-  categoria: 'RESERVA',
+  disciplinaId: 'disc-basquet',
+  disciplina: { id: 'disc-basquet', nombre: 'Básquet' },
+  categoriaId: 'cat-reserva',
+  categoria: { id: 'cat-reserva', nombre: 'Reserva' },
   estado: 'INACTIVO',
   fechaIngreso: null,
 };
@@ -81,6 +104,7 @@ describe('DeportistasTable', () => {
     vi.clearAllMocks();
     // Default: no URL params
     mockSearchParamsGet.mockReturnValue(null);
+    vi.mocked(fetchDisciplinas).mockResolvedValue(mockDisciplinas);
   });
 
   test('renderiza la lista de deportistas obtenida de la API', async () => {
@@ -135,10 +159,12 @@ describe('DeportistasTable', () => {
     vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
 
     render(<DeportistasTable />, { wrapper });
-    // Radix Select renders triggers as combobox buttons — check by accessible role
-    const comboboxes = screen.getAllByRole('combobox');
-    // Disciplina, Categoria and Estado filters
-    expect(comboboxes.length).toBeGreaterThanOrEqual(3);
+    await screen.findByPlaceholderText(/buscar/i);
+    // CustomSelect renderiza triggers como <button>. Los filtros son
+    // Disciplina, Categoría y Estado, identificables por su placeholder.
+    expect(screen.getByRole('button', { name: /todas las disciplinas/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /todas las categorías/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /todos los estados/i })).toBeInTheDocument();
   });
 
   test('muestra mensaje cuando la lista está vacía', async () => {
@@ -175,9 +201,10 @@ describe('DeportistasTable', () => {
     expect(link).toHaveAttribute('href', '/deportistas/nuevo');
   });
 
-  test('pasa filter[disciplina] en los params de la query cuando está en la URL', async () => {
+  test('pasa filter[disciplina] (disciplinaId) en los params de la query cuando está en la URL', async () => {
+    // El filtro de disciplina ahora usa un disciplinaId, no el código enum viejo.
     mockSearchParamsGet.mockImplementation((key: string) => {
-      if (key === 'filter[disciplina]') return 'FUTBOL';
+      if (key === 'filter[disciplina]') return 'disc-futbol';
       return null;
     });
 
@@ -187,8 +214,89 @@ describe('DeportistasTable', () => {
     await screen.findByPlaceholderText(/buscar/i);
 
     expect(fetchDeportistas).toHaveBeenCalledWith(
-      expect.objectContaining({ 'filter[disciplina]': 'FUTBOL' }),
+      expect.objectContaining({ 'filter[disciplina]': 'disc-futbol' }),
     );
+  });
+
+  test('muestra el nombre de la categoría en la fila', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '1', attrs: mockItem1 }]),
+    );
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findAllByText('García, Juan');
+    // Aparece en la card mobile y en la fila de la tabla desktop
+    expect(screen.getAllByText('Primera').length).toBeGreaterThan(0);
+  });
+
+  test('muestra el nombre de la disciplina en la fila', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '1', attrs: mockItem1 }]),
+    );
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findAllByText('García, Juan');
+    // El nombre de la disciplina aparece (card mobile y fila desktop).
+    expect(screen.getAllByText('Fútbol').length).toBeGreaterThan(0);
+  });
+
+  test('puebla el filtro de disciplinas desde el catálogo /api/disciplinas', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    // El catálogo de disciplinas (con categorías anidadas) se solicitó.
+    expect(fetchDisciplinas).toHaveBeenCalled();
+  });
+
+  test('pasa filter[categoriaId] en los params de la query cuando está en la URL', async () => {
+    mockSearchParamsGet.mockImplementation((key: string) => {
+      if (key === 'filter[categoriaId]') return 'cat-primera';
+      return null;
+    });
+
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    expect(fetchDeportistas).toHaveBeenCalledWith(
+      expect.objectContaining({ 'filter[categoriaId]': 'cat-primera' }),
+    );
+  });
+
+  test('el filtro de categoría está deshabilitado sin disciplina seleccionada', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    // Sin disciplina en la URL, el trigger del filtro de categoría está disabled.
+    const categoriaTrigger = screen.getByRole('button', { name: /todas las categorías/i });
+    expect(categoriaTrigger).toBeDisabled();
+  });
+
+  test('anida el filtro de categoría al de disciplina: al elegir una disciplina se habilita y ofrece sus categorías', async () => {
+    // Con una disciplina en la URL, el catálogo anidado habilita el filtro de categoría.
+    mockSearchParamsGet.mockImplementation((key: string) => {
+      if (key === 'filter[disciplina]') return 'disc-futbol';
+      return null;
+    });
+
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    // Esperar a que resuelva fetchDisciplinas y se habilite el filtro de categoría.
+    const categoriaTrigger = screen.getByRole('button', { name: /todas las categorías/i });
+    await waitFor(() => expect(categoriaTrigger).not.toBeDisabled());
+
+    // Al abrirlo, muestra SOLO las categorías de la disciplina elegida (Fútbol).
+    fireEvent.click(categoriaTrigger);
+    expect(await screen.findByText('Primera')).toBeInTheDocument();
+    expect(screen.getByText('Reserva')).toBeInTheDocument();
   });
 
   test('pasa page[number] en los params de la query cuando está en la URL', async () => {

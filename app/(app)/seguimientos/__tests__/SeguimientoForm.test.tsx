@@ -202,6 +202,25 @@ describe('SeguimientoForm', () => {
     expect(screen.getByText(/Control de Estrés/i)).toBeDefined();
   });
 
+  test('con role="nutricionista" la opción Antropometría está disponible y al seleccionarla se muestra la sección', async () => {
+    const user = userEvent.setup();
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="nutricionista"
+        profesionales={[]}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /Genérico/i }));
+    const opcionAntropometria = screen.getByRole('button', { name: /^Antropometría$/i });
+    expect(opcionAntropometria).toBeDefined();
+    await user.click(opcionAntropometria);
+    expect(screen.getByText('Básicos')).toBeDefined();
+    expect(screen.getByText('Pliegues')).toBeDefined();
+    expect(screen.getByText('Sumatorias (auto-calculadas)')).toBeDefined();
+  });
+
   test('los campos genéricos (descripción, recomendaciones) siempre se muestran independientemente del tipo', async () => {
     const user = userEvent.setup();
     render(

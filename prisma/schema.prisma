@@ -11,48 +11,6 @@ datasource db {
 // Enums
 // ---------------------------------------------------------------------------
 
-enum Disciplina {
-  FUTBOL
-  FUTSAL
-  BASQUET
-  VOLEY
-  HANDBALL
-  NATACION
-  ATLETISMO
-  HOCKEY
-  RUGBY
-  TENIS
-  GIMNASIA
-  GIMNASIA_ARTISTICA
-  PATIN
-  ARTES_MARCIALES
-  COMBATE
-  INICIACION_DEPORTIVA
-  POWER_CHAIR
-  TIADE
-  AJEDREZ
-  BOXEO
-  OTRO
-}
-
-enum Categoria {
-  SUB_12
-  SUB_14
-  SUB_16
-  SUB_18
-  NOVENA
-  OCTAVA
-  SEPTIMA
-  SEXTA
-  QUINTA
-  CUARTA
-  RESERVA
-  DIVISION_DE_HONOR
-  PRIMERA
-  SENIOR
-  VETERANOS
-}
-
 enum EstadoDeportista {
   ACTIVO
   INACTIVO
@@ -156,9 +114,11 @@ model Deportista {
   vivePensionExterna      Boolean                  @default(false) @map("vive_pension_externa")
   observaciones           String?
 
-  // Sport fields (scalar — single discipline per athlete)
-  disciplina              Disciplina?
-  categoria               Categoria?
+  // Sport fields (single discipline per athlete)
+  disciplinaId            String?                  @map("disciplina_id")
+  disciplina              Disciplina?              @relation(fields: [disciplinaId], references: [id], onDelete: SetNull)
+  categoriaId             String?                  @map("categoria_id")
+  categoria               Categoria?               @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
   posicion                String?
   estado                  EstadoDeportista         @default(ACTIVO)
   actividadComplementaria ActividadComplementaria? @map("actividad_complementaria")
@@ -407,6 +367,7 @@ enum TipoSeguimiento {
   HISTORIA_CLINICA
   EVALUACION_PSICOLOGICA
   EVALUACION_CARDIOLOGICA
+  ANTROPOMETRIA
 }
 
 // ---------------------------------------------------------------------------
@@ -432,6 +393,7 @@ model Seguimiento {
   historiaClinica          SeguimientoHistoriaClinica?
   evaluacionPsicologica    SeguimientoEvaluacionPsicologica?
   evaluacionCardiologica   SeguimientoEvaluacionCardiologica?
+  antropometria            SeguimientoAntropometria?
 
   createdAt            DateTime             @default(now()) @map("created_at")
   updatedAt            DateTime             @updatedAt @map("updated_at")
@@ -508,6 +470,31 @@ model SeguimientoEvaluacionCardiologica {
   @@map("seguimientos_evaluacion_cardiologica")
 }
 
+model SeguimientoAntropometria {
+  id                   String      @id @default(cuid())
+  seguimientoId        String      @unique @map("seguimiento_id")
+  peso                 Float?
+  talla                Float?
+  tsen                 Float?
+  perimetroBrazo       Float?      @map("perimetro_brazo")
+  perimetroMusloMedio  Float?      @map("perimetro_muslo_medio")
+  perimetroPantorrilla Float?      @map("perimetro_pantorrilla")
+  cinturaMinima        Float?      @map("cintura_minima")
+  caderaMaxima         Float?      @map("cadera_maxima")
+  pliegueTriceps       Float?      @map("pliegue_triceps")
+  pliegueSubescapular  Float?      @map("pliegue_subescapular")
+  pliegueSupraespinal  Float?      @map("pliegue_supraespinal")
+  pliegueAbdominal     Float?      @map("pliegue_abdominal")
+  pliegueMuslo         Float?      @map("pliegue_muslo")
+  plieguePantorrilla   Float?      @map("pliegue_pantorrilla")
+  imc                  Float?
+  sumatoriaPliegues    Float?      @map("sumatoria_pliegues")
+
+  seguimiento          Seguimiento @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+
+  @@map("seguimientos_antropometria")
+}
+
 enum AntecedenteEnfermedadFamiliar {
   DIABETES
   EPOC
@@ -521,4 +508,101 @@ enum AntecedenteEnfermedadFamiliar {
   HIPERTENSION_ARTERIAL
   CORONARIOPATIAS
   OTRO
+}
+
+// ---------------------------------------------------------------------------
+// Enums — Calendario
+// ---------------------------------------------------------------------------
+
+enum TipoDia {
+  TORNEO
+  RECESO
+  RECUPERO
+  SIN_ACTIVIDAD
+}
+
+enum EstadoEvento {
+  PROGRAMADO
+  SUSPENDIDO
+  REPROGRAMADO
+}
+
+// ---------------------------------------------------------------------------
+// Models — Calendario
+// ---------------------------------------------------------------------------
+
+model Equipo {
+  id               String         @id @default(cuid())
+  nombre           String         @unique
+  esGimnasiaLP     Boolean        @default(false) @map("es_gimnasia_lp")
+  eventosLocal     EventoTorneo[] @relation("EventoLocal")
+  eventosVisitante EventoTorneo[] @relation("EventoVisitante")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  @@map("equipos")
+}
+
+model Categoria {
+  id          String                 @id @default(cuid())
+  nombre      String                 @unique
+  orden       Int
+  eventos     EventoTorneo[]
+  deportistas Deportista[]
+  disciplinas DisciplinaCategoria[]
+
+  @@map("categorias")
+}
+
+model Disciplina {
+  id          String                @id @default(cuid())
+  nombre      String                @unique
+  codigo      String                @unique
+  orden       Int
+  categorias  DisciplinaCategoria[]
+  deportistas Deportista[]
+
+  @@map("disciplinas")
+}
+
+model DisciplinaCategoria {
+  id           String     @id @default(cuid())
+  disciplinaId String     @map("disciplina_id")
+  categoriaId  String     @map("categoria_id")
+
+  disciplina   Disciplina @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  categoria    Categoria  @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  @@unique([disciplinaId, categoriaId])
+  @@map("disciplina_categorias")
+}
+
+model DiaCalendario {
+  id          String         @id @default(cuid())
+  fecha       DateTime       @unique @db.Date
+  tipo        TipoDia
+  numeroFecha Int?           @map("numero_fecha")
+  eventos     EventoTorneo[]
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  @@map("dias_calendario")
+}
+
+model EventoTorneo {
+  id              String          @id @default(cuid())
+  diaCalendarioId String          @map("dia_calendario_id")
+  categoriaId     String          @map("categoria_id")
+  localId         String          @map("local_id")
+  visitanteId     String          @map("visitante_id")
+  estado          EstadoEvento    @default(PROGRAMADO)
+  dia             DiaCalendario   @relation(fields: [diaCalendarioId], references: [id], onDelete: Cascade)
+  categoria       Categoria       @relation(fields: [categoriaId], references: [id])
+  local           Equipo          @relation("EventoLocal", fields: [localId], references: [id])
+  visitante       Equipo          @relation("EventoVisitante", fields: [visitanteId], references: [id])
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  @@unique([diaCalendarioId, categoriaId])
+  @@map("eventos_torneo")
 }

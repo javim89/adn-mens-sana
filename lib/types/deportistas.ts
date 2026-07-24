@@ -1,6 +1,4 @@
 import type {
-  Disciplina,
-  Categoria,
   EstadoDeportista,
   Genero,
   ActividadComplementaria,
@@ -36,8 +34,8 @@ export type DeportistaFormData = {
   observaciones?: string;
 
   // Tab Deportivo
-  disciplina?: Disciplina;
-  categoria?: Categoria;
+  disciplinaId?: string;
+  categoriaId?: string;
   posicion?: string;
   estado: EstadoDeportista;
   actividadComplementaria?: ActividadComplementaria;
@@ -101,11 +99,16 @@ export type DeportistaFormData = {
 // Tipo para la fila de la tabla (proyección parcial)
 export type DeportistaListItem = Pick<
   Deportista,
-  'id' | 'nombre' | 'apellido' | 'dni' | 'disciplina' | 'categoria' | 'estado' | 'fechaIngreso'
->;
+  'id' | 'nombre' | 'apellido' | 'dni' | 'disciplinaId' | 'categoriaId' | 'estado' | 'fechaIngreso'
+> & {
+  disciplina: { id: string; nombre: string } | null;
+  categoria: { id: string; nombre: string } | null;
+};
 
 // Tipo con todas las relaciones incluidas (para detalle y edición)
 export type DeportistaWithRelations = Deportista & {
+  disciplina: { id: string; nombre: string } | null;
+  categoria: { id: string; nombre: string } | null;
   clubesAnteriores: Array<{ id: string; nombre: string; periodo?: string | null }>;
   historiaDeportiva: Array<{ id: string; descripcion: string; fecha: Date }>;
   datosEscolares: {

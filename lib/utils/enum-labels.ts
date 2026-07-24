@@ -1,6 +1,4 @@
 import type {
-  Disciplina,
-  Categoria,
   EstadoDeportista,
   Genero,
   ActividadComplementaria,
@@ -15,7 +13,9 @@ import type {
   AntecedenteEnfermedadFamiliar,
 } from '@/lib/generated/prisma/enums';
 
-export const DISCIPLINA_LABELS: Record<Disciplina, string> = {
+// `Disciplina` dejó de ser un enum (ahora es modelo DB). Los labels se conservan
+// como catálogo estático indexado por el `codigo` de cada disciplina.
+export const DISCIPLINA_LABELS: Record<string, string> = {
   FUTBOL: 'Fútbol',
   FUTSAL: 'Futsal',
   BASQUET: 'Básquet',
@@ -37,24 +37,6 @@ export const DISCIPLINA_LABELS: Record<Disciplina, string> = {
   AJEDREZ: 'Ajedrez',
   BOXEO: 'Boxeo',
   OTRO: 'Otro',
-};
-
-export const CATEGORIA_LABELS: Record<Categoria, string> = {
-  SUB_12: 'Sub 12',
-  SUB_14: 'Sub 14',
-  SUB_16: 'Sub 16',
-  SUB_18: 'Sub 18',
-  NOVENA: 'Novena',
-  OCTAVA: 'Octava',
-  SEPTIMA: 'Séptima',
-  SEXTA: 'Sexta',
-  QUINTA: 'Quinta',
-  CUARTA: 'Cuarta',
-  RESERVA: 'Reserva',
-  DIVISION_DE_HONOR: 'División de Honor',
-  PRIMERA: 'Primera',
-  SENIOR: 'Sénior',
-  VETERANOS: 'Veteranos',
 };
 
 export const ESTADO_LABELS: Record<EstadoDeportista, string> = {
