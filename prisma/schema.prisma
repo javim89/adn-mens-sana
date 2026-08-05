@@ -130,6 +130,7 @@ model Deportista {
   historiaDeportiva       HistoriaDeportiva[]
   turnosDeportista        TurnoDeportista[]
   seguimientos            Seguimiento[]
+  asistencias             Asistencia[]
 
   // 1:1 satellite models
   datosEscolares          DatosEscolares?
@@ -544,23 +545,25 @@ model Equipo {
 }
 
 model Categoria {
-  id          String                 @id @default(cuid())
-  nombre      String                 @unique
-  orden       Int
-  eventos     EventoTorneo[]
-  deportistas Deportista[]
-  disciplinas DisciplinaCategoria[]
+  id             String                 @id @default(cuid())
+  nombre         String                 @unique
+  orden          Int
+  eventos        EventoTorneo[]
+  deportistas    Deportista[]
+  disciplinas    DisciplinaCategoria[]
+  entrenamientos Entrenamiento[]
 
   @@map("categorias")
 }
 
 model Disciplina {
-  id          String                @id @default(cuid())
-  nombre      String                @unique
-  codigo      String                @unique
-  orden       Int
-  categorias  DisciplinaCategoria[]
-  deportistas Deportista[]
+  id             String                @id @default(cuid())
+  nombre         String                @unique
+  codigo         String                @unique
+  orden          Int
+  categorias     DisciplinaCategoria[]
+  deportistas    Deportista[]
+  entrenamientos Entrenamiento[]
 
   @@map("disciplinas")
 }
@@ -605,4 +608,61 @@ model EventoTorneo {
 
   @@unique([diaCalendarioId, categoriaId])
   @@map("eventos_torneo")
+}
+
+// ---------------------------------------------------------------------------
+// Enums — Presentismo
+// ---------------------------------------------------------------------------
+
+enum TipoSesion {
+  TECNICO
+  TACTICO
+  FISICO
+  MIXTO
+  RECUPERACION
+}
+
+enum EstadoAsistencia {
+  PRESENTE
+  AUSENTE
+  LLEGO_TARDE
+  SE_RETIRO_ANTES
+}
+
+// ---------------------------------------------------------------------------
+// Models — Presentismo
+// ---------------------------------------------------------------------------
+
+model Entrenamiento {
+  id            String       @id @default(cuid())
+  fecha         DateTime     @db.Date
+  entrenadorId  String       @map("entrenador_id")
+  tipoSesion    TipoSesion   @map("tipo_sesion")
+  objetivos     String?
+  disciplinaId  String       @map("disciplina_id")
+  categoriaId   String       @map("categoria_id")
+  registradoPor String       @map("registrado_por")
+
+  disciplina    Disciplina   @relation(fields: [disciplinaId], references: [id])
+  categoria     Categoria    @relation(fields: [categoriaId], references: [id])
+  asistencias   Asistencia[]
+
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  @@map("entrenamientos")
+}
+
+model Asistencia {
+  id              String           @id @default(cuid())
+  entrenamientoId String           @map("entrenamiento_id")
+  deportistaId    String           @map("deportista_id")
+  estado          EstadoAsistencia @default(PRESENTE)
+  notas           String?
+
+  entrenamiento   Entrenamiento    @relation(fields: [entrenamientoId], references: [id], onDelete: Cascade)
+  deportista      Deportista       @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@unique([entrenamientoId, deportistaId])
+  @@map("asistencias")
 }

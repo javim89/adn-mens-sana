@@ -13,7 +13,7 @@ export const ROL_LABELS: Record<AppRole, string> = {
   social:        'Social',
 };
 
-export type IconKey = 'LayoutDashboard' | 'Users' | 'CalendarDays' | 'UserCog' | 'ClipboardList' | 'Calendar';
+export type IconKey = 'LayoutDashboard' | 'Users' | 'CalendarDays' | 'UserCog' | 'ClipboardList' | 'Calendar' | 'ClipboardCheck';
 
 export interface NavItem {
   href: string;
@@ -25,6 +25,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { href: '/dashboard',    label: 'Dashboard',     icon: 'LayoutDashboard' },
   { href: '/deportistas',  label: 'Deportistas',   icon: 'Users' },
   { href: '/turnos',       label: 'Turnos',        icon: 'CalendarDays' },
+  { href: '/presentismo',  label: 'Presentismo',   icon: 'ClipboardCheck' },
   { href: '/seguimientos', label: 'Seguimientos',  icon: 'ClipboardList' },
   { href: '/calendario',   label: 'Calendario',    icon: 'Calendar' },
   { href: '/usuarios',     label: 'Usuarios',      icon: 'UserCog' },
@@ -33,11 +34,11 @@ const ALL_NAV_ITEMS: NavItem[] = [
 const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   admin:         ALL_NAV_ITEMS,
   entrenador:    ALL_NAV_ITEMS.filter(i => !['/turnos', '/usuarios'].includes(i.href)),
-  medico:        ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
-  kinesiologo:   ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
-  nutricionista: ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
-  psicologo:     ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
-  cardiologo:    ALL_NAV_ITEMS.filter(i => i.href !== '/usuarios'),
+  medico:        ALL_NAV_ITEMS.filter(i => !['/usuarios', '/presentismo'].includes(i.href)),
+  kinesiologo:   ALL_NAV_ITEMS.filter(i => !['/usuarios', '/presentismo'].includes(i.href)),
+  nutricionista: ALL_NAV_ITEMS.filter(i => !['/usuarios', '/presentismo'].includes(i.href)),
+  psicologo:     ALL_NAV_ITEMS.filter(i => !['/usuarios', '/presentismo'].includes(i.href)),
+  cardiologo:    ALL_NAV_ITEMS.filter(i => !['/usuarios', '/presentismo'].includes(i.href)),
   social:        ALL_NAV_ITEMS.filter(i => ['/dashboard', '/deportistas', '/calendario'].includes(i.href)),
 };
 
