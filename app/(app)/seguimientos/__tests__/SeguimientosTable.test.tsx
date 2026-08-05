@@ -207,6 +207,32 @@ describe('SeguimientosTable', () => {
     expect(screen.getAllByTestId('delete-btn').length).toBeGreaterThan(0);
   });
 
+  test('rol social (canWrite, no admin): "Nuevo" visible y Editar solo en la fila propia', () => {
+    const data = [
+      makeSeguimiento({ id: 'seg-propio', titulo: 'Genérico propio', profesionalId: 'social_1' }),
+      makeSeguimiento({ id: 'seg-ajeno', titulo: 'Genérico ajeno', profesionalId: 'otro' }),
+    ];
+    renderTable({
+      initialSeguimientos: data,
+      total: 2,
+      isAdmin: false,
+      canWrite: true,
+      currentUserId: 'social_1',
+    });
+
+    // Botón "Nuevo seguimiento" presente
+    expect(screen.getByText('Nuevo seguimiento')).toBeDefined();
+
+    // Editar aparece solo una vez por viewport (mobile + desktop se renderizan ambos;
+    // solo la fila propia expone la acción, la ajena no).
+    const editLinks = screen.getAllByTitle('Editar seguimiento') as HTMLAnchorElement[];
+    expect(editLinks.length).toBeGreaterThan(0);
+    editLinks.forEach((link) => {
+      expect(link.href).toContain('/seguimientos/seg-propio/editar');
+      expect(link.href).not.toContain('seg-ajeno');
+    });
+  });
+
   test('botones Editar/Eliminar NO visibles si no es admin y no es dueño', () => {
     const data = [makeSeguimiento({ profesionalId: 'prof-medico-123' })];
     renderTable({

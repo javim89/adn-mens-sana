@@ -13,7 +13,8 @@ import type {
 import { computeAntropometriaSumatorias } from '@/lib/utils/antropometria';
 
 const HEALTH_ROLES = ['medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'];
-const CAN_WRITE_ROLES = ['admin', ...HEALTH_ROLES];
+// 'social' puede crear/editar/eliminar únicamente seguimientos de tipo GENERICO propios.
+const CAN_WRITE_ROLES = ['admin', ...HEALTH_ROLES, 'social'];
 
 // Tipos permitidos por rol de profesional
 const TIPOS_POR_ROL: Record<string, TipoSeguimiento[]> = {
@@ -21,6 +22,7 @@ const TIPOS_POR_ROL: Record<string, TipoSeguimiento[]> = {
   psicologo: ['GENERICO', 'EVALUACION_PSICOLOGICA'],
   cardiologo: ['GENERICO', 'EVALUACION_CARDIOLOGICA'],
   nutricionista: ['GENERICO', 'ANTROPOMETRIA'],
+  social: ['GENERICO'],
 };
 
 function getTiposPermitidos(role: string): TipoSeguimiento[] {
@@ -267,14 +269,24 @@ export async function createSeguimiento(
 
     // Validate tipo compatibility with caller role
     const tipoSeguimiento = data.tipoSeguimiento ?? null;
+    const tiposPermitidos = getTiposPermitidos(role ?? '');
     if (tipoSeguimiento && tipoSeguimiento !== 'GENERICO') {
-      const tiposPermitidos = getTiposPermitidos(role ?? '');
       if (!tiposPermitidos.includes(tipoSeguimiento)) {
         return {
           success: false,
           error: `El rol "${role}" no puede crear seguimientos de tipo "${tipoSeguimiento}"`,
         };
       }
+    }
+
+    // Blindaje: rechazar datosEspecificos de un tipo no permitido para el rol,
+    // aunque el cliente haya enviado un tipoSeguimiento base/nulo.
+    const datosTipo = data.datosEspecificos?.tipo;
+    if (datosTipo && datosTipo !== 'GENERICO' && !tiposPermitidos.includes(datosTipo)) {
+      return {
+        success: false,
+        error: `El rol "${role}" no puede crear seguimientos de tipo "${datosTipo}"`,
+      };
     }
 
     // Ownership rule: admin can assign a different profesionalId; health professionals always use their own userId
@@ -347,14 +359,23 @@ export async function updateSeguimiento(
 
     // Validate tipo compatibility with caller role
     const tipoSeguimiento = data.tipoSeguimiento ?? null;
+    const tiposPermitidos = getTiposPermitidos(role ?? '');
     if (tipoSeguimiento && tipoSeguimiento !== 'GENERICO') {
-      const tiposPermitidos = getTiposPermitidos(role ?? '');
       if (!tiposPermitidos.includes(tipoSeguimiento)) {
         return {
           success: false,
           error: `El rol "${role}" no puede crear seguimientos de tipo "${tipoSeguimiento}"`,
         };
       }
+    }
+
+    // Blindaje: rechazar datosEspecificos de un tipo no permitido para el rol.
+    const datosTipo = data.datosEspecificos?.tipo;
+    if (datosTipo && datosTipo !== 'GENERICO' && !tiposPermitidos.includes(datosTipo)) {
+      return {
+        success: false,
+        error: `El rol "${role}" no puede crear seguimientos de tipo "${datosTipo}"`,
+      };
     }
 
     // Admin can reassign the professional; the owner keeps their own profesionalId

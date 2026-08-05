@@ -40,7 +40,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   nutricionista: ALL_NAV_ITEMS.filter(i => !['/usuarios', '/presentismo', '/convocatorias'].includes(i.href)),
   psicologo:     ALL_NAV_ITEMS.filter(i => !['/usuarios', '/presentismo', '/convocatorias'].includes(i.href)),
   cardiologo:    ALL_NAV_ITEMS.filter(i => !['/usuarios', '/presentismo', '/convocatorias'].includes(i.href)),
-  social:        ALL_NAV_ITEMS.filter(i => ['/dashboard', '/deportistas', '/calendario'].includes(i.href)),
+  social:        ALL_NAV_ITEMS.filter(i => ['/dashboard', '/deportistas', '/seguimientos', '/calendario'].includes(i.href)),
 };
 
 export function getNavItemsForRole(role: string | undefined | null): NavItem[] {

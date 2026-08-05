@@ -1,7 +1,8 @@
-import { describe, test, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SeguimientoForm from '../_components/SeguimientoForm';
+import { createSeguimiento } from '@/lib/actions/seguimientos';
 import type { SeguimientoListItem } from '@/lib/types/seguimientos';
 
 // Mock next/navigation
@@ -15,9 +16,19 @@ vi.mock('@/lib/actions/seguimientos', () => ({
   updateSeguimiento: vi.fn(),
 }));
 
-// Mock DeportistaSelect
+const mockedCreateSeguimiento = vi.mocked(createSeguimiento);
+
+// Mock DeportistaSelect — invoca onChange para poder completar el campo requerido
 vi.mock('../_components/DeportistaSelect', () => ({
-  default: () => <div data-testid="deportista-select">DeportistaSelect</div>,
+  default: ({ onChange }: { onChange: (o: { id: string; nombre: string; apellido: string }) => void }) => (
+    <button
+      type="button"
+      data-testid="deportista-select"
+      onClick={() => onChange({ id: 'dep-1', nombre: 'Juan', apellido: 'Pérez' })}
+    >
+      DeportistaSelect
+    </button>
+  ),
 }));
 
 // Mock ProfesionalCombobox
@@ -41,6 +52,11 @@ const sampleInitialData: SeguimientoListItem = {
   deportistaId: 'dep-1',
   deportistaNombre: 'Pérez, Juan',
 };
+
+beforeEach(() => {
+  mockedCreateSeguimiento.mockReset();
+  mockedCreateSeguimiento.mockResolvedValue({ success: true, id: 'seg-new' });
+});
 
 describe('SeguimientoForm', () => {
   test('renderiza el formulario en modo create con campos vacíos', () => {
@@ -243,5 +259,78 @@ describe('SeguimientoForm', () => {
     // Still present
     expect(screen.getByPlaceholderText(/Detalles del seguimiento/i)).toBeDefined();
     expect(screen.getByPlaceholderText(/Indicaciones, plan de acción/i)).toBeDefined();
+  });
+
+  // ---- Rol social: solo genéricos ----
+
+  test('con role="social" NO se muestra el selector de tipo ni las secciones especializadas de salud', () => {
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="social"
+        profesionales={[]}
+      />,
+    );
+
+    // No selector de tipo
+    expect(screen.queryByText('Tipo de seguimiento')).toBeNull();
+
+    // No secciones especializadas de salud
+    expect(screen.queryByText('Datos traumatológicos')).toBeNull();
+    expect(screen.queryByText('Historia clínica')).toBeNull();
+    expect(screen.queryByText('Evaluación psicológica')).toBeNull();
+    expect(screen.queryByText('Evaluación cardiológica')).toBeNull();
+    expect(screen.queryByText('Antropometría')).toBeNull();
+  });
+
+  test('con role="social" SÍ se renderizan los campos base', () => {
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="social"
+        profesionales={[]}
+      />,
+    );
+
+    expect(screen.getByText('Deportista')).toBeDefined();
+    expect(screen.getByText('Fecha')).toBeDefined();
+    expect(screen.getByText('Próxima cita')).toBeDefined();
+    expect(screen.getByText('Título / Motivo')).toBeDefined();
+    expect(screen.getByText('Prioridad')).toBeDefined();
+    expect(screen.getByPlaceholderText(/Detalles del seguimiento/i)).toBeDefined();
+    expect(screen.getByPlaceholderText(/Indicaciones, plan de acción/i)).toBeDefined();
+    expect(screen.getByPlaceholderText(/Mediciones, diagnósticos/i)).toBeDefined();
+    expect(screen.getByPlaceholderText(/Señales de alerta a monitorear/i)).toBeDefined();
+  });
+
+  test('con role="social" el submit envía tipoSeguimiento GENERICO y datosEspecificos vacíos', async () => {
+    const user = userEvent.setup();
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="social"
+        profesionales={[]}
+      />,
+    );
+
+    await user.click(screen.getByTestId('deportista-select'));
+
+    const fechaInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+    fireEvent.change(fechaInput, { target: { value: '2026-08-05' } });
+
+    await user.type(screen.getByPlaceholderText(/Evaluación de rodilla/i), 'Visita domiciliaria');
+
+    await user.click(screen.getByText('Guardar seguimiento'));
+
+    await waitFor(() => {
+      expect(mockedCreateSeguimiento).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = mockedCreateSeguimiento.mock.calls[0][0];
+    expect(payload.tipoSeguimiento).toBe('GENERICO');
+    expect(payload.datosEspecificos).toEqual({ tipo: 'GENERICO', datos: {} });
   });
 });
