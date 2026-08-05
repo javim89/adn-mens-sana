@@ -131,6 +131,7 @@ model Deportista {
   turnosDeportista        TurnoDeportista[]
   seguimientos            Seguimiento[]
   asistencias             Asistencia[]
+  convocatorias           ConvocatoriaDeportista[]
 
   // 1:1 satellite models
   datosEscolares          DatosEscolares?
@@ -552,6 +553,7 @@ model Categoria {
   deportistas    Deportista[]
   disciplinas    DisciplinaCategoria[]
   entrenamientos Entrenamiento[]
+  convocatorias  Convocatoria[]
 
   @@map("categorias")
 }
@@ -564,6 +566,7 @@ model Disciplina {
   categorias     DisciplinaCategoria[]
   deportistas    Deportista[]
   entrenamientos Entrenamiento[]
+  convocatorias  Convocatoria[]
 
   @@map("disciplinas")
 }
@@ -603,6 +606,7 @@ model EventoTorneo {
   categoria       Categoria       @relation(fields: [categoriaId], references: [id])
   local           Equipo          @relation("EventoLocal", fields: [localId], references: [id])
   visitante       Equipo          @relation("EventoVisitante", fields: [visitanteId], references: [id])
+  convocatoria    Convocatoria?
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
@@ -665,4 +669,42 @@ model Asistencia {
 
   @@unique([entrenamientoId, deportistaId])
   @@map("asistencias")
+}
+
+// ---------------------------------------------------------------------------
+// Models — Convocatorias
+// ---------------------------------------------------------------------------
+
+model Convocatoria {
+  id             String   @id @default(cuid())
+  eventoTorneoId String   @unique @map("evento_torneo_id")
+  disciplinaId   String   @map("disciplina_id")
+  categoriaId    String   @map("categoria_id")
+  horaCitacion   String?  @map("hora_citacion")
+  lugar          String?
+  observaciones  String?
+  entrenadorId   String   @map("entrenador_id")
+  registradoPor  String   @map("registrado_por")
+
+  evento         EventoTorneo             @relation(fields: [eventoTorneoId], references: [id], onDelete: Cascade)
+  disciplina     Disciplina               @relation(fields: [disciplinaId], references: [id])
+  categoria      Categoria                @relation(fields: [categoriaId], references: [id])
+  convocados     ConvocatoriaDeportista[]
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("convocatorias")
+}
+
+model ConvocatoriaDeportista {
+  id             String   @id @default(cuid())
+  convocatoriaId String   @map("convocatoria_id")
+  deportistaId   String   @map("deportista_id")
+
+  convocatoria   Convocatoria @relation(fields: [convocatoriaId], references: [id], onDelete: Cascade)
+  deportista     Deportista   @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@unique([convocatoriaId, deportistaId])
+  @@map("convocatoria_deportistas")
 }
