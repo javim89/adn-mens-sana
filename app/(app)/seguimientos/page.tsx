@@ -23,7 +23,9 @@ export default async function SeguimientosPage({
   const role = String(user?.publicMetadata?.role ?? '');
   const isAdmin = role === 'admin';
   const HEALTH_ROLES = ['medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'];
-  const canWrite = isAdmin || HEALTH_ROLES.includes(role);
+  // 'social' puede crear/editar/eliminar solo sus propios seguimientos GENERICOS
+  const WRITE_ROLES = [...HEALTH_ROLES, 'social'];
+  const canWrite = isAdmin || WRITE_ROLES.includes(role);
 
   // --- Leer filtros / paginación de la URL ---
   const pageRaw = parseInt(firstParam(sp.page) ?? '', 10);

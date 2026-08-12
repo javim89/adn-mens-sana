@@ -122,6 +122,11 @@ function setCallerAsEntrenador(userId = 'user_entrenador_789') {
   mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'entrenador' } });
 }
 
+function setCallerAsSocial(userId = 'user_social_111') {
+  mockAuth.mockResolvedValue({ userId });
+  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'social' } });
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const getMockTx = () => (mockPrisma as any)._tx;
 
@@ -380,6 +385,61 @@ describe('createSeguimiento', () => {
     expect(tx.seguimientoAntropometria.create).not.toHaveBeenCalled();
   });
 
+  test('28. social crea seguimiento GENERICO — profesionalId es su propio userId', async () => {
+    setCallerAsSocial('user_social_111');
+    const result = await createSeguimiento({
+      ...validData,
+      profesionalId: 'ignored-prof-id',
+      tipoSeguimiento: 'GENERICO',
+    });
+    expect(result.success).toBe(true);
+    const tx = getMockTx();
+    expect(tx.seguimiento.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          profesionalId: 'user_social_111',
+          tipoSeguimiento: 'GENERICO',
+        }),
+      }),
+    );
+  });
+
+  test('29. social crea GENERICO sin tipoSeguimiento explícito', async () => {
+    setCallerAsSocial('user_social_111');
+    const result = await createSeguimiento(validData);
+    expect(result.success).toBe(true);
+    const tx = getMockTx();
+    expect(tx.seguimiento.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ profesionalId: 'user_social_111' }),
+      }),
+    );
+  });
+
+  test('30. social NO puede crear tipo especializado (TRAUMATOLOGIA)', async () => {
+    setCallerAsSocial('user_social_111');
+    const result = await createSeguimiento({
+      ...validData,
+      tipoSeguimiento: 'TRAUMATOLOGIA',
+      datosEspecificos: { tipo: 'TRAUMATOLOGIA', datos: { postura: 'Normal' } },
+    });
+    expect(result.success).toBe(false);
+    expect((result as { success: false; error: string }).error).toContain('social');
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  test('31. social rechazado si fuerza datosEspecificos de salud con tipo base GENERICO', async () => {
+    setCallerAsSocial('user_social_111');
+    const result = await createSeguimiento({
+      ...validData,
+      tipoSeguimiento: 'GENERICO',
+      datosEspecificos: { tipo: 'ANTROPOMETRIA', datos: { peso: 70, talla: 175 } },
+    });
+    expect(result.success).toBe(false);
+    expect((result as { success: false; error: string }).error).toContain('social');
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
   test('25. ANTROPOMETRIA sin peso/talla persiste imc/sumatoria como null', async () => {
     setCallerAsNutricionista('user_nutri_123');
     const result = await createSeguimiento({
@@ -508,6 +568,52 @@ describe('updateSeguimiento', () => {
     );
   });
 
+  test('32. social dueño puede editar su seguimiento GENERICO', async () => {
+    setCallerAsSocial('user_social_111');
+    mockPrisma.seguimiento.findUnique.mockResolvedValue({
+      id: 'existing-id',
+      profesionalId: 'user_social_111',
+      tipoSeguimiento: 'GENERICO',
+    });
+    const result = await updateSeguimiento('existing-id', {
+      ...validData,
+      tipoSeguimiento: 'GENERICO',
+    });
+    expect(result.success).toBe(true);
+    const tx = getMockTx();
+    expect(tx.seguimiento.update).toHaveBeenCalled();
+  });
+
+  test('33. social NO puede editar un seguimiento ajeno', async () => {
+    setCallerAsSocial('user_social_111');
+    mockPrisma.seguimiento.findUnique.mockResolvedValue({
+      id: 'existing-id',
+      profesionalId: 'user_medico_123',
+      tipoSeguimiento: null,
+    });
+    const result = await updateSeguimiento('existing-id', validData);
+    expect(result.success).toBe(false);
+    expect((result as { success: false; error: string }).error).toContain('No autorizado');
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  test('34. social dueño NO puede cambiar su seguimiento a un tipo especializado', async () => {
+    setCallerAsSocial('user_social_111');
+    mockPrisma.seguimiento.findUnique.mockResolvedValue({
+      id: 'existing-id',
+      profesionalId: 'user_social_111',
+      tipoSeguimiento: 'GENERICO',
+    });
+    const result = await updateSeguimiento('existing-id', {
+      ...validData,
+      tipoSeguimiento: 'TRAUMATOLOGIA',
+      datosEspecificos: { tipo: 'TRAUMATOLOGIA', datos: { postura: 'Normal' } },
+    });
+    expect(result.success).toBe(false);
+    expect((result as { success: false; error: string }).error).toContain('social');
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
   test('27. cambio de ANTROPOMETRIA a GENERICO borra la fila satélite', async () => {
     setCallerAsNutricionista('user_nutri_123');
     mockPrisma.seguimiento.findUnique.mockResolvedValue({
@@ -571,5 +677,30 @@ describe('deleteSeguimiento', () => {
     const result = await deleteSeguimiento('existing-id');
     expect(result.success).toBe(true);
     expect(mockPrisma.seguimiento.delete).toHaveBeenCalledWith({ where: { id: 'existing-id' } });
+  });
+
+  test('35. social dueño puede eliminar su seguimiento GENERICO', async () => {
+    setCallerAsSocial('user_social_111');
+    mockPrisma.seguimiento.findUnique.mockResolvedValue({
+      id: 'existing-id',
+      profesionalId: 'user_social_111',
+      tipoSeguimiento: 'GENERICO',
+    });
+    const result = await deleteSeguimiento('existing-id');
+    expect(result.success).toBe(true);
+    expect(mockPrisma.seguimiento.delete).toHaveBeenCalledWith({ where: { id: 'existing-id' } });
+  });
+
+  test('36. social NO puede eliminar un seguimiento ajeno', async () => {
+    setCallerAsSocial('user_social_111');
+    mockPrisma.seguimiento.findUnique.mockResolvedValue({
+      id: 'existing-id',
+      profesionalId: 'user_medico_123',
+      tipoSeguimiento: null,
+    });
+    const result = await deleteSeguimiento('existing-id');
+    expect(result.success).toBe(false);
+    expect((result as { success: false; error: string }).error).toContain('No autorizado');
+    expect(mockPrisma.seguimiento.delete).not.toHaveBeenCalled();
   });
 });
