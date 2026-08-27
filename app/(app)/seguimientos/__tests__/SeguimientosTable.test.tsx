@@ -62,12 +62,31 @@ function renderTable(props: Partial<React.ComponentProps<typeof SeguimientosTabl
       canWrite={props.canWrite ?? false}
       currentUserId={props.currentUserId ?? 'user-x'}
       profesionales={props.profesionales ?? []}
+      disciplinas={props.disciplinas ?? []}
       currentPrioridad={props.currentPrioridad ?? ''}
       currentArea={props.currentArea ?? ''}
+      currentDisciplina={props.currentDisciplina ?? ''}
+      currentCategoria={props.currentCategoria ?? ''}
       currentSearch={props.currentSearch ?? ''}
     />,
   );
 }
+
+const mockDisciplinas = [
+  {
+    id: 'disc-futbol',
+    nombre: 'Fútbol',
+    categorias: [
+      { id: 'cat-primera', nombre: 'Primera' },
+      { id: 'cat-reserva', nombre: 'Reserva' },
+    ],
+  },
+  {
+    id: 'disc-basquet',
+    nombre: 'Básquet',
+    categorias: [],
+  },
+];
 
 beforeEach(() => {
   mockPush.mockClear();
@@ -155,8 +174,11 @@ describe('SeguimientosTable', () => {
         canWrite={true}
         currentUserId="user-x"
         profesionales={[]}
+        disciplinas={[]}
         currentPrioridad=""
         currentArea=""
+        currentDisciplina=""
+        currentCategoria=""
         currentSearch=""
       />,
     );
@@ -180,6 +202,38 @@ describe('SeguimientosTable', () => {
     await user.click(screen.getByRole('button', { name: 'Todas las áreas' }));
     // Ambos profesionales aparecen aunque solo prof-A esté en la página actual
     expect(screen.getByRole('button', { name: 'Dr. B' })).toBeDefined();
+  });
+
+  test('el filtro de categoría arranca deshabilitado cuando no hay disciplina seleccionada', () => {
+    const data = [makeSeguimiento()];
+    renderTable({
+      initialSeguimientos: data,
+      total: 1,
+      disciplinas: mockDisciplinas,
+      currentDisciplina: '',
+    });
+
+    const categoriaTrigger = screen.getByRole('button', { name: /todas las categorías/i });
+    expect(categoriaTrigger).toBeDisabled();
+  });
+
+  test('al seleccionar una disciplina con categorías, el filtro de categoría se habilita y ofrece sus categorías', async () => {
+    const user = userEvent.setup();
+    const data = [makeSeguimiento()];
+    renderTable({
+      initialSeguimientos: data,
+      total: 1,
+      disciplinas: mockDisciplinas,
+      currentDisciplina: 'disc-futbol',
+    });
+
+    const categoriaTrigger = screen.getByRole('button', { name: /todas las categorías/i });
+    expect(categoriaTrigger).not.toBeDisabled();
+
+    await user.click(categoriaTrigger);
+    // Muestra SOLO las categorías de la disciplina elegida (Fútbol).
+    expect(await screen.findByText('Primera')).toBeInTheDocument();
+    expect(screen.getByText('Reserva')).toBeInTheDocument();
   });
 
   test('botones Editar/Eliminar visibles si isAdmin=true (independientemente del profesionalId)', () => {

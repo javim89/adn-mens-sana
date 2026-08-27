@@ -31,8 +31,11 @@ interface Props {
   canWrite: boolean;
   currentUserId: string;
   profesionales: ProfesionalOption[];
+  disciplinas: { id: string; nombre: string; categorias: { id: string; nombre: string }[] }[];
   currentPrioridad: string;
   currentArea: string;
+  currentDisciplina: string;
+  currentCategoria: string;
   currentSearch: string;
 }
 
@@ -84,8 +87,11 @@ export default function SeguimientosTable({
   canWrite,
   currentUserId,
   profesionales,
+  disciplinas,
   currentPrioridad,
   currentArea,
+  currentDisciplina,
+  currentCategoria,
   currentSearch,
 }: Props) {
   const router = useRouter();
@@ -105,6 +111,9 @@ export default function SeguimientosTable({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const seguimientos = initialSeguimientos;
+
+  const categoriasFiltro =
+    disciplinas.find((d) => d.id === currentDisciplina)?.categorias ?? [];
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
@@ -133,6 +142,14 @@ export default function SeguimientosTable({
 
   function handleAreaChange(value: string) {
     navigate(buildUrl({ area: value || null, page: null }));
+  }
+
+  function handleDisciplinaChange(value: string) {
+    navigate(buildUrl({ disciplina: value || null, categoria: null, page: null }));
+  }
+
+  function handleCategoriaChange(value: string) {
+    navigate(buildUrl({ categoria: value || null, page: null }));
   }
 
   function handleSearchChange(value: string) {
@@ -216,6 +233,29 @@ export default function SeguimientosTable({
             { value: 'MEDIA', label: 'Media' },
             { value: 'ALTA', label: 'Alta' },
             { value: 'URGENTE', label: 'Urgente' },
+          ]}
+          className="min-w-[160px]"
+        />
+
+        <CustomSelect
+          value={currentDisciplina}
+          onChange={handleDisciplinaChange}
+          searchable
+          options={[
+            { value: '', label: 'Todas las disciplinas' },
+            ...disciplinas.map((d) => ({ value: d.id, label: d.nombre })),
+          ]}
+          className="min-w-[160px]"
+        />
+
+        <CustomSelect
+          value={currentCategoria}
+          onChange={handleCategoriaChange}
+          searchable
+          disabled={!currentDisciplina}
+          options={[
+            { value: '', label: 'Todas las categorías' },
+            ...categoriasFiltro.map((c) => ({ value: c.id, label: c.nombre })),
           ]}
           className="min-w-[160px]"
         />

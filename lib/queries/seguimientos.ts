@@ -7,6 +7,8 @@ export interface GetSeguimientosParams {
   deportistaId?: string;
   prioridad?: PrioridadSeguimiento;
   tipoSeguimiento?: TipoSeguimiento;
+  disciplinaId?: string;
+  categoriaId?: string;
   search?: string;
   page?: number; // 0-based
   pageSize?: number;
@@ -39,6 +41,16 @@ function buildWhere(params: GetSeguimientosParams): Prisma.SeguimientoWhereInput
     ...(params.deportistaId ? { deportistaId: params.deportistaId } : {}),
     ...(params.prioridad ? { prioridad: params.prioridad } : {}),
     ...(params.tipoSeguimiento ? { tipoSeguimiento: params.tipoSeguimiento } : {}),
+    ...((params.disciplinaId || params.categoriaId)
+      ? {
+          deportista: {
+            is: {
+              ...(params.disciplinaId ? { disciplinaId: params.disciplinaId } : {}),
+              ...(params.categoriaId ? { categoriaId: params.categoriaId } : {}),
+            },
+          },
+        }
+      : {}),
     ...(search
       ? {
           OR: [
