@@ -129,7 +129,7 @@ model Deportista {
   clubesAnteriores        ClubAnterior[]
   historiaDeportiva       HistoriaDeportiva[]
   turnosDeportista        TurnoDeportista[]
-  seguimientos            Seguimiento[]
+  seguimientos            SeguimientoDeportista[]
   asistencias             Asistencia[]
   convocatorias           ConvocatoriaDeportista[]
 
@@ -378,7 +378,6 @@ enum TipoSeguimiento {
 
 model Seguimiento {
   id                   String               @id @default(cuid())
-  deportistaId         String               @map("deportista_id")
   profesionalId        String               @map("profesional_id")
   fecha                DateTime
   titulo               String
@@ -390,7 +389,7 @@ model Seguimiento {
   alertaSeguimiento    String?              @map("alerta_seguimiento")
   tipoSeguimiento      TipoSeguimiento?     @map("tipo_seguimiento")
 
-  deportista               Deportista                       @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+  deportistas              SeguimientoDeportista[]
   traumatologia            SeguimientoTraumatologia?
   historiaClinica          SeguimientoHistoriaClinica?
   evaluacionPsicologica    SeguimientoEvaluacionPsicologica?
@@ -401,6 +400,20 @@ model Seguimiento {
   updatedAt            DateTime             @updatedAt @map("updated_at")
 
   @@map("seguimientos")
+}
+
+model SeguimientoDeportista {
+  seguimientoId String @map("seguimiento_id")
+  deportistaId  String @map("deportista_id")
+
+  seguimiento Seguimiento @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+  deportista  Deportista  @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([seguimientoId, deportistaId])
+  @@index([deportistaId])
+  @@map("seguimiento_deportistas")
 }
 
 model SeguimientoTraumatologia {

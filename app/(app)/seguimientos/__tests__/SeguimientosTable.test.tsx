@@ -44,8 +44,7 @@ const makeSeguimiento = (overrides: Partial<SeguimientoListItem> = {}): Seguimie
   tipoSeguimiento: null,
   profesionalId: 'prof-medico-123',
   profesionalNombre: 'Dr. García',
-  deportistaId: 'dep-1',
-  deportistaNombre: 'Pérez, Juan',
+  deportistas: [{ id: 'dep-1', nombre: 'Juan', apellido: 'Pérez' }],
   ...overrides,
 });
 
@@ -108,6 +107,48 @@ describe('SeguimientosTable', () => {
     renderTable({ initialSeguimientos: data, total: 2 });
     expect(screen.getAllByText('Seguimiento rodilla').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Control nutricional').length).toBeGreaterThan(0);
+  });
+
+  test('renderiza el nombre del deportista cuando hay uno solo', () => {
+    const data = [
+      makeSeguimiento({
+        id: 'seg-1',
+        deportistas: [{ id: 'dep-1', nombre: 'Juan', apellido: 'Pérez' }],
+      }),
+    ];
+    renderTable({ initialSeguimientos: data, total: 1 });
+    expect(screen.getAllByText(/Pérez, Juan/).length).toBeGreaterThan(0);
+  });
+
+  test('con múltiples deportistas muestra el primero y "+N"', () => {
+    const data = [
+      makeSeguimiento({
+        id: 'seg-1',
+        deportistas: [
+          { id: 'dep-1', nombre: 'Juan', apellido: 'Pérez' },
+          { id: 'dep-2', nombre: 'Ana', apellido: 'Gómez' },
+          { id: 'dep-3', nombre: 'Luis', apellido: 'Díaz' },
+        ],
+      }),
+    ];
+    renderTable({ initialSeguimientos: data, total: 1 });
+    // El primer nombre y el sufijo "+N" viven en spans separados para que el
+    // "+N" siempre sea visible aunque el nombre trunque.
+    expect(screen.getAllByText('Pérez, Juan').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('+2').length).toBeGreaterThan(0);
+  });
+
+  test('muestra "—" cuando el seguimiento no tiene deportistas asociados', () => {
+    const data = [
+      makeSeguimiento({
+        id: 'seg-sin-deportistas',
+        titulo: 'Histórico sin deportistas',
+        deportistas: [],
+      }),
+    ];
+    renderTable({ initialSeguimientos: data, total: 1 });
+    expect(screen.getAllByText('Histórico sin deportistas').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
 
   test('el contador del header muestra el total del server, no el largo de la página', () => {

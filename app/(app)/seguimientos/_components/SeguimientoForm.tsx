@@ -75,7 +75,7 @@ const antropometriaField = z.number().min(0, 'Mínimo 0').optional().or(z.nan().
 function buildSchema(isAdmin: boolean) {
   return z
     .object({
-      deportistaId: z.string().min(1, 'El deportista es requerido'),
+      deportistaIds: z.array(z.string()).min(1, 'Seleccione al menos un deportista'),
       profesionalId: z.string().optional(),
       fecha: z.string().min(1, 'La fecha es requerida'),
       titulo: z.string().min(1, 'El título es requerido'),
@@ -164,14 +164,8 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, in
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const [deportistaOption, setDeportistaOption] = useState<DeportistaOption | null>(
-    initialData
-      ? {
-          id: initialData.deportistaId,
-          nombre: initialData.deportistaNombre.split(', ')[1] ?? '',
-          apellido: initialData.deportistaNombre.split(', ')[0] ?? '',
-        }
-      : null,
+  const [deportistaOptions, setDeportistaOptions] = useState<DeportistaOption[]>(
+    initialData?.deportistas ?? [],
   );
 
   const tiposDisponibles = useMemo(() => getTiposDisponibles(role), [role]);
@@ -196,7 +190,7 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, in
   } = useForm<SeguimientoExtendedFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      deportistaId: initialData?.deportistaId ?? '',
+      deportistaIds: initialData?.deportistas?.map((d) => d.id) ?? [],
       profesionalId: initialData?.profesionalId ?? '',
       fecha: initialData?.fecha ?? '',
       titulo: initialData?.titulo ?? '',
@@ -365,7 +359,7 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, in
     const tipo = (values.tipoSeguimiento ?? 'GENERICO') as TipoSeguimiento;
 
     const data: SeguimientoFormData = {
-      deportistaId: values.deportistaId,
+      deportistaIds: values.deportistaIds,
       profesionalId: values.profesionalId ?? '',
       fecha: values.fecha,
       titulo: values.titulo,
@@ -428,20 +422,20 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, in
           Deportista <span className="text-red-500">*</span>
         </label>
         <Controller
-          name="deportistaId"
+          name="deportistaIds"
           control={control}
           render={({ field }) => (
             <DeportistaSelect
-              value={deportistaOption}
-              onChange={(option) => {
-                setDeportistaOption(option);
-                field.onChange(option?.id ?? '');
+              value={deportistaOptions}
+              onChange={(next) => {
+                setDeportistaOptions(next);
+                field.onChange(next.map((d) => d.id));
               }}
             />
           )}
         />
-        {errors.deportistaId && (
-          <p className="mt-1 text-xs text-red-600">{errors.deportistaId.message}</p>
+        {errors.deportistaIds && (
+          <p className="mt-1 text-xs text-red-600">{errors.deportistaIds.message}</p>
         )}
       </div>
 

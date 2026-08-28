@@ -265,7 +265,9 @@ export async function createSeguimiento(
 
     if (!data.titulo?.trim()) return { success: false, error: 'El título es requerido' };
     if (!data.fecha) return { success: false, error: 'La fecha es requerida' };
-    if (!data.deportistaId) return { success: false, error: 'El deportista es requerido' };
+    if (!data.deportistaIds?.length) {
+      return { success: false, error: 'Debe seleccionar al menos un deportista' };
+    }
 
     // Validate tipo compatibility with caller role
     const tipoSeguimiento = data.tipoSeguimiento ?? null;
@@ -303,7 +305,6 @@ export async function createSeguimiento(
     const result = await prisma.$transaction(async (tx) => {
       const seguimiento = await tx.seguimiento.create({
         data: {
-          deportistaId: data.deportistaId,
           profesionalId,
           fecha: new Date(data.fecha),
           titulo: data.titulo.trim(),
@@ -315,6 +316,14 @@ export async function createSeguimiento(
           alertaSeguimiento: data.alertaSeguimiento?.trim() || null,
           tipoSeguimiento,
         },
+      });
+
+      await tx.seguimientoDeportista.createMany({
+        data: [...new Set(data.deportistaIds)].map((deportistaId) => ({
+          seguimientoId: seguimiento.id,
+          deportistaId,
+        })),
+        skipDuplicates: true,
       });
 
       if (data.datosEspecificos && tipoSeguimiento !== 'GENERICO') {
@@ -345,6 +354,10 @@ export async function updateSeguimiento(
 
     const existing = await prisma.seguimiento.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Seguimiento no encontrado' };
+
+    if (!data.deportistaIds?.length) {
+      return { success: false, error: 'Debe seleccionar al menos un deportista' };
+    }
 
     // Ownership rule: only the owner or admin can edit
     const isOwner = existing.profesionalId === userId;
@@ -392,7 +405,6 @@ export async function updateSeguimiento(
       await tx.seguimiento.update({
         where: { id },
         data: {
-          deportistaId: data.deportistaId,
           profesionalId,
           fecha: new Date(data.fecha),
           titulo: data.titulo.trim(),
@@ -404,6 +416,15 @@ export async function updateSeguimiento(
           alertaSeguimiento: data.alertaSeguimiento?.trim() || null,
           tipoSeguimiento,
         },
+      });
+
+      await tx.seguimientoDeportista.deleteMany({ where: { seguimientoId: id } });
+      await tx.seguimientoDeportista.createMany({
+        data: [...new Set(data.deportistaIds)].map((deportistaId) => ({
+          seguimientoId: id,
+          deportistaId,
+        })),
+        skipDuplicates: true,
       });
 
       if (data.datosEspecificos) {

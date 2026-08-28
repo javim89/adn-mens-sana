@@ -26,8 +26,10 @@ const SEGUIMIENTO_SELECT = {
   alertaSeguimiento: true,
   tipoSeguimiento: true,
   profesionalId: true,
-  deportistaId: true,
-  deportista: { select: { id: true, nombre: true, apellido: true } },
+  deportistas: {
+    select: { deportista: { select: { id: true, nombre: true, apellido: true } } },
+    orderBy: { deportista: { apellido: 'asc' } },
+  },
 } satisfies Prisma.SeguimientoSelect;
 
 export type SeguimientoRow = Prisma.SeguimientoGetPayload<{
@@ -36,26 +38,39 @@ export type SeguimientoRow = Prisma.SeguimientoGetPayload<{
 
 function buildWhere(params: GetSeguimientosParams): Prisma.SeguimientoWhereInput {
   const search = params.search?.trim();
-  return {
-    ...(params.profesionalId ? { profesionalId: params.profesionalId } : {}),
-    ...(params.deportistaId ? { deportistaId: params.deportistaId } : {}),
-    ...(params.prioridad ? { prioridad: params.prioridad } : {}),
-    ...(params.tipoSeguimiento ? { tipoSeguimiento: params.tipoSeguimiento } : {}),
-    ...((params.disciplinaId || params.categoriaId)
-      ? {
+
+  // Cada filtro que referencia la relación N:M `deportistas` se agrega como una
+  // entrada independiente del array `AND`. Si se colapsaran en un solo objeto
+  // literal, la clave `deportistas` de un filtro pisaría a la del otro (p. ej.
+  // filtrar por deportista puntual + disciplina/categoría a la vez perdería uno).
+  const and: Prisma.SeguimientoWhereInput[] = [];
+
+  if (params.deportistaId) {
+    and.push({ deportistas: { some: { deportistaId: params.deportistaId } } });
+  }
+
+  if (params.disciplinaId || params.categoriaId) {
+    and.push({
+      deportistas: {
+        some: {
           deportista: {
             is: {
               ...(params.disciplinaId ? { disciplinaId: params.disciplinaId } : {}),
               ...(params.categoriaId ? { categoriaId: params.categoriaId } : {}),
             },
           },
-        }
-      : {}),
-    ...(search
-      ? {
-          OR: [
-            { titulo: { contains: search, mode: 'insensitive' } },
-            {
+        },
+      },
+    });
+  }
+
+  if (search) {
+    and.push({
+      OR: [
+        { titulo: { contains: search, mode: 'insensitive' } },
+        {
+          deportistas: {
+            some: {
               deportista: {
                 is: {
                   OR: [
@@ -65,9 +80,17 @@ function buildWhere(params: GetSeguimientosParams): Prisma.SeguimientoWhereInput
                 },
               },
             },
-          ],
-        }
-      : {}),
+          },
+        },
+      ],
+    });
+  }
+
+  return {
+    ...(params.profesionalId ? { profesionalId: params.profesionalId } : {}),
+    ...(params.prioridad ? { prioridad: params.prioridad } : {}),
+    ...(params.tipoSeguimiento ? { tipoSeguimiento: params.tipoSeguimiento } : {}),
+    ...(and.length > 0 ? { AND: and } : {}),
   };
 }
 
@@ -100,7 +123,10 @@ export async function getSeguimientoById(id: string) {
   return prisma.seguimiento.findUnique({
     where: { id },
     include: {
-      deportista: { select: { id: true, nombre: true, apellido: true } },
+      deportistas: {
+        select: { deportista: { select: { id: true, nombre: true, apellido: true } } },
+        orderBy: { deportista: { apellido: 'asc' } },
+      },
       traumatologia: true,
       historiaClinica: true,
       evaluacionPsicologica: true,

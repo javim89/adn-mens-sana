@@ -87,8 +87,7 @@ export default async function SeguimientosPage({
     tipoSeguimiento: s.tipoSeguimiento ?? null,
     profesionalId: s.profesionalId,
     profesionalNombre: profesionalesMap[s.profesionalId] ?? s.profesionalId,
-    deportistaId: s.deportista.id,
-    deportistaNombre: `${s.deportista.apellido}, ${s.deportista.nombre}`,
+    deportistas: s.deportistas.map((x) => x.deportista),
   }));
 
   // Dropdown de "Área responsable" (admin): lista completa, no derivada de la página actual.
