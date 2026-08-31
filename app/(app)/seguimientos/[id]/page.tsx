@@ -124,6 +124,11 @@ export default async function SeguimientoDetallePage({ params }: Props) {
   const tipo = seguimiento.tipoSeguimiento ?? 'GENERICO';
   const fechaStr = seguimiento.fecha.toISOString().split('T')[0];
 
+  const nombresDeportistas = seguimiento.deportistas
+    .map((x) => `${x.deportista.apellido}, ${x.deportista.nombre}`)
+    .join(' · ');
+  const deportistasLabel = nombresDeportistas || 'Sin deportistas';
+
   const t = seguimiento.traumatologia;
   const hc = seguimiento.historiaClinica;
   const ps = seguimiento.evaluacionPsicologica;
@@ -164,7 +169,7 @@ export default async function SeguimientoDetallePage({ params }: Props) {
             )}
           </div>
           <p className="text-sm text-[#6B7280]">
-            {seguimiento.deportista.apellido}, {seguimiento.deportista.nombre} · {formatDate(fechaStr)}
+            {deportistasLabel} · {formatDate(fechaStr)}
           </p>
           <p className="text-sm text-[#6B7280]">Profesional: {profesionalNombre}</p>
         </div>

@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { getDeportistaById } from '@/lib/queries/deportistas';
 import { getSeguimientos } from '@/lib/queries/seguimientos';
+import { getTrayectoria } from '@/lib/queries/trayectoria';
+import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
+import { getCategorias } from '@/lib/queries/categorias';
 import DeportistaDetailTabs from '../_components/DeportistaDetailTabs';
 import DeleteDeportistaModal from '../_components/DeleteDeportistaModal';
 import { ESTADO_LABELS } from '@/lib/utils/enum-labels';
@@ -34,6 +37,11 @@ export default async function DeportistaDetailPage({
     proximaCita: s.proximaCita?.toISOString() ?? null,
     tipoSeguimiento: s.tipoSeguimiento ?? null,
   }));
+
+  const [{ periodos, eventos }, disciplinasCatalogo, categoriasCatalogo] =
+    await Promise.all([getTrayectoria(id), getDisciplinasConCategorias(), getCategorias()]);
+  const disciplinas = disciplinasCatalogo.map((d) => ({ id: d.id, nombre: d.nombre }));
+  const categorias = categoriasCatalogo.map((c) => ({ id: c.id, nombre: c.nombre }));
 
   const nombreCompleto = `${deportista.apellido}, ${deportista.nombre}`;
 
@@ -82,7 +90,14 @@ export default async function DeportistaDetailPage({
         </div>
       </div>
 
-      <DeportistaDetailTabs deportista={deportista} seguimientos={seguimientos} />
+      <DeportistaDetailTabs
+        deportista={deportista}
+        seguimientos={seguimientos}
+        periodos={periodos}
+        eventos={eventos}
+        disciplinas={disciplinas}
+        categorias={categorias}
+      />
     </div>
   );
 }

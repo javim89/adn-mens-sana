@@ -18,16 +18,34 @@ vi.mock('@/lib/actions/seguimientos', () => ({
 
 const mockedCreateSeguimiento = vi.mocked(createSeguimiento);
 
-// Mock DeportistaSelect — invoca onChange para poder completar el campo requerido
+// Mock DeportistaSelect — invoca onChange para poder completar el campo requerido.
+// Soporta multi-selección: cada botón agrega un deportista al arreglo `value`.
+type DepOption = { id: string; nombre: string; apellido: string };
 vi.mock('../_components/DeportistaSelect', () => ({
-  default: ({ onChange }: { onChange: (o: { id: string; nombre: string; apellido: string }) => void }) => (
-    <button
-      type="button"
-      data-testid="deportista-select"
-      onClick={() => onChange({ id: 'dep-1', nombre: 'Juan', apellido: 'Pérez' })}
-    >
-      DeportistaSelect
-    </button>
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: DepOption[];
+    onChange: (next: DepOption[]) => void;
+  }) => (
+    <div data-testid="deportista-select">
+      <button
+        type="button"
+        data-testid="add-dep-1"
+        onClick={() => onChange([...value, { id: 'dep-1', nombre: 'Juan', apellido: 'Pérez' }])}
+      >
+        Agregar Juan
+      </button>
+      <button
+        type="button"
+        data-testid="add-dep-2"
+        onClick={() => onChange([...value, { id: 'dep-2', nombre: 'Ana', apellido: 'Gómez' }])}
+      >
+        Agregar Ana
+      </button>
+      <span data-testid="dep-count">{value.length}</span>
+    </div>
   ),
 }));
 
@@ -49,8 +67,7 @@ const sampleInitialData: SeguimientoListItem = {
   tipoSeguimiento: null,
   profesionalId: 'prof-medico-123',
   profesionalNombre: 'Dr. García',
-  deportistaId: 'dep-1',
-  deportistaNombre: 'Pérez, Juan',
+  deportistas: [{ id: 'dep-1', nombre: 'Juan', apellido: 'Pérez' }],
 };
 
 beforeEach(() => {
@@ -316,7 +333,7 @@ describe('SeguimientoForm', () => {
       />,
     );
 
-    await user.click(screen.getByTestId('deportista-select'));
+    await user.click(screen.getByTestId('add-dep-1'));
 
     const fechaInput = document.querySelector('input[type="date"]') as HTMLInputElement;
     fireEvent.change(fechaInput, { target: { value: '2026-08-05' } });
@@ -332,5 +349,57 @@ describe('SeguimientoForm', () => {
     const payload = mockedCreateSeguimiento.mock.calls[0][0];
     expect(payload.tipoSeguimiento).toBe('GENERICO');
     expect(payload.datosEspecificos).toEqual({ tipo: 'GENERICO', datos: {} });
+  });
+
+  test('el submit envía deportistaIds con varios ids cuando se seleccionan múltiples deportistas', async () => {
+    const user = userEvent.setup();
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="medico"
+        profesionales={[]}
+      />,
+    );
+
+    await user.click(screen.getByTestId('add-dep-1'));
+    await user.click(screen.getByTestId('add-dep-2'));
+
+    const fechaInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+    fireEvent.change(fechaInput, { target: { value: '2026-08-05' } });
+
+    await user.type(screen.getByPlaceholderText(/Evaluación de rodilla/i), 'Evaluación grupal');
+
+    await user.click(screen.getByText('Guardar seguimiento'));
+
+    await waitFor(() => {
+      expect(mockedCreateSeguimiento).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = mockedCreateSeguimiento.mock.calls[0][0];
+    expect(payload.deportistaIds).toEqual(['dep-1', 'dep-2']);
+  });
+
+  test('no permite submit sin ningún deportista seleccionado (deportistaIds requerido)', async () => {
+    const user = userEvent.setup();
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="medico"
+        profesionales={[]}
+      />,
+    );
+
+    const fechaInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+    fireEvent.change(fechaInput, { target: { value: '2026-08-05' } });
+    await user.type(screen.getByPlaceholderText(/Evaluación de rodilla/i), 'Sin deportista');
+
+    await user.click(screen.getByText('Guardar seguimiento'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Seleccione al menos un deportista')).toBeInTheDocument();
+    });
+    expect(mockedCreateSeguimiento).not.toHaveBeenCalled();
   });
 });

@@ -12,6 +12,25 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+// Mock next/navigation (usado por GestionDivisionesModal dentro de la tab Trayectoria)
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
+
+// Mock server actions de trayectoria (evita importar lib/db en el test)
+vi.mock('@/lib/actions/trayectoria', () => ({
+  crearTransicionDivision: vi.fn(),
+  updatePasoPorDivision: vi.fn(),
+  deletePasoPorDivision: vi.fn(),
+}));
+
+const trayectoriaProps = {
+  periodos: [],
+  eventos: [],
+  disciplinas: [],
+  categorias: [],
+};
+
 const makeDeportista = (
   overrides: Partial<DeportistaWithRelations> = {},
 ): DeportistaWithRelations =>
@@ -65,8 +84,14 @@ const makeSeguimiento = (
 });
 
 describe('DeportistaDetailTabs', () => {
-  test('renderiza las 7 tabs incluidas Seguimiento y Triage', () => {
-    render(<DeportistaDetailTabs deportista={makeDeportista()} seguimientos={[]} />);
+  test('renderiza las tabs incluidas Seguimiento, Trayectoria y Triage', () => {
+    render(
+      <DeportistaDetailTabs
+        deportista={makeDeportista()}
+        seguimientos={[]}
+        {...trayectoriaProps}
+      />,
+    );
 
     for (const label of [
       'Datos Personales',
@@ -75,6 +100,7 @@ describe('DeportistaDetailTabs', () => {
       'Datos Sociales',
       'Salud',
       'Seguimiento',
+      'Trayectoria',
       'Triage',
     ]) {
       expect(screen.getByRole('tab', { name: label })).toBeDefined();
@@ -82,14 +108,26 @@ describe('DeportistaDetailTabs', () => {
   });
 
   test('la tab por defecto es Personal (muestra Datos Personales)', () => {
-    render(<DeportistaDetailTabs deportista={makeDeportista()} seguimientos={[]} />);
+    render(
+      <DeportistaDetailTabs
+        deportista={makeDeportista()}
+        seguimientos={[]}
+        {...trayectoriaProps}
+      />,
+    );
     // El DNI del deportista de prueba solo aparece en la sección personal
     expect(screen.getByText('12345678')).toBeDefined();
   });
 
   test('al hacer click en Triage muestra el placeholder', async () => {
     const user = userEvent.setup();
-    render(<DeportistaDetailTabs deportista={makeDeportista()} seguimientos={[]} />);
+    render(
+      <DeportistaDetailTabs
+        deportista={makeDeportista()}
+        seguimientos={[]}
+        {...trayectoriaProps}
+      />,
+    );
 
     await user.click(screen.getByRole('tab', { name: 'Triage' }));
     expect(screen.getByText(/Próximamente/i)).toBeDefined();
@@ -101,6 +139,7 @@ describe('DeportistaDetailTabs', () => {
       <DeportistaDetailTabs
         deportista={makeDeportista()}
         seguimientos={[makeSeguimiento({ titulo: 'Evaluación de rodilla' })]}
+        {...trayectoriaProps}
       />,
     );
 
@@ -114,6 +153,7 @@ describe('DeportistaDetailTabs', () => {
       <DeportistaDetailTabs
         deportista={makeDeportista({ categoria: { id: 'cat-primera', nombre: 'Primera' } })}
         seguimientos={[]}
+        {...trayectoriaProps}
       />,
     );
 
@@ -123,7 +163,13 @@ describe('DeportistaDetailTabs', () => {
 
   test('el estado vacío de una tab de datos se muestra cuando no hay relación', async () => {
     const user = userEvent.setup();
-    render(<DeportistaDetailTabs deportista={makeDeportista()} seguimientos={[]} />);
+    render(
+      <DeportistaDetailTabs
+        deportista={makeDeportista()}
+        seguimientos={[]}
+        {...trayectoriaProps}
+      />,
+    );
 
     await user.click(screen.getByRole('tab', { name: 'Datos Escolares' }));
     expect(screen.getByText(/Sin datos cargados/i)).toBeDefined();

@@ -42,6 +42,11 @@ const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted
     apoyoRequerido: {
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
+    pasoPorDivision: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      update: vi.fn().mockResolvedValue({ id: 'paso-abierto' }),
+      create: vi.fn().mockResolvedValue({ id: 'paso-nuevo' }),
+    },
     $transaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };
   return { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma };
@@ -127,16 +132,41 @@ describe('createDeportista', () => {
     await createDeportista(dataWithClubes);
     expect(mockPrisma.clubAnterior.createMany).toHaveBeenCalled();
   });
+
+  test('crea el período inicial de trayectoria abierto con la categoría y disciplina provistas', async () => {
+    const dataWithDivision: DeportistaFormData = {
+      ...validMinimalData,
+      categoriaId: 'cat-nueva',
+      disciplinaId: 'disc-futbol',
+    };
+    const result = await createDeportista(dataWithDivision);
+    expect(result.success).toBe(true);
+    expect(mockPrisma.pasoPorDivision.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          deportistaId: 'new-deportista-id',
+          categoriaId: 'cat-nueva',
+          disciplinaId: 'disc-futbol',
+          hasta: null,
+        }),
+      }),
+    );
+  });
 });
 
 describe('updateDeportista', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuth.mockResolvedValue({ userId: 'user_test_123' });
+    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
     mockPrisma.deportista.findUnique.mockResolvedValue({ id: 'existing-id' });
     mockPrisma.deportista.update.mockResolvedValue({ id: 'existing-id' });
     mockPrisma.clubAnterior.deleteMany.mockResolvedValue({ count: 0 });
     mockPrisma.datosEscolares.upsert.mockResolvedValue({ id: 'esc-id' });
+    mockPrisma.pasoPorDivision.findFirst.mockResolvedValue(null);
+    mockPrisma.pasoPorDivision.update.mockResolvedValue({ id: 'paso-abierto' });
+    mockPrisma.pasoPorDivision.create.mockResolvedValue({ id: 'paso-nuevo' });
+    mockPrisma.$transaction.mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops));
   });
 
   test('retorna error si userId es null', async () => {
@@ -163,6 +193,90 @@ describe('updateDeportista', () => {
     };
     await updateDeportista('existing-id', dataWithEscolar);
     expect(mockPrisma.datosEscolares.upsert).toHaveBeenCalled();
+  });
+
+  test('registra transición: cierra período abierto y crea uno nuevo al cambiar la categoría', async () => {
+    mockPrisma.deportista.findUnique.mockResolvedValue({
+      id: 'existing-id',
+      categoriaId: 'cat-vieja',
+      disciplinaId: 'disc-futbol',
+    });
+    mockPrisma.pasoPorDivision.findFirst.mockResolvedValue({
+      id: 'paso-abierto',
+      desde: new Date('2024-01-01'),
+      hasta: null,
+    });
+
+    const result = await updateDeportista('existing-id', {
+      ...validMinimalData,
+      categoriaId: 'cat-nueva',
+      disciplinaId: 'disc-futbol',
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockPrisma.pasoPorDivision.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'paso-abierto' },
+        data: expect.objectContaining({ hasta: expect.any(Date) }),
+      }),
+    );
+    expect(mockPrisma.pasoPorDivision.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          deportistaId: 'existing-id',
+          categoriaId: 'cat-nueva',
+          disciplinaId: 'disc-futbol',
+          hasta: null,
+        }),
+      }),
+    );
+  });
+
+  test('no registra transición cuando no cambian categoría ni disciplina', async () => {
+    mockPrisma.deportista.findUnique.mockResolvedValue({
+      id: 'existing-id',
+      categoriaId: null,
+      disciplinaId: null,
+    });
+
+    const result = await updateDeportista('existing-id', {
+      ...validMinimalData,
+      categoriaId: undefined,
+      disciplinaId: undefined,
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockPrisma.pasoPorDivision.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.pasoPorDivision.update).not.toHaveBeenCalled();
+    expect(mockPrisma.pasoPorDivision.create).not.toHaveBeenCalled();
+  });
+
+  test('crea el primer período cuando cambia la división y no hay período abierto', async () => {
+    mockPrisma.deportista.findUnique.mockResolvedValue({
+      id: 'existing-id',
+      categoriaId: null,
+      disciplinaId: null,
+    });
+    mockPrisma.pasoPorDivision.findFirst.mockResolvedValue(null);
+
+    const result = await updateDeportista('existing-id', {
+      ...validMinimalData,
+      categoriaId: 'cat-nueva',
+      disciplinaId: 'disc-futbol',
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockPrisma.pasoPorDivision.update).not.toHaveBeenCalled();
+    expect(mockPrisma.pasoPorDivision.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          deportistaId: 'existing-id',
+          categoriaId: 'cat-nueva',
+          disciplinaId: 'disc-futbol',
+          hasta: null,
+        }),
+      }),
+    );
   });
 });
 

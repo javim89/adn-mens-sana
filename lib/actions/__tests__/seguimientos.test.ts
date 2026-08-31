@@ -19,6 +19,10 @@ const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma, mockClerkClie
         create: vi.fn().mockResolvedValue({ id: 'new-seguimiento-id' }),
         update: vi.fn().mockResolvedValue({ id: 'existing-id' }),
       },
+      seguimientoDeportista: {
+        createMany: vi.fn().mockResolvedValue({}),
+        deleteMany: vi.fn().mockResolvedValue({}),
+      },
       seguimientoTraumatologia: {
         create: vi.fn().mockResolvedValue({}),
         upsert: vi.fn().mockResolvedValue({}),
@@ -85,7 +89,7 @@ import {
 import type { SeguimientoFormData } from '@/lib/types/seguimientos';
 
 const validData: SeguimientoFormData = {
-  deportistaId: 'dep-123',
+  deportistaIds: ['dep-123'],
   profesionalId: 'some-prof-id',
   fecha: '2026-07-01',
   titulo: 'Evaluación de rodilla',
@@ -168,9 +172,12 @@ describe('createSeguimiento', () => {
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
   });
 
-  test('4. rechaza si deportistaId está vacío', async () => {
-    const result = await createSeguimiento({ ...validData, deportistaId: '' });
-    expect(result).toEqual({ success: false, error: 'El deportista es requerido' });
+  test('4. rechaza si no hay deportistas seleccionados', async () => {
+    const result = await createSeguimiento({ ...validData, deportistaIds: [] });
+    expect(result).toEqual({
+      success: false,
+      error: 'Debe seleccionar al menos un deportista',
+    });
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
   });
 
@@ -440,6 +447,24 @@ describe('createSeguimiento', () => {
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
   });
 
+  test('37. crea filas en la tabla intermedia para cada deportista', async () => {
+    setCallerAsMedico('user_medico_123');
+    const result = await createSeguimiento({
+      ...validData,
+      deportistaIds: ['dep-1', 'dep-2', 'dep-3'],
+    });
+    expect(result.success).toBe(true);
+    const tx = getMockTx();
+    expect(tx.seguimientoDeportista.createMany).toHaveBeenCalledWith({
+      data: [
+        { seguimientoId: 'new-seguimiento-id', deportistaId: 'dep-1' },
+        { seguimientoId: 'new-seguimiento-id', deportistaId: 'dep-2' },
+        { seguimientoId: 'new-seguimiento-id', deportistaId: 'dep-3' },
+      ],
+      skipDuplicates: true,
+    });
+  });
+
   test('25. ANTROPOMETRIA sin peso/talla persiste imc/sumatoria como null', async () => {
     setCallerAsNutricionista('user_nutri_123');
     const result = await createSeguimiento({
@@ -611,6 +636,39 @@ describe('updateSeguimiento', () => {
     });
     expect(result.success).toBe(false);
     expect((result as { success: false; error: string }).error).toContain('social');
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  test('38. sincroniza la tabla intermedia en update (deleteMany + createMany)', async () => {
+    setCallerAsMedico('user_medico_123');
+    const result = await updateSeguimiento('existing-id', {
+      ...validData,
+      deportistaIds: ['dep-9', 'dep-8'],
+    });
+    expect(result.success).toBe(true);
+    const tx = getMockTx();
+    expect(tx.seguimientoDeportista.deleteMany).toHaveBeenCalledWith({
+      where: { seguimientoId: 'existing-id' },
+    });
+    expect(tx.seguimientoDeportista.createMany).toHaveBeenCalledWith({
+      data: [
+        { seguimientoId: 'existing-id', deportistaId: 'dep-9' },
+        { seguimientoId: 'existing-id', deportistaId: 'dep-8' },
+      ],
+      skipDuplicates: true,
+    });
+  });
+
+  test('39. update rechaza si no hay deportistas seleccionados', async () => {
+    setCallerAsMedico('user_medico_123');
+    const result = await updateSeguimiento('existing-id', {
+      ...validData,
+      deportistaIds: [],
+    });
+    expect(result.success).toBe(false);
+    expect((result as { success: false; error: string }).error).toContain(
+      'al menos un deportista',
+    );
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
   });
 

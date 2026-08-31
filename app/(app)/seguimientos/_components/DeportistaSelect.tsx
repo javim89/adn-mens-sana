@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Search, X, ChevronDown } from 'lucide-react';
+import { Search, X, ChevronDown, Check } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 interface DeportistaOption {
@@ -11,8 +11,8 @@ interface DeportistaOption {
 }
 
 interface Props {
-  value: DeportistaOption | null;
-  onChange: (dep: DeportistaOption | null) => void;
+  value: DeportistaOption[];
+  onChange: (next: DeportistaOption[]) => void;
 }
 
 async function searchDeportistas(search: string): Promise<DeportistaOption[]> {
@@ -41,14 +41,16 @@ export default function DeportistaSelect({ value, onChange }: Props) {
     enabled: open,
   });
 
-  function select(dep: DeportistaOption) {
-    onChange(dep);
-    setOpen(false);
-    setSearch('');
+  function toggle(dep: DeportistaOption) {
+    if (value.some((d) => d.id === dep.id)) {
+      onChange(value.filter((d) => d.id !== dep.id));
+    } else {
+      onChange([...value, dep]);
+    }
   }
 
-  function clear() {
-    onChange(null);
+  function remove(id: string) {
+    onChange(value.filter((d) => d.id !== id));
   }
 
   useEffect(() => {
@@ -63,19 +65,24 @@ export default function DeportistaSelect({ value, onChange }: Props) {
 
   return (
     <div ref={containerRef} className="relative">
-      {value && (
+      {value.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
-          <span className="inline-flex items-center gap-1 text-xs font-medium bg-[#121A61] text-white px-2.5 py-1 rounded-full">
-            {value.apellido}, {value.nombre}
-            <button
-              type="button"
-              onClick={clear}
-              className="ml-0.5 hover:opacity-70 transition-opacity"
-              aria-label={`Quitar ${value.apellido}`}
+          {value.map((dep) => (
+            <span
+              key={dep.id}
+              className="inline-flex items-center gap-1 text-xs font-medium bg-[#121A61] text-white px-2.5 py-1 rounded-full"
             >
-              <X size={11} />
-            </button>
-          </span>
+              {dep.apellido}, {dep.nombre}
+              <button
+                type="button"
+                onClick={() => remove(dep.id)}
+                className="ml-0.5 hover:opacity-70 transition-opacity"
+                aria-label={`Quitar ${dep.apellido}`}
+              >
+                <X size={11} />
+              </button>
+            </span>
+          ))}
         </div>
       )}
 
@@ -85,7 +92,9 @@ export default function DeportistaSelect({ value, onChange }: Props) {
         className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:border-[#3346CC]/50 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 transition-colors text-left"
       >
         <span className="text-[#6B7280]">
-          {value ? `${value.apellido}, ${value.nombre}` : 'Buscar deportista...'}
+          {value.length > 0
+            ? `${value.length} deportista${value.length === 1 ? '' : 's'} seleccionado${value.length === 1 ? '' : 's'}`
+            : 'Buscar deportista...'}
         </span>
         <ChevronDown
           size={14}
@@ -120,19 +129,23 @@ export default function DeportistaSelect({ value, onChange }: Props) {
                 No se encontraron deportistas
               </li>
             ) : (
-              options.map((dep) => (
-                <li key={dep.id}>
-                  <button
-                    type="button"
-                    onClick={() => select(dep)}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-[#F3F4F6] transition-colors"
-                  >
-                    <span className="font-medium text-[#1C1C1C]">
-                      {dep.apellido}, {dep.nombre}
-                    </span>
-                  </button>
-                </li>
-              ))
+              options.map((dep) => {
+                const selected = value.some((d) => d.id === dep.id);
+                return (
+                  <li key={dep.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(dep)}
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm text-left hover:bg-[#F3F4F6] transition-colors ${selected ? 'bg-[#F3F4F6]' : ''}`}
+                    >
+                      <span className="font-medium text-[#1C1C1C]">
+                        {dep.apellido}, {dep.nombre}
+                      </span>
+                      {selected && <Check size={14} className="text-[#121A61] shrink-0" />}
+                    </button>
+                  </li>
+                );
+              })
             )}
           </ul>
         </div>

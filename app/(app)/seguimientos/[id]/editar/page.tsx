@@ -34,8 +34,7 @@ export default async function EditarSeguimientoPage({ params }: Props) {
     tipoSeguimiento: seguimiento.tipoSeguimiento ?? null,
     profesionalId: seguimiento.profesionalId,
     profesionalNombre: seguimiento.profesionalId,
-    deportistaId: seguimiento.deportista.id,
-    deportistaNombre: `${seguimiento.deportista.apellido}, ${seguimiento.deportista.nombre}`,
+    deportistas: seguimiento.deportistas.map((x) => x.deportista),
     datosEspecificos: {
       id: seguimiento.id,
       fecha: seguimiento.fecha.toISOString().split('T')[0],
@@ -49,8 +48,7 @@ export default async function EditarSeguimientoPage({ params }: Props) {
       tipoSeguimiento: seguimiento.tipoSeguimiento ?? null,
       profesionalId: seguimiento.profesionalId,
       profesionalNombre: seguimiento.profesionalId,
-      deportistaId: seguimiento.deportista.id,
-      deportistaNombre: `${seguimiento.deportista.apellido}, ${seguimiento.deportista.nombre}`,
+      deportistas: seguimiento.deportistas.map((x) => x.deportista),
       traumatologia: seguimiento.traumatologia
         ? {
             estabilidadHombro: seguimiento.traumatologia.estabilidadHombro ?? undefined,

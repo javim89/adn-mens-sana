@@ -89,7 +89,7 @@ export type DatosEspecificosSeguimiento =
 // ---------------------------------------------------------------------------
 
 export interface SeguimientoFormData {
-  deportistaId: string;
+  deportistaIds: string[];
   profesionalId: string; // solo relevante si admin; si no, el backend usa userId
   fecha: string; // ISO date string YYYY-MM-DD
   titulo: string;
@@ -122,8 +122,7 @@ export interface SeguimientoListItem {
   tipoSeguimiento: TipoSeguimiento | null;
   profesionalId: string;
   profesionalNombre: string;
-  deportistaId: string;
-  deportistaNombre: string; // "Apellido, Nombre"
+  deportistas: DeportistaOption[];
 }
 
 export interface SeguimientoDetalle extends SeguimientoListItem {

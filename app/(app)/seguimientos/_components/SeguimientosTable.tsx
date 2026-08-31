@@ -31,8 +31,11 @@ interface Props {
   canWrite: boolean;
   currentUserId: string;
   profesionales: ProfesionalOption[];
+  disciplinas: { id: string; nombre: string; categorias: { id: string; nombre: string }[] }[];
   currentPrioridad: string;
   currentArea: string;
+  currentDisciplina: string;
+  currentCategoria: string;
   currentSearch: string;
 }
 
@@ -57,22 +60,22 @@ function PrioridadBadge({ prioridad }: { prioridad: PrioridadSeguimiento }) {
   );
 }
 
+function formatDeportistas(deportistas: SeguimientoListItem['deportistas']) {
+  const nombres = deportistas.map((d) => `${d.apellido}, ${d.nombre}`);
+  const full = nombres.join(' · ');
+  return {
+    first: nombres[0] ?? '—',
+    othersCount: nombres.length > 1 ? nombres.length - 1 : 0,
+    title: full || '—',
+  };
+}
+
 function formatDate(dateStr: string) {
   return new Intl.DateTimeFormat('es-AR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   }).format(new Date(dateStr + 'T00:00:00'));
-}
-
-function formatDatetime(isoStr: string) {
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(isoStr));
 }
 
 export default function SeguimientosTable({
@@ -84,8 +87,11 @@ export default function SeguimientosTable({
   canWrite,
   currentUserId,
   profesionales,
+  disciplinas,
   currentPrioridad,
   currentArea,
+  currentDisciplina,
+  currentCategoria,
   currentSearch,
 }: Props) {
   const router = useRouter();
@@ -105,6 +111,9 @@ export default function SeguimientosTable({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const seguimientos = initialSeguimientos;
+
+  const categoriasFiltro =
+    disciplinas.find((d) => d.id === currentDisciplina)?.categorias ?? [];
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
@@ -133,6 +142,14 @@ export default function SeguimientosTable({
 
   function handleAreaChange(value: string) {
     navigate(buildUrl({ area: value || null, page: null }));
+  }
+
+  function handleDisciplinaChange(value: string) {
+    navigate(buildUrl({ disciplina: value || null, categoria: null, page: null }));
+  }
+
+  function handleCategoriaChange(value: string) {
+    navigate(buildUrl({ categoria: value || null, page: null }));
   }
 
   function handleSearchChange(value: string) {
@@ -220,6 +237,29 @@ export default function SeguimientosTable({
           className="min-w-[160px]"
         />
 
+        <CustomSelect
+          value={currentDisciplina}
+          onChange={handleDisciplinaChange}
+          searchable
+          options={[
+            { value: '', label: 'Todas las disciplinas' },
+            ...disciplinas.map((d) => ({ value: d.id, label: d.nombre })),
+          ]}
+          className="min-w-[160px]"
+        />
+
+        <CustomSelect
+          value={currentCategoria}
+          onChange={handleCategoriaChange}
+          searchable
+          disabled={!currentDisciplina}
+          options={[
+            { value: '', label: 'Todas las categorías' },
+            ...categoriasFiltro.map((c) => ({ value: c.id, label: c.nombre })),
+          ]}
+          className="min-w-[160px]"
+        />
+
         {isAdmin && profesionales.length > 0 && (
           <CustomSelect
             value={currentArea}
@@ -265,17 +305,26 @@ export default function SeguimientosTable({
                         <PrioridadBadge prioridad={s.prioridad} />
                         <TipoBadge tipo={s.tipoSeguimiento} />
                       </div>
-                      <p className="text-xs text-[#6B7280] mt-0.5">
-                        {s.deportistaNombre} · {formatDate(s.fecha)}
-                      </p>
+                      {(() => {
+                        const dep = formatDeportistas(s.deportistas);
+                        return (
+                          <p
+                            className="flex items-center gap-1 text-xs text-[#6B7280] mt-0.5"
+                            title={dep.title}
+                          >
+                            <span className="truncate">{dep.first}</span>
+                            {dep.othersCount > 0 && (
+                              <span className="shrink-0 text-[#6B7280]">
+                                +{dep.othersCount}
+                              </span>
+                            )}
+                            <span className="shrink-0">· {formatDate(s.fecha)}</span>
+                          </p>
+                        );
+                      })()}
                       {isAdmin && (
                         <p className="text-xs text-[#6B7280] mt-0.5">
                           Profesional: {s.profesionalNombre}
-                        </p>
-                      )}
-                      {s.proximaCita && (
-                        <p className="text-xs text-[#6B7280] mt-0.5">
-                          Próxima cita: {formatDatetime(s.proximaCita)}
                         </p>
                       )}
                     </div>
@@ -322,7 +371,6 @@ export default function SeguimientosTable({
                 <th className="px-5 py-3 text-left">Prioridad</th>
                 <th className="hidden xl:table-cell px-5 py-3 text-left">Tipo</th>
                 {isAdmin && <th className="px-5 py-3 text-left">Área responsable</th>}
-                <th className="px-5 py-3 text-left">Próxima cita</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -330,7 +378,7 @@ export default function SeguimientosTable({
               {seguimientos.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={isAdmin ? 8 : 7}
+                    colSpan={isAdmin ? 7 : 6}
                     className="px-5 py-12 text-center text-sm text-[#6B7280]"
                   >
                     No hay seguimientos.{' '}
@@ -352,10 +400,20 @@ export default function SeguimientosTable({
                       key={s.id}
                       className="border-b border-gray-50 hover:bg-[#F3F4F6] transition-colors"
                     >
-                      <td className="px-5 py-3.5 text-sm text-[#6B7280] max-w-[150px]">
-                        <span className="block truncate" title={s.deportistaNombre}>
-                          {s.deportistaNombre}
-                        </span>
+                      <td className="px-5 py-3.5 text-sm text-[#6B7280] max-w-[180px]">
+                        {(() => {
+                          const dep = formatDeportistas(s.deportistas);
+                          return (
+                            <div className="flex items-center gap-1" title={dep.title}>
+                              <span className="truncate">{dep.first}</span>
+                              {dep.othersCount > 0 && (
+                                <span className="shrink-0 text-[#6B7280]">
+                                  +{dep.othersCount}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-5 py-3.5 text-sm text-[#6B7280] whitespace-nowrap">
                         {formatDate(s.fecha)}
@@ -382,11 +440,6 @@ export default function SeguimientosTable({
                           </span>
                         </td>
                       )}
-                      <td className="px-5 py-3.5 text-sm text-[#6B7280] whitespace-nowrap">
-                        {s.proximaCita ? formatDatetime(s.proximaCita) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1 justify-end">
                           <Link

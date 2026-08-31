@@ -1,5 +1,6 @@
 import { auth, currentUser, clerkClient } from '@clerk/nextjs/server';
 import { getSeguimientos } from '@/lib/queries/seguimientos';
+import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
 import type { PrioridadSeguimiento } from '@/lib/types/seguimientos';
 import SeguimientosTable from './_components/SeguimientosTable';
@@ -37,6 +38,8 @@ export default async function SeguimientosPage({
     : undefined;
 
   const area = firstParam(sp.area) || undefined; // profesionalId
+  const disciplina = firstParam(sp.disciplina) || undefined;
+  const categoria = firstParam(sp.categoria) || undefined;
   const q = firstParam(sp.q)?.trim() || undefined;
 
   // Todos los roles ven todos los seguimientos (la regla de edición/eliminación
@@ -46,6 +49,8 @@ export default async function SeguimientosPage({
     pageSize: PAGE_SIZE,
     prioridad,
     profesionalId: area,
+    disciplinaId: disciplina,
+    categoriaId: categoria,
     search: q,
   });
 
@@ -82,8 +87,7 @@ export default async function SeguimientosPage({
     tipoSeguimiento: s.tipoSeguimiento ?? null,
     profesionalId: s.profesionalId,
     profesionalNombre: profesionalesMap[s.profesionalId] ?? s.profesionalId,
-    deportistaId: s.deportista.id,
-    deportistaNombre: `${s.deportista.apellido}, ${s.deportista.nombre}`,
+    deportistas: s.deportistas.map((x) => x.deportista),
   }));
 
   // Dropdown de "Área responsable" (admin): lista completa, no derivada de la página actual.
@@ -92,6 +96,8 @@ export default async function SeguimientosPage({
     id: p.id,
     nombre: `${p.apellido} ${p.nombre}`.trim() || p.id,
   }));
+
+  const disciplinas = await getDisciplinasConCategorias();
 
   return (
     <div className="p-4 md:p-8">
@@ -108,6 +114,9 @@ export default async function SeguimientosPage({
         currentPrioridad={prioridad ?? ''}
         currentArea={area ?? ''}
         currentSearch={q ?? ''}
+        disciplinas={disciplinas}
+        currentDisciplina={disciplina ?? ''}
+        currentCategoria={categoria ?? ''}
       />
     </div>
   );
