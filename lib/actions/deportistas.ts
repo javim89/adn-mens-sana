@@ -56,6 +56,22 @@ export async function createDeportista(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const satOps: Promise<any>[] = [];
 
+    // Crear el período inicial de trayectoria (abierto). Siempre, para mantener
+    // el invariante "todo deportista tiene un período abierto".
+    satOps.push(
+      prisma.pasoPorDivision.create({
+        data: {
+          deportistaId,
+          categoriaId: data.categoriaId || null,
+          disciplinaId: data.disciplinaId || null,
+          desde: data.fechaIngreso
+            ? new Date(data.fechaIngreso)
+            : new Date(new Date().toISOString().slice(0, 10)),
+          hasta: null,
+        },
+      }),
+    );
+
     if (data.clubesAnteriores && data.clubesAnteriores.length > 0) {
       satOps.push(
         prisma.clubAnterior.createMany({
@@ -277,6 +293,58 @@ export async function updateDeportista(
           periodo: c.periodo || null,
         })),
       });
+    }
+
+    // Registrar transición de trayectoria si cambió la división (categoría o disciplina)
+    const nuevaCategoriaId = data.categoriaId || null;
+    const nuevaDisciplinaId = data.disciplinaId || null;
+    const categoriaCambio = (existing.categoriaId ?? null) !== nuevaCategoriaId;
+    const disciplinaCambio = (existing.disciplinaId ?? null) !== nuevaDisciplinaId;
+
+    if (categoriaCambio || disciplinaCambio) {
+      // Fecha de modificación normalizada a UTC-midnight (mismo criterio que crearTransicionDivision)
+      const hoy = new Date(new Date().toISOString().slice(0, 10));
+
+      const periodoAbierto = await prisma.pasoPorDivision.findFirst({
+        where: { deportistaId: id, hasta: null },
+        orderBy: { desde: 'desc' },
+      });
+
+      if (periodoAbierto && hoy > periodoAbierto.desde) {
+        // Cerrar el período abierto y abrir uno nuevo desde hoy
+        await prisma.$transaction([
+          prisma.pasoPorDivision.update({
+            where: { id: periodoAbierto.id },
+            data: { hasta: hoy },
+          }),
+          prisma.pasoPorDivision.create({
+            data: {
+              deportistaId: id,
+              categoriaId: nuevaCategoriaId,
+              disciplinaId: nuevaDisciplinaId,
+              desde: hoy,
+              hasta: null,
+            },
+          }),
+        ]);
+      } else if (periodoAbierto) {
+        // El período abierto empezó hoy (o después): corregir en su lugar, sin crear períodos degenerados
+        await prisma.pasoPorDivision.update({
+          where: { id: periodoAbierto.id },
+          data: { categoriaId: nuevaCategoriaId, disciplinaId: nuevaDisciplinaId },
+        });
+      } else {
+        // Sin período abierto (deportista sin trayectoria previa): crear el primero
+        await prisma.pasoPorDivision.create({
+          data: {
+            deportistaId: id,
+            categoriaId: nuevaCategoriaId,
+            disciplinaId: nuevaDisciplinaId,
+            desde: hoy,
+            hasta: null,
+          },
+        });
+      }
     }
     } // end !isSocial block
 

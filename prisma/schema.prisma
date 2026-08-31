@@ -132,6 +132,7 @@ model Deportista {
   seguimientos            SeguimientoDeportista[]
   asistencias             Asistencia[]
   convocatorias           ConvocatoriaDeportista[]
+  pasosPorDivision        PasoPorDivision[]
 
   // 1:1 satellite models
   datosEscolares          DatosEscolares?
@@ -567,6 +568,7 @@ model Categoria {
   disciplinas    DisciplinaCategoria[]
   entrenamientos Entrenamiento[]
   convocatorias  Convocatoria[]
+  pasosPorDivision PasoPorDivision[]
 
   @@map("categorias")
 }
@@ -580,6 +582,7 @@ model Disciplina {
   deportistas    Deportista[]
   entrenamientos Entrenamiento[]
   convocatorias  Convocatoria[]
+  pasosPorDivision PasoPorDivision[]
 
   @@map("disciplinas")
 }
@@ -720,4 +723,27 @@ model ConvocatoriaDeportista {
 
   @@unique([convocatoriaId, deportistaId])
   @@map("convocatoria_deportistas")
+}
+
+// ---------------------------------------------------------------------------
+// Models — Trayectoria (historial de división)
+// ---------------------------------------------------------------------------
+
+model PasoPorDivision {
+  id           String    @id @default(cuid())
+  deportistaId String    @map("deportista_id")
+  categoriaId  String?   @map("categoria_id")
+  disciplinaId String?   @map("disciplina_id")
+  desde        DateTime  @db.Date
+  hasta        DateTime? @db.Date
+
+  deportista   Deportista  @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+  categoria    Categoria?  @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  disciplina   Disciplina? @relation(fields: [disciplinaId], references: [id], onDelete: SetNull)
+
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([deportistaId])
+  @@map("pasos_por_division")
 }

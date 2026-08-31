@@ -14,6 +14,8 @@ import {
 import SeguimientosTimeline, {
   type SeguimientoTimelineItem,
 } from './SeguimientosTimeline';
+import TrayectoriaTimeline from './TrayectoriaTimeline';
+import type { PeriodoDivision, TrayectoriaEvento } from '@/lib/types/trayectoria';
 
 type DetailTabId =
   | 'personal'
@@ -22,6 +24,7 @@ type DetailTabId =
   | 'social'
   | 'salud'
   | 'seguimiento'
+  | 'trayectoria'
   | 'triage';
 
 const TABS: Array<{ id: DetailTabId; label: string }> = [
@@ -31,12 +34,22 @@ const TABS: Array<{ id: DetailTabId; label: string }> = [
   { id: 'social', label: 'Datos Sociales' },
   { id: 'salud', label: 'Salud' },
   { id: 'seguimiento', label: 'Seguimiento' },
+  { id: 'trayectoria', label: 'Trayectoria' },
   { id: 'triage', label: 'Triage' },
 ];
+
+interface Catalogo {
+  id: string;
+  nombre: string;
+}
 
 interface Props {
   deportista: DeportistaWithRelations;
   seguimientos: SeguimientoTimelineItem[];
+  periodos: PeriodoDivision[];
+  eventos: TrayectoriaEvento[];
+  disciplinas: Catalogo[];
+  categorias: Catalogo[];
 }
 
 function TriagePlaceholder() {
@@ -54,7 +67,14 @@ function TriagePlaceholder() {
   );
 }
 
-export default function DeportistaDetailTabs({ deportista, seguimientos }: Props) {
+export default function DeportistaDetailTabs({
+  deportista,
+  seguimientos,
+  periodos,
+  eventos,
+  disciplinas,
+  categorias,
+}: Props) {
   const [activeTab, setActiveTab] = useState<DetailTabId>('personal');
 
   return (
@@ -105,6 +125,15 @@ export default function DeportistaDetailTabs({ deportista, seguimientos }: Props
         {activeTab === 'salud' && <DatosSaludSection deportista={deportista} />}
         {activeTab === 'seguimiento' && (
           <SeguimientosTimeline seguimientos={seguimientos} />
+        )}
+        {activeTab === 'trayectoria' && (
+          <TrayectoriaTimeline
+            deportistaId={deportista.id}
+            periodos={periodos}
+            eventos={eventos}
+            disciplinas={disciplinas}
+            categorias={categorias}
+          />
         )}
         {activeTab === 'triage' && <TriagePlaceholder />}
       </div>
