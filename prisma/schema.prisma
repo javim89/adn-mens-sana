@@ -92,6 +92,13 @@ enum Servicio {
   NINGUNA
 }
 
+enum NivelTriage {
+  VERDE
+  AMARILLO
+  NARANJA
+  ROJO
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
@@ -133,6 +140,7 @@ model Deportista {
   asistencias             Asistencia[]
   convocatorias           ConvocatoriaDeportista[]
   pasosPorDivision        PasoPorDivision[]
+  triages                 Triage[]
 
   // 1:1 satellite models
   datosEscolares          DatosEscolares?
@@ -746,4 +754,22 @@ model PasoPorDivision {
 
   @@index([deportistaId])
   @@map("pasos_por_division")
+}
+
+// ---------------------------------------------------------------------------
+// Models — Triage (scoring de riesgo)
+// ---------------------------------------------------------------------------
+
+model Triage {
+  id           String      @id @default(cuid())
+  deportistaId String      @map("deportista_id")
+  nivel        NivelTriage
+  puntajeTotal Int         @map("puntaje_total")
+  desglose     Json
+  calculatedAt DateTime    @default(now()) @map("calculated_at")
+
+  deportista   Deportista  @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  @@index([deportistaId, calculatedAt])
+  @@map("triage")
 }

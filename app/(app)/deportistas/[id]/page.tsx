@@ -7,7 +7,9 @@ import { getCategorias } from '@/lib/queries/categorias';
 import DeportistaDetailTabs from '../_components/DeportistaDetailTabs';
 import DeleteDeportistaModal from '../_components/DeleteDeportistaModal';
 import { ESTADO_LABELS } from '@/lib/utils/enum-labels';
+import { prisma } from '@/lib/db';
 import type { EstadoDeportista } from '@/lib/generated/prisma/enums';
+import type { TriageContribucion } from '@/lib/types/triage';
 
 const ESTADO_BADGE: Record<string, string> = {
   ACTIVO: 'bg-green-100 text-green-700',
@@ -42,6 +44,19 @@ export default async function DeportistaDetailPage({
     await Promise.all([getTrayectoria(id), getDisciplinasConCategorias(), getCategorias()]);
   const disciplinas = disciplinasCatalogo.map((d) => ({ id: d.id, nombre: d.nombre }));
   const categorias = categoriasCatalogo.map((c) => ({ id: c.id, nombre: c.nombre }));
+
+  const triageRow = await prisma.triage.findFirst({
+    where: { deportistaId: id },
+    orderBy: { calculatedAt: 'desc' },
+  });
+  const triage = triageRow
+    ? {
+        nivel: triageRow.nivel,
+        puntajeTotal: triageRow.puntajeTotal,
+        desglose: (triageRow.desglose as unknown as TriageContribucion[]) ?? [],
+        calculatedAt: triageRow.calculatedAt.toISOString(),
+      }
+    : null;
 
   const nombreCompleto = `${deportista.apellido}, ${deportista.nombre}`;
 
@@ -97,6 +112,7 @@ export default async function DeportistaDetailPage({
         eventos={eventos}
         disciplinas={disciplinas}
         categorias={categorias}
+        triage={triage}
       />
     </div>
   );

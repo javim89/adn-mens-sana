@@ -24,11 +24,16 @@ vi.mock('@/lib/actions/trayectoria', () => ({
   deletePasoPorDivision: vi.fn(),
 }));
 
+vi.mock('@/lib/actions/triage', () => ({
+  recomputeTriageAction: vi.fn(),
+}));
+
 const trayectoriaProps = {
   periodos: [],
   eventos: [],
   disciplinas: [],
   categorias: [],
+  triage: null,
 };
 
 const makeDeportista = (
@@ -119,7 +124,7 @@ describe('DeportistaDetailTabs', () => {
     expect(screen.getByText('12345678')).toBeDefined();
   });
 
-  test('al hacer click en Triage muestra el placeholder', async () => {
+  test('al hacer click en Triage muestra el panel de triage', async () => {
     const user = userEvent.setup();
     render(
       <DeportistaDetailTabs
@@ -130,7 +135,7 @@ describe('DeportistaDetailTabs', () => {
     );
 
     await user.click(screen.getByRole('tab', { name: 'Triage' }));
-    expect(screen.getByText(/Próximamente/i)).toBeDefined();
+    expect(screen.getByText(/Sin triage calculado aún/i)).toBeDefined();
   });
 
   test('al hacer click en Seguimiento muestra el timeline con los items', async () => {
