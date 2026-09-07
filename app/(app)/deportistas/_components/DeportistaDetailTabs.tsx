@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Stethoscope } from 'lucide-react';
 import { CustomSelect } from '@/app/components/ui/custom-select';
 import type { DeportistaWithRelations } from '@/lib/types/deportistas';
+import type { NivelTriage, TriageContribucion } from '@/lib/types/triage';
 import {
   DatosPersonalesSection,
   DatosDeportivosSection,
@@ -15,6 +15,7 @@ import SeguimientosTimeline, {
   type SeguimientoTimelineItem,
 } from './SeguimientosTimeline';
 import TrayectoriaTimeline from './TrayectoriaTimeline';
+import TriagePanel from './tabs/TriagePanel';
 import type { PeriodoDivision, TrayectoriaEvento } from '@/lib/types/trayectoria';
 
 type DetailTabId =
@@ -43,6 +44,13 @@ interface Catalogo {
   nombre: string;
 }
 
+interface TriageData {
+  nivel: NivelTriage;
+  puntajeTotal: number;
+  desglose: TriageContribucion[];
+  calculatedAt: string | Date;
+}
+
 interface Props {
   deportista: DeportistaWithRelations;
   seguimientos: SeguimientoTimelineItem[];
@@ -50,21 +58,7 @@ interface Props {
   eventos: TrayectoriaEvento[];
   disciplinas: Catalogo[];
   categorias: Catalogo[];
-}
-
-function TriagePlaceholder() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <Stethoscope size={40} className="text-[#6B7280] mb-3" />
-      <h3
-        className="text-xl font-bold text-[#121A61]"
-        style={{ fontFamily: 'Oswald, sans-serif' }}
-      >
-        Triage
-      </h3>
-      <p className="text-sm text-[#6B7280] mt-1">Próximamente / En construcción</p>
-    </div>
-  );
+  triage: TriageData | null;
 }
 
 export default function DeportistaDetailTabs({
@@ -74,6 +68,7 @@ export default function DeportistaDetailTabs({
   eventos,
   disciplinas,
   categorias,
+  triage,
 }: Props) {
   const [activeTab, setActiveTab] = useState<DetailTabId>('personal');
 
@@ -135,7 +130,9 @@ export default function DeportistaDetailTabs({
             categorias={categorias}
           />
         )}
-        {activeTab === 'triage' && <TriagePlaceholder />}
+        {activeTab === 'triage' && (
+          <TriagePanel triage={triage} deportistaId={deportista.id} />
+        )}
       </div>
     </div>
   );
