@@ -13,11 +13,19 @@ interface DeportistaOption {
 interface Props {
   value: DeportistaOption[];
   onChange: (next: DeportistaOption[]) => void;
+  disciplinaId?: string;
+  categoriaId?: string;
 }
 
-async function searchDeportistas(search: string): Promise<DeportistaOption[]> {
+async function searchDeportistas(
+  search: string,
+  disciplinaId?: string,
+  categoriaId?: string,
+): Promise<DeportistaOption[]> {
   const params = new URLSearchParams({ 'page[size]': '20' });
   if (search) params.set('filter[search]', search);
+  if (disciplinaId) params.set('filter[disciplina]', disciplinaId);
+  if (categoriaId) params.set('filter[categoriaId]', categoriaId);
   const res = await fetch(`/api/deportistas?${params}`);
   if (!res.ok) return [];
   const json = await res.json();
@@ -30,14 +38,14 @@ async function searchDeportistas(search: string): Promise<DeportistaOption[]> {
   );
 }
 
-export default function DeportistaSelect({ value, onChange }: Props) {
+export default function DeportistaSelect({ value, onChange, disciplinaId, categoriaId }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: options = [], isLoading } = useQuery({
-    queryKey: ['deportistas-search', search],
-    queryFn: () => searchDeportistas(search),
+    queryKey: ['deportistas-search', search, disciplinaId, categoriaId],
+    queryFn: () => searchDeportistas(search, disciplinaId, categoriaId),
     enabled: open,
   });
 

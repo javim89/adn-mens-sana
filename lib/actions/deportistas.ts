@@ -45,7 +45,7 @@ export async function createDeportista(
       estado: data.estado,
       actividadComplementaria: data.actividadComplementaria || null,
       fechaIngreso: data.fechaIngreso ? new Date(data.fechaIngreso) : null,
-      esRepresentante: data.esRepresentante ?? false,
+      tieneRepresentante: data.tieneRepresentante ?? false,
     };
 
     // Create main record first to get the ID
@@ -279,7 +279,7 @@ export async function updateDeportista(
         estado: data.estado,
         actividadComplementaria: data.actividadComplementaria || null,
         fechaIngreso: data.fechaIngreso ? new Date(data.fechaIngreso) : null,
-        esRepresentante: data.esRepresentante ?? false,
+        tieneRepresentante: data.tieneRepresentante ?? false,
       },
     });
 

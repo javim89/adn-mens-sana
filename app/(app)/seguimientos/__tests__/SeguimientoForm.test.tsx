@@ -402,4 +402,71 @@ describe('SeguimientoForm', () => {
     });
     expect(mockedCreateSeguimiento).not.toHaveBeenCalled();
   });
+
+  // ---- Filtros de disciplina y categoría (para acotar el select de deportista) ----
+
+  const disciplinasMock = [
+    {
+      id: 'disc-futbol',
+      nombre: 'Fútbol',
+      categorias: [
+        { id: 'cat-sub15', nombre: 'Sub-15' },
+        { id: 'cat-sub17', nombre: 'Sub-17' },
+      ],
+    },
+    {
+      id: 'disc-basquet',
+      nombre: 'Básquet',
+      categorias: [{ id: 'cat-mini', nombre: 'Mini' }],
+    },
+  ];
+
+  test('sin disciplinas provistas NO se muestran los filtros de disciplina/categoría', () => {
+    render(
+      <SeguimientoForm mode="create" isAdmin={false} role="medico" profesionales={[]} />,
+    );
+    expect(screen.queryByText(/Disciplina/i)).toBeNull();
+    expect(screen.queryByText(/Categoría/i)).toBeNull();
+  });
+
+  test('con disciplinas provistas se muestran los filtros y el de categoría arranca deshabilitado', () => {
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="medico"
+        profesionales={[]}
+        disciplinas={disciplinasMock}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /Todas las disciplinas/i })).toBeDefined();
+    // Botón del CustomSelect de categoría: por defecto muestra el placeholder y está deshabilitado
+    const categoriaButton = screen.getByRole('button', { name: /Todas las categorías/i });
+    expect(categoriaButton).toBeDisabled();
+  });
+
+  test('al elegir una disciplina se habilita categoría y muestra SOLO sus categorías', async () => {
+    const user = userEvent.setup();
+    render(
+      <SeguimientoForm
+        mode="create"
+        isAdmin={false}
+        role="medico"
+        profesionales={[]}
+        disciplinas={disciplinasMock}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /Todas las disciplinas/i }));
+    await user.click(screen.getByRole('button', { name: /^Fútbol$/i }));
+
+    const categoriaButton = screen.getByRole('button', { name: /Todas las categorías/i });
+    expect(categoriaButton).not.toBeDisabled();
+
+    await user.click(categoriaButton);
+    expect(screen.getByRole('button', { name: /^Sub-15$/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /^Sub-17$/i })).toBeDefined();
+    // No debe ofrecer categorías de otra disciplina
+    expect(screen.queryByRole('button', { name: /^Mini$/i })).toBeNull();
+  });
 });

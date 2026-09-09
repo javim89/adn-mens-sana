@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { currentUser } from '@clerk/nextjs/server';
 import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
+import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import SeguimientoForm from '../_components/SeguimientoForm';
 
 export default async function NuevoSeguimientoPage() {
@@ -9,6 +10,7 @@ export default async function NuevoSeguimientoPage() {
   const isAdmin = role === 'admin';
 
   const profesionales = isAdmin ? await getProfesionalesSeguimientos() : [];
+  const disciplinas = await getDisciplinasConCategorias();
 
   return (
     <div className="p-4 md:p-8">
@@ -26,7 +28,7 @@ export default async function NuevoSeguimientoPage() {
       >
         Nuevo seguimiento
       </h1>
-      <SeguimientoForm mode="create" isAdmin={isAdmin} role={role} profesionales={profesionales} />
+      <SeguimientoForm mode="create" isAdmin={isAdmin} role={role} profesionales={profesionales} disciplinas={disciplinas} />
     </div>
   );
 }

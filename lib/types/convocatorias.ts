@@ -1,4 +1,5 @@
 import type { EstadoEvento } from '@/lib/queries/calendario';
+import type { EstadoDeportista } from '@/lib/generated/prisma/enums';
 
 export interface ConvocatoriaFormData {
   eventoTorneoId: string;
@@ -24,4 +25,5 @@ export interface DeportistaConvocable {
   nombre: string;
   apellido: string;
   posicion: string | null;
+  estado: EstadoDeportista;
 }

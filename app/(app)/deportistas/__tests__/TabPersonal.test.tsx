@@ -27,7 +27,7 @@ const emptyData: DeportistaFormData = {
   vivePensionClub: false,
   vivePensionExterna: false,
   estado: 'ACTIVO',
-  esRepresentante: false,
+  tieneRepresentante: false,
   clubesAnteriores: [],
 };
 

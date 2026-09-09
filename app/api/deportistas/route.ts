@@ -80,7 +80,7 @@ const deportistaAttributesSchema = z.object({
   estado: z.enum(EstadoValues).default('ACTIVO'),
   actividadComplementaria: z.enum(ActividadComplementariaValues).optional(),
   fechaIngreso: z.string().optional(),
-  esRepresentante: z.boolean().default(false),
+  tieneRepresentante: z.boolean().default(false),
   clubesAnteriores: z
     .array(z.object({ nombre: z.string(), periodo: z.string().optional() }))
     .default([]),
@@ -205,7 +205,7 @@ function serializeFullItem(
       estado: item.estado,
       actividadComplementaria: item.actividadComplementaria ?? null,
       fechaIngreso: item.fechaIngreso ? item.fechaIngreso.toISOString() : null,
-      esRepresentante: item.esRepresentante,
+      tieneRepresentante: item.tieneRepresentante,
       clubesAnteriores: item.clubesAnteriores.map((c) => ({
         id: c.id,
         nombre: c.nombre,
@@ -469,7 +469,7 @@ export async function POST(request: Request) {
       estado: attrs.estado,
       actividadComplementaria: attrs.actividadComplementaria || null,
       fechaIngreso: attrs.fechaIngreso ? new Date(attrs.fechaIngreso) : null,
-      esRepresentante: attrs.esRepresentante ?? false,
+      tieneRepresentante: attrs.tieneRepresentante ?? false,
     };
 
     const deportista = await prisma.deportista.create({ data: deportistaData });

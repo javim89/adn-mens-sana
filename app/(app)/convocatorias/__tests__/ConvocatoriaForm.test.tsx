@@ -84,9 +84,9 @@ const partido: ProximoPartido = {
 };
 
 const roster: DeportistaConvocable[] = [
-  { id: 'dep-1', nombre: 'Juan', apellido: 'Alvarez', posicion: 'Arquero' },
-  { id: 'dep-2', nombre: 'Marta', apellido: 'Benitez', posicion: null },
-  { id: 'dep-3', nombre: 'Luis', apellido: 'Castro', posicion: 'Central' },
+  { id: 'dep-1', nombre: 'Juan', apellido: 'Alvarez', posicion: 'Arquero', estado: 'ACTIVO' },
+  { id: 'dep-2', nombre: 'Marta', apellido: 'Benitez', posicion: null, estado: 'LESIONADO' },
+  { id: 'dep-3', nombre: 'Luis', apellido: 'Castro', posicion: 'Central', estado: 'SUSPENDIDO' },
 ];
 
 function renderForm(overrides: Partial<React.ComponentProps<typeof ConvocatoriaForm>> = {}) {
@@ -131,6 +131,22 @@ describe('ConvocatoriaForm — próximo partido y carga de plantel', () => {
     expect(await screen.findByText('Alvarez, Juan')).toBeInTheDocument();
     expect(screen.getByText('Benitez, Marta')).toBeInTheDocument();
     expect(screen.getByText('Castro, Luis')).toBeInTheDocument();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+  });
+
+  test('los deportistas no-ACTIVO muestran su badge de estado y el ACTIVO no', async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await selectDisciplinaYCategoria(user);
+    await screen.findByText('Alvarez, Juan');
+
+    // dep-2 (LESIONADO) y dep-3 (SUSPENDIDO) muestran badge; dep-1 (ACTIVO) no.
+    expect(screen.getByText('Lesionado')).toBeInTheDocument();
+    expect(screen.getByText('Suspendido')).toBeInTheDocument();
+    expect(screen.queryByText('Activo')).not.toBeInTheDocument();
+
+    // Todos siguen siendo seleccionables.
     expect(screen.getAllByRole('checkbox')).toHaveLength(3);
   });
 

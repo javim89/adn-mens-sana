@@ -19,6 +19,7 @@ import type {
   DeportistaConvocable,
 } from '@/lib/types/convocatorias';
 import type { DisciplinaConCategorias } from '@/lib/queries/disciplinas';
+import { ESTADO_LABELS as ESTADO_DEPORTISTA_LABELS } from '@/lib/utils/enum-labels';
 
 const ESTADO_LABELS: Record<string, string> = {
   PROGRAMADO: 'Programado',
@@ -29,6 +30,14 @@ const ESTADO_LABELS: Record<string, string> = {
 const ESTADO_STYLES: Record<string, string> = {
   PROGRAMADO: 'bg-green-100 text-green-700',
   REPROGRAMADO: 'bg-amber-100 text-amber-700',
+  SUSPENDIDO: 'bg-red-100 text-red-700',
+};
+
+// Colores del badge de estado del DEPORTISTA (espeja DeportistasTable).
+const ESTADO_DEPORTISTA_BADGE: Record<string, string> = {
+  ACTIVO: 'bg-green-100 text-green-700',
+  INACTIVO: 'bg-gray-100 text-[#6B7280]',
+  LESIONADO: 'bg-amber-100 text-amber-700',
   SUSPENDIDO: 'bg-red-100 text-red-700',
 };
 
@@ -407,7 +416,7 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
           </div>
         ) : roster.length === 0 ? (
           <div className="px-4 py-10 text-center text-sm text-[#6B7280] bg-[#F9FAFB] border border-dashed border-gray-200 rounded-lg">
-            No hay deportistas activos en esta disciplina y categoría.
+            No hay deportistas en esta disciplina y categoría.
           </div>
         ) : (
           <>
@@ -456,6 +465,15 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
                         </span>
                         {d.posicion && (
                           <span className="ml-2 text-xs text-[#6B7280]">{d.posicion}</span>
+                        )}
+                        {d.estado !== 'ACTIVO' && (
+                          <span
+                            className={`ml-2 text-xs font-medium px-2 py-0.5 rounded-full ${
+                              ESTADO_DEPORTISTA_BADGE[d.estado] ?? 'bg-gray-100 text-[#6B7280]'
+                            }`}
+                          >
+                            {ESTADO_DEPORTISTA_LABELS[d.estado]}
+                          </span>
                         )}
                       </span>
                     </label>

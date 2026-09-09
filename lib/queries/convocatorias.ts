@@ -180,8 +180,8 @@ export async function getDeportistasParaConvocar(
   categoriaId: string,
 ): Promise<DeportistaConvocable[]> {
   return prisma.deportista.findMany({
-    where: { disciplinaId, categoriaId, estado: 'ACTIVO' },
-    select: { id: true, nombre: true, apellido: true, posicion: true },
+    where: { disciplinaId, categoriaId },
+    select: { id: true, nombre: true, apellido: true, posicion: true, estado: true },
     orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
   });
 }

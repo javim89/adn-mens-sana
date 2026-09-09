@@ -144,14 +144,14 @@ export default function TabDeportivo({
       <div className="sm:col-span-2">
         <label className={`flex items-center gap-2${disabled ? ' opacity-50 cursor-not-allowed' : ' cursor-pointer'}`}>
           <input
-            id="esRepresentante"
+            id="tieneRepresentante"
             type="checkbox"
-            checked={data.esRepresentante}
-            onChange={(e) => onChange({ esRepresentante: e.target.checked })}
+            checked={data.tieneRepresentante}
+            onChange={(e) => onChange({ tieneRepresentante: e.target.checked })}
             disabled={disabled}
             className="w-4 h-4 text-[#121A61] rounded border-gray-300 focus:ring-[#3346CC]/30"
           />
-          <span className="text-sm text-[#1C1C1C]">Es representante</span>
+          <span className="text-sm text-[#1C1C1C]">Tiene representante</span>
         </label>
       </div>
 

@@ -63,7 +63,7 @@ const makeDeportista = (
     estado: 'ACTIVO',
     actividadComplementaria: null,
     fechaIngreso: null,
-    esRepresentante: false,
+    tieneRepresentante: false,
     clubesAnteriores: [],
     historiaDeportiva: [],
     datosEscolares: null,

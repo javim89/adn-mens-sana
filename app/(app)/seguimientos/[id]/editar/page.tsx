@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
 import { getSeguimientoById } from '@/lib/queries/seguimientos';
 import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
+import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import SeguimientoForm from '../../_components/SeguimientoForm';
 import type { SeguimientoListItem, SeguimientoDetalle } from '@/lib/types/seguimientos';
 
@@ -20,6 +21,7 @@ export default async function EditarSeguimientoPage({ params }: Props) {
   const isAdmin = role === 'admin';
 
   const profesionales = isAdmin ? await getProfesionalesSeguimientos() : [];
+  const disciplinas = await getDisciplinasConCategorias();
 
   const initialData: SeguimientoListItem & { datosEspecificos?: SeguimientoDetalle } = {
     id: seguimiento.id,
@@ -142,6 +144,7 @@ export default async function EditarSeguimientoPage({ params }: Props) {
         isAdmin={isAdmin}
         role={role}
         profesionales={profesionales}
+        disciplinas={disciplinas}
         initialData={initialData}
       />
     </div>

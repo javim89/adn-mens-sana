@@ -79,7 +79,7 @@ const mockDeportistaFull = {
   estado: 'ACTIVO',
   actividadComplementaria: null,
   fechaIngreso: new Date('2023-01-01'),
-  esRepresentante: false,
+  tieneRepresentante: false,
   clubesAnteriores: [],
   historiaDeportiva: [],
   datosEscolares: null,

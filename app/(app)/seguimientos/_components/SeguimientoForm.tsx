@@ -17,6 +17,7 @@ import type {
 import DeportistaSelect from './DeportistaSelect';
 import ProfesionalCombobox from '@/app/(app)/turnos/_components/ProfesionalCombobox';
 import { CustomSelect } from '@/app/components/ui/custom-select';
+import type { DisciplinaConCategorias } from '@/lib/queries/disciplinas';
 import type { Profesional as TurnoProfesional } from '@/lib/types/turnos';
 import { TraumatologiaSection } from './sections/TraumatologiaSection';
 import { HistoriaClinicaSection } from './sections/HistoriaClinicaSection';
@@ -35,6 +36,7 @@ export interface Props {
   isAdmin: boolean;
   role: string;
   profesionales: Profesional[];
+  disciplinas?: DisciplinaConCategorias[];
   initialData?: SeguimientoListItem & { datosEspecificos?: SeguimientoDetalle };
 }
 
@@ -159,13 +161,22 @@ function toDatetimeLocal(iso: string | Date | null | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export default function SeguimientoForm({ mode, isAdmin, role, profesionales, initialData }: Props) {
+export default function SeguimientoForm({ mode, isAdmin, role, profesionales, disciplinas = [], initialData }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const [deportistaOptions, setDeportistaOptions] = useState<DeportistaOption[]>(
     initialData?.deportistas ?? [],
+  );
+
+  // Filtros de UI para acotar el dropdown de deportistas (no se persisten).
+  const [filtroDisciplina, setFiltroDisciplina] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
+
+  const categoriasFiltro = useMemo(
+    () => disciplinas.find((d) => d.id === filtroDisciplina)?.categorias ?? [],
+    [disciplinas, filtroDisciplina],
   );
 
   const tiposDisponibles = useMemo(() => getTiposDisponibles(role), [role]);
@@ -417,6 +428,43 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, in
         </div>
       )}
 
+      {disciplinas.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+              Disciplina <span className="text-[#6B7280] font-normal">(filtro)</span>
+            </label>
+            <CustomSelect
+              value={filtroDisciplina || '__all__'}
+              onChange={(v) => {
+                setFiltroDisciplina(v === '__all__' ? '' : v);
+                setFiltroCategoria('');
+              }}
+              options={[
+                { value: '__all__', label: 'Todas las disciplinas' },
+                ...disciplinas.map((d) => ({ value: d.id, label: d.nombre })),
+              ]}
+              placeholder="Todas las disciplinas"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+              Categoría <span className="text-[#6B7280] font-normal">(filtro)</span>
+            </label>
+            <CustomSelect
+              value={filtroCategoria || '__all__'}
+              onChange={(v) => setFiltroCategoria(v === '__all__' ? '' : v)}
+              options={[
+                { value: '__all__', label: 'Todas las categorías' },
+                ...categoriasFiltro.map((c) => ({ value: c.id, label: c.nombre })),
+              ]}
+              placeholder="Todas las categorías"
+              disabled={!filtroDisciplina}
+            />
+          </div>
+        </div>
+      )}
+
       <div>
         <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
           Deportista <span className="text-red-500">*</span>
@@ -431,6 +479,8 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, in
                 setDeportistaOptions(next);
                 field.onChange(next.map((d) => d.id));
               }}
+              disciplinaId={filtroDisciplina || undefined}
+              categoriaId={filtroCategoria || undefined}
             />
           )}
         />
