@@ -14,7 +14,10 @@ import { test, expect } from '@playwright/test';
  * 2. Create a storageState fixture with a session for an `entrenador` (or admin).
  * 3. Reference the storageState in playwright.config.ts under `use.storageState`.
  * 4. Seed a disciplina + categoría with a future EventoTorneo (PROGRAMADO) and
- *    >= 1 ACTIVO deportista in that disciplina/categoría.
+ *    >= 1 deportista in that disciplina/categoría. El plantel ahora trae TODOS
+ *    los estados (no solo ACTIVO); seedear al menos un deportista no-ACTIVO
+ *    (p.ej. LESIONADO) para aseverar que muestra su badge de estado junto al
+ *    nombre y que sigue siendo seleccionable.
  *
  * Then remove the `test.skip(...)` line in the describe block below.
  *
