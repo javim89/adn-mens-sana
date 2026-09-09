@@ -189,7 +189,7 @@ describe('DeportistaForm — mode=edit', () => {
     estado: 'ACTIVO',
     actividadComplementaria: 'GIMNASIO',
     fechaIngreso: new Date('2020-01-01'),
-    esRepresentante: false,
+    tieneRepresentante: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     clubesAnteriores: [],

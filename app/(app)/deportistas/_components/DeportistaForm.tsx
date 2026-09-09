@@ -60,7 +60,7 @@ function buildInitialData(d?: DeportistaWithRelations): DeportistaFormData {
       vivePensionClub: false,
       vivePensionExterna: false,
       estado: 'ACTIVO',
-      esRepresentante: false,
+      tieneRepresentante: false,
       clubesAnteriores: [],
       datosSalud: {
         enfermedadesPreexistentes: [],
@@ -91,7 +91,7 @@ function buildInitialData(d?: DeportistaWithRelations): DeportistaFormData {
     estado: d.estado,
     actividadComplementaria: d.actividadComplementaria ?? undefined,
     fechaIngreso: toDateString(d.fechaIngreso),
-    esRepresentante: d.esRepresentante,
+    tieneRepresentante: d.tieneRepresentante,
     clubesAnteriores: d.clubesAnteriores.map((c: { nombre: string; periodo?: string | null }) => ({
       nombre: c.nombre,
       periodo: c.periodo ?? undefined,

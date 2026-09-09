@@ -70,7 +70,7 @@ const patchAttributesSchema = z.object({
   estado: z.enum(EstadoValues).optional(),
   actividadComplementaria: z.enum(ActividadComplementariaValues).optional(),
   fechaIngreso: z.string().optional(),
-  esRepresentante: z.boolean().optional(),
+  tieneRepresentante: z.boolean().optional(),
   clubesAnteriores: z
     .array(z.object({ nombre: z.string(), periodo: z.string().optional() }))
     .optional(),
@@ -176,7 +176,7 @@ function serializeFullItem(
       estado: item.estado,
       actividadComplementaria: item.actividadComplementaria ?? null,
       fechaIngreso: item.fechaIngreso ? item.fechaIngreso.toISOString() : null,
-      esRepresentante: item.esRepresentante,
+      tieneRepresentante: item.tieneRepresentante,
       clubesAnteriores: item.clubesAnteriores.map((c) => ({
         id: c.id,
         nombre: c.nombre,
@@ -449,7 +449,7 @@ export async function PATCH(
           ...(attrs.estado !== undefined ? { estado: attrs.estado } : {}),
           ...(attrs.actividadComplementaria !== undefined ? { actividadComplementaria: attrs.actividadComplementaria || null } : {}),
           ...(attrs.fechaIngreso !== undefined ? { fechaIngreso: attrs.fechaIngreso ? new Date(attrs.fechaIngreso) : null } : {}),
-          ...(attrs.esRepresentante !== undefined ? { esRepresentante: attrs.esRepresentante } : {}),
+          ...(attrs.tieneRepresentante !== undefined ? { tieneRepresentante: attrs.tieneRepresentante } : {}),
         },
       });
 

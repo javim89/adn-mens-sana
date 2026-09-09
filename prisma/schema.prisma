@@ -130,7 +130,7 @@ model Deportista {
   estado                  EstadoDeportista         @default(ACTIVO)
   actividadComplementaria ActividadComplementaria? @map("actividad_complementaria")
   fechaIngreso            DateTime?                @map("fecha_ingreso")
-  esRepresentante         Boolean                  @default(false) @map("es_representante")
+  tieneRepresentante         Boolean                  @default(false) @map("tiene_representante")
 
   // 1:N relations
   clubesAnteriores        ClubAnterior[]

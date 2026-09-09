@@ -40,7 +40,7 @@ export type DeportistaFormData = {
   estado: EstadoDeportista;
   actividadComplementaria?: ActividadComplementaria;
   fechaIngreso?: string;
-  esRepresentante: boolean;
+  tieneRepresentante: boolean;
   clubesAnteriores: Array<{ nombre: string; periodo?: string }>;
 
   // Tab Escolar

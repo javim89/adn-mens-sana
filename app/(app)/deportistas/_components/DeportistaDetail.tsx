@@ -164,7 +164,7 @@ export function DatosDeportivosSection({ deportista: d }: SectionProps) {
         value={d.actividadComplementaria ? ACTIVIDAD_COMPLEMENTARIA_LABELS[d.actividadComplementaria as ActividadComplementaria] : '—'}
       />
       <FieldRow label="Fecha de ingreso" value={formatDate(d.fechaIngreso)} />
-      <FieldRow label="Es representante" value={boolLabel(d.esRepresentante)} />
+      <FieldRow label="Tiene representante" value={boolLabel(d.tieneRepresentante)} />
 
       {d.clubesAnteriores.length > 0 && (
         <div className="sm:col-span-2">

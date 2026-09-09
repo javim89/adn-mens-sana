@@ -72,7 +72,7 @@ export type DeportistaDetailAttributes = {
   estado: EstadoDeportista;
   actividadComplementaria: ActividadComplementaria | null;
   fechaIngreso: string | null;
-  esRepresentante: boolean;
+  tieneRepresentante: boolean;
   clubesAnteriores: Array<{ id: string; nombre: string; periodo: string | null }>;
   historiaDeportiva: Array<{ id: string; descripcion: string; fecha: string }>;
   datosEscolares: {

@@ -44,7 +44,7 @@ const emptyData: DeportistaFormData = {
   vivePensionClub: false,
   vivePensionExterna: false,
   estado: 'ACTIVO',
-  esRepresentante: false,
+  tieneRepresentante: false,
   clubesAnteriores: [],
 };
 
@@ -186,13 +186,13 @@ describe('TabDeportivo', () => {
     expect(screen.getByText('Inactivo')).toBeInTheDocument();
   });
 
-  test('checkbox "Es representante" funciona', () => {
+  test('checkbox "Tiene representante" funciona', () => {
     const onChange = vi.fn();
     render(<TabDeportivo data={emptyData} onChange={onChange} disciplinas={disciplinas} />);
-    const checkbox = screen.getByLabelText(/es representante/i);
+    const checkbox = screen.getByLabelText(/tiene representante/i);
     expect(checkbox).toBeInTheDocument();
     fireEvent.click(checkbox);
-    expect(onChange).toHaveBeenCalledWith({ esRepresentante: true });
+    expect(onChange).toHaveBeenCalledWith({ tieneRepresentante: true });
   });
 
   test('renderiza el componente ClubAnteriorList', () => {
