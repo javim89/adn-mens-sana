@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "react-grid-layout/css/styles.css";
+@import "react-resizable/css/styles.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -281,4 +283,80 @@ body {
 }
 .fc .fc-multimonth {
   border-color: #e5e7eb;
+}
+
+/* ---------------------------------------------------------------------------
+   Insights — react-grid-layout
+   Overrides de la hoja del paquete para alinearla con la paleta del club.
+   Mismo criterio que los overrides de FullCalendar de más arriba: scopeados al
+   contenedor de la grilla, sin tocar nada global.
+   --------------------------------------------------------------------------- */
+
+/* El placeholder de drop viene rojo por defecto; acá es el azul del club. */
+.insights-grid .react-grid-item.react-grid-placeholder {
+  background: #3346cc;
+  opacity: 0.12;
+  border: 2px dashed #3346cc;
+  border-radius: 0.75rem;
+  transition-duration: 120ms;
+}
+
+/* Mientras se arrastra, el widget se despega del resto. */
+.insights-grid .react-grid-item.react-draggable-dragging {
+  z-index: 30;
+  box-shadow: 0 10px 30px rgb(18 26 97 / 0.15);
+  cursor: grabbing;
+}
+
+.insights-grid .react-grid-item.resizing {
+  z-index: 30;
+  opacity: 0.9;
+}
+
+/* El handle nativo es una imagen de fondo; se reemplaza por una esquina
+   dibujada con bordes, que se ve nítida en cualquier densidad de pantalla. */
+.insights-grid .react-resizable-handle {
+  background-image: none;
+  padding: 0;
+}
+
+.insights-grid .react-resizable-handle-se {
+  right: 5px;
+  bottom: 5px;
+  width: 11px;
+  height: 11px;
+  border-right: 2px solid #9ca3af;
+  border-bottom: 2px solid #9ca3af;
+  border-bottom-right-radius: 3px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+/* El handle y el asa de arrastre solo aparecen al pasar por encima, para que la
+   grilla en reposo se lea como un dashboard y no como un editor. */
+.insights-grid .react-grid-item:hover .react-resizable-handle-se {
+  opacity: 1;
+}
+
+.insights-grid .react-grid-item:hover .react-resizable-handle-se:hover {
+  border-color: #3346cc;
+}
+
+/* Sin transición de posición durante el arrastre: se siente pegajoso. */
+.insights-grid .react-grid-item {
+  transition: transform 180ms ease, width 180ms ease, height 180ms ease;
+}
+
+.insights-grid .react-grid-item.react-draggable-dragging,
+.insights-grid .react-grid-item.resizing {
+  transition: none;
+}
+
+/* El asa de arrastre es el header del widget. */
+.widget-drag-handle {
+  cursor: grab;
+}
+
+.insights-grid.is-static .widget-drag-handle {
+  cursor: default;
 }

@@ -773,3 +773,77 @@ model Triage {
   @@index([deportistaId, calculatedAt])
   @@map("triage")
 }
+
+// ---------------------------------------------------------------------------
+// Models — Insights (BI)
+// ---------------------------------------------------------------------------
+
+model InsightsDashboard {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  nombre      String
+  descripcion String?
+  esSistema   Boolean  @default(false) @map("es_sistema")
+  orden       Int      @default(0)
+  creadoPor   String   @map("creado_por")
+
+  widgets     InsightsWidget[]
+  filtros     InsightsFilter[]
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("insights_dashboards")
+}
+
+model InsightsWidget {
+  id          String   @id @default(cuid())
+  dashboardId String   @map("dashboard_id")
+  titulo      String
+  descripcion String?
+  tipo        String
+  querySpec   Json     @map("query_spec")
+  vizConfig   Json     @map("viz_config")
+  x           Int      @default(0)
+  y           Int      @default(0)
+  w           Int      @default(6)
+  h           Int      @default(6)
+
+  dashboard   InsightsDashboard      @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  filtros     InsightsFilterTarget[]
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([dashboardId])
+  @@map("insights_widgets")
+}
+
+model InsightsFilter {
+  id           String  @id @default(cuid())
+  dashboardId  String  @map("dashboard_id")
+  label        String
+  dataset      String
+  dimension    String
+  operator     String
+  valorDefault Json?   @map("valor_default")
+  orden        Int     @default(0)
+
+  dashboard    InsightsDashboard      @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  targets      InsightsFilterTarget[]
+
+  @@index([dashboardId])
+  @@map("insights_filters")
+}
+
+model InsightsFilterTarget {
+  filterId String @map("filter_id")
+  widgetId String @map("widget_id")
+
+  filter   InsightsFilter @relation(fields: [filterId], references: [id], onDelete: Cascade)
+  widget   InsightsWidget @relation(fields: [widgetId], references: [id], onDelete: Cascade)
+
+  @@id([filterId, widgetId])
+  @@index([widgetId])
+  @@map("insights_filter_targets")
+}
