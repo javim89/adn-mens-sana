@@ -17,6 +17,7 @@
     "seed:seguimientos": "node scripts/seed-seguimientos.mjs",
     "seed:turnos": "node scripts/seed-turnos.mjs",
     "seed:insights": "node scripts/seed-insights.mjs",
+    "check:insights-ro": "node scripts/check-insights-readonly.mjs",
     "seed:deportistas:full": "npm run seed:deportistas && npm run seed:datos-deportistas",
     "seed:all": "npm run seed:categorias && npm run seed:calendario && npm run seed:deportistas:full && npm run seed:seguimientos && npm run seed:turnos && npm run seed:insights"
   },
