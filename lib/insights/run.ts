@@ -3,9 +3,14 @@
  *
  * `runQuery` compila un `QuerySpec` del builder; `runRawSql` ejecuta SQL crudo
  * detrás del guard sintáctico y de una transacción read-only con timeout.
+ *
+ * Los dos caminos usan `getReadOnlyPrisma()`. El del builder también, aunque el
+ * compilador solo emite SELECT: si alguna vez tuviera un bug, el rol de la base
+ * es lo que lo contiene. Sin `DATABASE_URL_READONLY` seteada devuelve el
+ * cliente normal, así que el comportamiento por defecto no cambia.
  */
 
-import { prisma } from '@/lib/db';
+import { getReadOnlyPrisma } from '@/lib/db-readonly';
 import { compile } from './compile';
 import { validateRawSql } from './sql-guard';
 import type { ColumnMeta, FieldType, QueryResult, QuerySpec } from './types';
@@ -72,7 +77,7 @@ export function inferColumns(rows: Record<string, unknown>[]): ColumnMeta[] {
 
 export async function runQuery(spec: QuerySpec, now: Date = new Date()): Promise<QueryResult> {
   const { sql, params, columns } = compile(spec, now);
-  const rows = await prisma.$queryRawUnsafe(sql, ...params);
+  const rows = await getReadOnlyPrisma().$queryRawUnsafe(sql, ...params);
   return { columns, rows: serializeRows(rows) };
 }
 
@@ -87,7 +92,7 @@ export async function runRawSql(sql: string): Promise<QueryResult> {
   // ')' es lo que evita que un comentario `--` al final se coma el paréntesis.
   const inner = sql.trim().replace(/;(?:\s|--[^\n]*|\/\*[\s\S]*?\*\/)*$/, '');
 
-  const rows = await prisma.$transaction(async (tx) => {
+  const rows = await getReadOnlyPrisma().$transaction(async (tx) => {
     await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
     await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '10s'");
     return tx.$queryRawUnsafe(
