@@ -11,6 +11,9 @@ import type {
   Servicio,
   EnfermedadPreexistente,
   AntecedenteEnfermedadFamiliar,
+  NivelTriage,
+  EstadoEvento,
+  TipoDia,
 } from '@/lib/generated/prisma/enums';
 
 // `Disciplina` dejó de ser un enum (ahora es modelo DB). Los labels se conservan
@@ -131,6 +134,26 @@ export const ENFERMEDAD_PREEXISTENTE_LABELS: Record<EnfermedadPreexistente, stri
   ALERGIAS: 'Alergias',
   ETS: 'Enf. de transmisión sexual',
   OTRO: 'Otro',
+};
+
+export const NIVEL_TRIAGE_LABELS: Record<NivelTriage, string> = {
+  VERDE: 'Verde',
+  AMARILLO: 'Amarillo',
+  NARANJA: 'Naranja',
+  ROJO: 'Rojo',
+};
+
+export const ESTADO_EVENTO_LABELS: Record<EstadoEvento, string> = {
+  PROGRAMADO: 'Programado',
+  SUSPENDIDO: 'Suspendido',
+  REPROGRAMADO: 'Reprogramado',
+};
+
+export const TIPO_DIA_LABELS: Record<TipoDia, string> = {
+  TORNEO: 'Torneo',
+  RECESO: 'Receso',
+  RECUPERO: 'Recupero',
+  SIN_ACTIVIDAD: 'Sin actividad',
 };
 
 export const ANTECEDENTE_ENFERMEDAD_FAMILIAR_LABELS: Record<AntecedenteEnfermedadFamiliar, string> = {
