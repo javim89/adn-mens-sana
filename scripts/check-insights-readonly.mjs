@@ -78,6 +78,23 @@ try {
   fail(`no puede leer insights_dashboards: ${e.message}`);
 }
 
+// Las tablas nuevas no heredan permisos: si el ALTER DEFAULT PRIVILEGES no las
+// cubrió, los dashboards de Viandas fallan mientras todo lo demás da verde.
+try {
+  const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM entregas_comida`;
+  ok(`puede leer: entregas_comida tiene ${n} filas`);
+} catch (e) {
+  fail(`no puede leer la tabla entregas_comida: ${e.message}`);
+}
+
+// Las dos columnas de elegibilidad son las que alimentan el CTE de cobertura.
+try {
+  await sql`SELECT recibe_almuerzo, recibe_cena FROM necesidades_apoyo LIMIT 1`;
+  ok("puede leer necesidades_apoyo.recibe_almuerzo / recibe_cena");
+} catch (e) {
+  fail(`no puede leer las columnas de elegibilidad de vianda: ${e.message}`);
+}
+
 // --- 3. Escritura: TIENE que fallar ---------------------------------------
 // Se envuelve en una transacción con ROLLBACK para no dejar rastro ni en el
 // caso malo, en el que el rol sí tuviera permiso de escritura.

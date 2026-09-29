@@ -312,7 +312,8 @@ export function DatosSocialesSection({ deportista: d }: SectionProps) {
             label="Dificultad de alimentación"
             value={d.necesidadesApoyo.dificultadAlimentacion ? DIFICULTAD_ALIMENTACION_LABELS[d.necesidadesApoyo.dificultadAlimentacion as DificultadAlimentacion] : '—'}
           />
-          <FieldRow label="Recibe vianda" value={boolLabel(d.necesidadesApoyo.recibeVianda)} />
+          <FieldRow label="Recibe almuerzo" value={boolLabel(d.necesidadesApoyo.recibeAlmuerzo)} />
+          <FieldRow label="Recibe cena" value={boolLabel(d.necesidadesApoyo.recibeCena)} />
           <FieldRow label="Es socio" value={boolLabel(d.necesidadesApoyo.esSocio)} />
           {d.necesidadesApoyo.apoyosRequeridos.length > 0 && (
             <div className="sm:col-span-2">

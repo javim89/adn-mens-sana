@@ -136,7 +136,8 @@ function buildInitialData(d?: DeportistaWithRelations): DeportistaFormData {
     necesidadesApoyo: d.necesidadesApoyo
       ? {
           dificultadAlimentacion: d.necesidadesApoyo.dificultadAlimentacion ?? undefined,
-          recibeVianda: d.necesidadesApoyo.recibeVianda,
+          recibeAlmuerzo: d.necesidadesApoyo.recibeAlmuerzo,
+          recibeCena: d.necesidadesApoyo.recibeCena,
           esSocio: d.necesidadesApoyo.esSocio,
           apoyosRequeridos: d.necesidadesApoyo.apoyosRequeridos.map((a: { tipo: import('@/lib/generated/prisma/enums').TipoApoyo }) => a.tipo),
         }

@@ -2,12 +2,14 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Loader2, ChevronDown } from 'lucide-react';
+import { Mail, Loader2, ChevronDown, TriangleAlert } from 'lucide-react';
 import { CustomSelect } from '@/app/components/ui/custom-select';
 import { toast } from 'sonner';
 import { useUser } from '@clerk/nextjs';
-import { reenviarInvitacion, cambiarRol, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
+import { reenviarInvitacion, cambiarRol, asignarLugarRetiro, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
 import { ROLES_PERMITIDOS, ROL_LABELS } from '@/lib/roles';
+import { LUGARES_RETIRO } from '@/lib/utils/viandas';
+import { LUGAR_RETIRO_LABELS } from '@/lib/utils/enum-labels';
 import type { Usuario } from '@/lib/types/usuarios';
 import ConfirmarAccionModal from './ConfirmarAccionModal';
 
@@ -38,6 +40,7 @@ const ROL_BADGE: Record<string, string> = {
   nutricionista: 'bg-[#7C3AED] text-white',
   psicologo:     'bg-[#B45309] text-white',
   cardiologo:    'bg-[#DC2626] text-white',
+  responsable_viandas: 'bg-[#0E7490] text-white',
 };
 
 function RolBadge({ rol }: { rol: string }) {
@@ -47,6 +50,66 @@ function RolBadge({ rol }: { rol: string }) {
     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${classes}`}>
       {label}
     </span>
+  );
+}
+
+/**
+ * Un responsable de viandas sin lugar asignado no puede registrar nada, así que el
+ * estado se hace VISIBLE en vez de imposible: el admin lo ve acá en ámbar y el
+ * propio usuario se topa con un banner bloqueante en /viandas. Prevenirlo con un
+ * wizard no cubriría a quien fue invitado antes de que el campo existiera.
+ */
+function LugarRetiroChip({ lugarRetiro }: { lugarRetiro: string | null }) {
+  if (!lugarRetiro) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
+        <TriangleAlert size={12} aria-hidden="true" />
+        Sin lugar asignado
+      </span>
+    );
+  }
+  const label =
+    (LUGAR_RETIRO_LABELS as Record<string, string>)[lugarRetiro] ?? lugarRetiro;
+  return (
+    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#F3F4F6] text-[#1C1C1C] border border-gray-200">
+      {label}
+    </span>
+  );
+}
+
+function LugarRetiroSelector({
+  userId,
+  currentLugar,
+}: {
+  userId: string;
+  currentLugar: string | null;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function handleChange(lugar: string) {
+    startTransition(async () => {
+      const result = await asignarLugarRetiro(userId, lugar);
+      if (result.ok) {
+        toast.success('Lugar de retiro actualizado');
+        router.refresh();
+      } else {
+        toast.error(result.error ?? 'Error al actualizar el lugar');
+      }
+    });
+  }
+
+  return (
+    <CustomSelect
+      value={currentLugar ?? ''}
+      onChange={handleChange}
+      disabled={isPending}
+      placeholder="Elegir lugar..."
+      options={LUGARES_RETIRO.map((lugar) => ({
+        value: lugar,
+        label: LUGAR_RETIRO_LABELS[lugar],
+      }))}
+    />
   );
 }
 
@@ -370,6 +433,9 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <RolBadge rol={usuario.rol} />
+                    {usuario.rol === 'responsable_viandas' && (
+                      <LugarRetiroChip lugarRetiro={usuario.lugarRetiro} />
+                    )}
                     <EstadoBadge usuario={usuario} />
                   </div>
                   {isAdmin && usuario.status === 'activo' && (
@@ -378,6 +444,17 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                       <RolSelector userId={usuario.id} currentRol={usuario.rol} />
                     </div>
                   )}
+                  {isAdmin &&
+                    usuario.status === 'activo' &&
+                    usuario.rol === 'responsable_viandas' && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-[#6B7280]">Lugar:</span>
+                        <LugarRetiroSelector
+                          userId={usuario.id}
+                          currentLugar={usuario.lugarRetiro}
+                        />
+                      </div>
+                    )}
                   <p className="text-xs text-[#6B7280]">
                     Último ingreso:{' '}
                     {usuario.status === 'activo' ? formatLastSignIn(usuario.lastSignInAt) : '—'}
@@ -425,7 +502,12 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                       </td>
                       <td className="px-4 py-3.5 text-sm text-[#6B7280]">{usuario.email}</td>
                       <td className="px-4 py-3.5">
-                        <RolBadge rol={usuario.rol} />
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <RolBadge rol={usuario.rol} />
+                          {usuario.rol === 'responsable_viandas' && (
+                            <LugarRetiroChip lugarRetiro={usuario.lugarRetiro} />
+                          )}
+                        </div>
                       </td>
                       <td className="hidden xl:table-cell px-4 py-3.5 text-sm text-[#6B7280]">
                         {usuario.status === 'activo'
@@ -438,7 +520,15 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                       {isAdmin && (
                         <td className="hidden xl:table-cell px-4 py-3.5">
                           {usuario.status === 'activo' ? (
-                            <RolSelector userId={usuario.id} currentRol={usuario.rol} />
+                            <div className="flex flex-col gap-1.5">
+                              <RolSelector userId={usuario.id} currentRol={usuario.rol} />
+                              {usuario.rol === 'responsable_viandas' && (
+                                <LugarRetiroSelector
+                                  userId={usuario.id}
+                                  currentLugar={usuario.lugarRetiro}
+                                />
+                              )}
+                            </div>
                           ) : (
                             <span className="text-xs text-[#6B7280]">—</span>
                           )}

@@ -360,8 +360,10 @@ describe('cambiarRol', () => {
     const result = await cambiarRol('user_target', 'entrenador');
 
     expect(result.ok).toBe(true);
+    // `lugarRetiro: null` explícito: `updateUserMetadata` hace PATCH y MERGEA, así
+    // que sin esto un ex responsable_viandas se quedaría con el lugar huérfano.
     expect(mockUpdateMetadata).toHaveBeenCalledWith('user_target', {
-      publicMetadata: { role: 'entrenador' },
+      publicMetadata: { role: 'entrenador', lugarRetiro: null },
     });
   });
 
@@ -413,7 +415,28 @@ describe('cambiarRol', () => {
 
     expect(result.ok).toBe(true);
     expect(mockUpdateMetadata).toHaveBeenCalledWith('user_target', {
-      publicMetadata: { role: 'nutricionista' },
+      publicMetadata: { role: 'nutricionista', lugarRetiro: null },
+    });
+  });
+
+  // La contracara: al PASAR a responsable_viandas no se manda la clave, para no
+  // borrar un lugar que el admin pudo haber asignado antes con asignarLugarRetiro.
+  test('al pasar a responsable_viandas no toca el lugarRetiro existente', async () => {
+    const mockUpdateMetadata = vi.fn().mockResolvedValue({ id: 'user_target' });
+    mockClerkClient.mockResolvedValueOnce({
+      users: { getUserList: vi.fn(), updateUserMetadata: mockUpdateMetadata },
+      invitations: {
+        getInvitationList: vi.fn(),
+        createInvitation: vi.fn(),
+        revokeInvitation: vi.fn(),
+      },
+    });
+
+    const result = await cambiarRol('user_target', 'responsable_viandas');
+
+    expect(result.ok).toBe(true);
+    expect(mockUpdateMetadata).toHaveBeenCalledWith('user_target', {
+      publicMetadata: { role: 'responsable_viandas' },
     });
   });
 });

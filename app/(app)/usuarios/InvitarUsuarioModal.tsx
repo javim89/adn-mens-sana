@@ -7,17 +7,33 @@ import { X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { invitarUsuario } from '@/lib/actions/usuarios';
 import { ROLES_PERMITIDOS, ROL_LABELS } from '@/lib/roles';
+import { LUGARES_RETIRO } from '@/lib/utils/viandas';
+import { LUGAR_RETIRO_LABELS } from '@/lib/utils/enum-labels';
 import { CustomSelect } from '@/app/components/ui/custom-select';
 
-const schema = z.object({
-  firstName: z.string().min(1, 'El nombre es requerido'),
-  lastName: z.string().min(1, 'El apellido es requerido'),
-  email: z.string().min(1, 'El email es requerido').email('El email no es válido'),
-  // Derivado de ROLES_PERMITIDOS para que nunca se desincronice al agregar un rol nuevo.
-  rol: z.enum(ROLES_PERMITIDOS, {
-    error: 'Seleccioná un rol',
-  }),
-});
+const schema = z
+  .object({
+    firstName: z.string().min(1, 'El nombre es requerido'),
+    lastName: z.string().min(1, 'El apellido es requerido'),
+    email: z.string().min(1, 'El email es requerido').email('El email no es válido'),
+    // Derivado de ROLES_PERMITIDOS para que nunca se desincronice al agregar un rol nuevo.
+    rol: z.enum(ROLES_PERMITIDOS, {
+      error: 'Seleccioná un rol',
+    }),
+    lugarRetiro: z.enum(LUGARES_RETIRO).optional(),
+  })
+  // El lugar solo aplica —y es obligatorio— para quien entrega las viandas: de él
+  // se deriva dónde queda registrado cada retiro. Condicional por superRefine,
+  // mismo patrón que `buildSchema(isAdmin)` en PresentismoForm.
+  .superRefine((valores, ctx) => {
+    if (valores.rol === 'responsable_viandas' && !valores.lugarRetiro) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['lugarRetiro'],
+        message: 'Elegí el lugar de retiro',
+      });
+    }
+  });
 
 type FormData = z.infer<typeof schema>;
 
@@ -33,10 +49,14 @@ export default function InvitarUsuarioModal({ open, onClose, onSuccess }: Invita
     handleSubmit,
     reset,
     control,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
+
+  const esResponsableViandas = watch('rol') === 'responsable_viandas';
 
   function handleClose() {
     reset();
@@ -158,7 +178,14 @@ export default function InvitarUsuarioModal({ open, onClose, onSuccess }: Invita
                   <CustomSelect
                     id="rol"
                     value={field.value ?? ''}
-                    onChange={(v) => field.onChange(v)}
+                    onChange={(v) => {
+                      field.onChange(v);
+                      // Un rol que no entrega viandas no tiene lugar: limpiarlo evita
+                      // mandar un lugar colgado si el usuario cambia de opinión.
+                      if (v !== 'responsable_viandas') {
+                        setValue('lugarRetiro', undefined, { shouldValidate: false });
+                      }
+                    }}
                     options={ROLES_PERMITIDOS.map((rol) => ({ value: rol, label: ROL_LABELS[rol] }))}
                     placeholder="Seleccioná un rol"
                     className={errors.rol ? '[&_button]:border-red-400' : ''}
@@ -169,6 +196,40 @@ export default function InvitarUsuarioModal({ open, onClose, onSuccess }: Invita
                 <p className="text-xs text-red-600">{errors.rol.message}</p>
               )}
             </div>
+
+            {esResponsableViandas && (
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="lugarRetiro"
+                  className="text-xs font-medium text-[#1C1C1C] uppercase tracking-wide"
+                >
+                  Lugar de retiro
+                </label>
+                <Controller
+                  name="lugarRetiro"
+                  control={control}
+                  render={({ field }) => (
+                    <CustomSelect
+                      id="lugarRetiro"
+                      value={field.value ?? ''}
+                      onChange={(v) => field.onChange(v)}
+                      options={LUGARES_RETIRO.map((lugar) => ({
+                        value: lugar,
+                        label: LUGAR_RETIRO_LABELS[lugar],
+                      }))}
+                      placeholder="Seleccioná el lugar"
+                      className={errors.lugarRetiro ? '[&_button]:border-red-400' : ''}
+                    />
+                  )}
+                />
+                <p className="text-xs text-[#6B7280]">
+                  Todo retiro que registre este usuario queda asociado a este lugar.
+                </p>
+                {errors.lugarRetiro && (
+                  <p className="text-xs text-red-600">{errors.lugarRetiro.message}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">

@@ -161,12 +161,13 @@ export async function createDeportista(
     }
 
     const na = data.necesidadesApoyo;
-    if (na && (na.dificultadAlimentacion || na.recibeVianda != null || na.esSocio != null || (na.apoyosRequeridos && na.apoyosRequeridos.length > 0))) {
+    if (na && (na.dificultadAlimentacion || na.recibeAlmuerzo != null || na.recibeCena != null || na.esSocio != null || (na.apoyosRequeridos && na.apoyosRequeridos.length > 0))) {
       const apoyoOp = prisma.necesidadesApoyo.create({
         data: {
           deportistaId,
           dificultadAlimentacion: na.dificultadAlimentacion || null,
-          recibeVianda: na.recibeVianda ?? false,
+          recibeAlmuerzo: na.recibeAlmuerzo ?? false,
+          recibeCena: na.recibeCena ?? false,
           esSocio: na.esSocio ?? false,
           ...(na.apoyosRequeridos && na.apoyosRequeridos.length > 0
             ? {
@@ -471,7 +472,7 @@ export async function updateDeportista(
 
     // Upsert necesidades apoyo
     const na = data.necesidadesApoyo;
-    if (na && (na.dificultadAlimentacion || na.recibeVianda != null || na.esSocio != null || (na.apoyosRequeridos && na.apoyosRequeridos.length > 0))) {
+    if (na && (na.dificultadAlimentacion || na.recibeAlmuerzo != null || na.recibeCena != null || na.esSocio != null || (na.apoyosRequeridos && na.apoyosRequeridos.length > 0))) {
       const necesidadesExisting = await prisma.necesidadesApoyo.findUnique({ where: { deportistaId: id } });
       if (necesidadesExisting) {
         await prisma.apoyoRequerido.deleteMany({ where: { necesidadesApoyoId: necesidadesExisting.id } });
@@ -479,7 +480,8 @@ export async function updateDeportista(
           where: { deportistaId: id },
           data: {
             dificultadAlimentacion: na.dificultadAlimentacion || null,
-            recibeVianda: na.recibeVianda ?? false,
+            recibeAlmuerzo: na.recibeAlmuerzo ?? false,
+            recibeCena: na.recibeCena ?? false,
             esSocio: na.esSocio ?? false,
             ...(na.apoyosRequeridos && na.apoyosRequeridos.length > 0
               ? {
@@ -497,7 +499,8 @@ export async function updateDeportista(
           data: {
             deportistaId: id,
             dificultadAlimentacion: na.dificultadAlimentacion || null,
-            recibeVianda: na.recibeVianda ?? false,
+            recibeAlmuerzo: na.recibeAlmuerzo ?? false,
+            recibeCena: na.recibeCena ?? false,
             esSocio: na.esSocio ?? false,
             ...(na.apoyosRequeridos && na.apoyosRequeridos.length > 0
               ? {

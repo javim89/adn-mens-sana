@@ -24,6 +24,8 @@ import {
   DIFICULTAD_ALIMENTACION_LABELS,
   NIVEL_TRIAGE_LABELS,
   ESTADO_EVENTO_LABELS,
+  TIPO_COMIDA_LABELS,
+  LUGAR_RETIRO_LABELS,
 } from '@/lib/utils/enum-labels';
 import { PRIORIDAD_LABELS, TIPO_SEGUIMIENTO_META } from '@/lib/utils/seguimiento-tipo';
 import {
@@ -97,6 +99,46 @@ const DIM_ESTADO_DEPORTISTA: Dimension = {
   enumLabels: ESTADO_LABELS,
 };
 
+const DIM_RANGO_ETARIO: Dimension = {
+  id: 'rango_etario',
+  label: 'Rango etario',
+  sql: RANGO_ETARIO_SQL,
+  type: 'string',
+};
+
+// Lo que la ficha del deportista PREVÉ (no un permiso: /viandas deja entregar
+// cualquier comida a cualquiera). El COALESCE no es cosmético: un deportista sin
+// fila en `necesidades_apoyo` da NULL por el LEFT JOIN, y NULL no es "false"
+// para `IS FALSE`. Sin coalescer, el desvío "le entregaron un almuerzo a alguien
+// que no lo tiene previsto" quedaría invisible justo para el caso de ficha
+// incompleta — que es el más frecuente.
+const RECIBE_ALMUERZO_SQL = 'COALESCE(necesidades_apoyo.recibe_almuerzo, false)';
+const RECIBE_CENA_SQL = 'COALESCE(necesidades_apoyo.recibe_cena, false)';
+
+// `comida` y `lugar` viven en dos relaciones distintas según el dataset
+// (`entregas_comida` y el CTE `viandas_cobertura`), así que son funciones y no
+// constantes: el nombre de la relación es parte de la expresión.
+function dimComida(relacion: string): Dimension {
+  return {
+    id: 'comida',
+    label: 'Comida',
+    sql: `${relacion}.comida`,
+    type: 'enum',
+    enumLabels: TIPO_COMIDA_LABELS,
+  };
+}
+
+function dimLugarRetiro(relacion: string, overrides: Partial<Dimension> = {}): Dimension {
+  return {
+    id: 'lugar',
+    label: 'Lugar de retiro',
+    sql: `${relacion}.lugar`,
+    type: 'enum',
+    enumLabels: LUGAR_RETIRO_LABELS,
+    ...overrides,
+  };
+}
+
 function avgMeasure(id: string, label: string, sql: string): Measure {
   return { id, label, agg: 'avg', sql, format: 'decimal' };
 }
@@ -166,12 +208,7 @@ const deportistas: Dataset = {
       sql: 'deportistas.vive_pension_externa',
       type: 'boolean',
     },
-    {
-      id: 'rango_etario',
-      label: 'Rango etario',
-      sql: RANGO_ETARIO_SQL,
-      type: 'string',
-    },
+    DIM_RANGO_ETARIO,
     {
       id: 'nivel_estudio',
       label: 'Nivel de estudio',
@@ -200,10 +237,28 @@ const deportistas: Dataset = {
       type: 'enum',
       enumLabels: MEDIO_TRANSPORTE_LABELS,
     },
+    // El id `recibe_vianda` se MANTIENE aunque la columna ya no exista: los
+    // widgets y filtros guardados lo referencian por id, y `findDimension`
+    // lanza ante un id desconocido — borrarlo reventaría el dashboard entero
+    // con un 500 en vez de degradar. Ahora es la disyunción de los dos flags.
     {
       id: 'recibe_vianda',
-      label: 'Recibe vianda',
-      sql: 'necesidades_apoyo.recibe_vianda',
+      label: 'Recibe vianda (almuerzo o cena)',
+      sql: `(${RECIBE_ALMUERZO_SQL} OR ${RECIBE_CENA_SQL})`,
+      type: 'boolean',
+    },
+    // Acá sí van crudos: en este dataset `is_null` distingue "no tiene ficha de
+    // apoyos cargada" de "no recibe", y esa diferencia es información.
+    {
+      id: 'recibe_almuerzo',
+      label: 'Recibe almuerzo',
+      sql: 'necesidades_apoyo.recibe_almuerzo',
+      type: 'boolean',
+    },
+    {
+      id: 'recibe_cena',
+      label: 'Recibe cena',
+      sql: 'necesidades_apoyo.recibe_cena',
       type: 'boolean',
     },
     {
@@ -784,6 +839,173 @@ const triageHistorico: Dataset = {
   ],
 };
 
+// Las viandas se parten en dos datasets por la misma razón que el triage:
+// `viandas_entregas` es el LIBRO MAYOR (lo que pasó, incluye deportistas dados
+// de baja) y `viandas_cobertura` es el INDICADOR OPERATIVO (lo que se esperaba
+// del plantel actual vs. lo que se retiró). Sumar uno contra el otro no da:
+// `cobertura.retiradas ≤ entregas.entregas`, siempre.
+const viandasEntregas: Dataset = {
+  id: 'viandas_entregas',
+  label: 'Viandas (entregas)',
+  description:
+    'Libro mayor de las comidas efectivamente retiradas. La presencia de la fila ES el retiro: no hay booleano "retirada". Incluye las entregas de deportistas que hoy están inactivos.',
+  grain: '1 fila = 1 comida retirada por un deportista en un día',
+  from: 'entregas_comida',
+  joins: [
+    'LEFT JOIN deportistas ON deportistas.id = entregas_comida.deportista_id',
+    JOIN_DISCIPLINA_DE_DEPORTISTA,
+    JOIN_CATEGORIA_DE_DEPORTISTA,
+    'LEFT JOIN necesidades_apoyo ON necesidades_apoyo.deportista_id = deportistas.id',
+  ],
+  dimensions: [
+    { id: 'fecha', label: 'Fecha', sql: 'entregas_comida.fecha', type: 'date' },
+    dimComida('entregas_comida'),
+    dimLugarRetiro('entregas_comida'),
+    {
+      id: 'entregado_por',
+      label: 'Entregado por (id)',
+      sql: 'entregas_comida.entregado_por',
+      type: 'string',
+    },
+    DIM_DISCIPLINA,
+    DIM_CATEGORIA,
+    DIM_DEPORTISTA,
+    DIM_ESTADO_DEPORTISTA,
+    DIM_GENERO,
+    DIM_RANGO_ETARIO,
+    // Los dos flags acá son el CRUCE FICHA vs. REALIDAD del módulo: un cruce
+    // `comida = ALMUERZO` × `recibe_almuerzo = false` con `entregas > 0` es
+    // exactamente lo que hay que poder ver — cuántos que tienen solo cena
+    // prevista están recibiendo almuerzo, y viceversa. Por eso van coalescidos
+    // (ver RECIBE_ALMUERZO_SQL): la ficha ausente es parte del dato.
+    { id: 'recibe_almuerzo', label: 'Recibe almuerzo', sql: RECIBE_ALMUERZO_SQL, type: 'boolean' },
+    { id: 'recibe_cena', label: 'Recibe cena', sql: RECIBE_CENA_SQL, type: 'boolean' },
+  ],
+  measures: [
+    { id: 'entregas', label: 'Entregas', agg: 'count', sql: '*', format: 'integer' },
+    {
+      id: 'deportistas_distintos',
+      label: 'Deportistas distintos',
+      agg: 'count_distinct',
+      sql: 'entregas_comida.deportista_id',
+      format: 'integer',
+    },
+    {
+      id: 'dias',
+      label: 'Días con registro',
+      agg: 'count_distinct',
+      sql: 'entregas_comida.fecha',
+      format: 'integer',
+    },
+  ],
+};
+
+const VIANDAS_COBERTURA_CTE = `WITH viandas_dias AS (
+    SELECT DISTINCT entregas_comida.fecha AS fecha FROM entregas_comida
+  ),
+  viandas_comidas AS (
+    SELECT unnest(ARRAY['DESAYUNO','ALMUERZO','MERIENDA','CENA']::"TipoComida"[]) AS comida
+  ),
+  viandas_cobertura AS (
+    SELECT viandas_dias.fecha, viandas_comidas.comida,
+           deportistas.id AS deportista_id,
+           entregas_comida.id AS entrega_id,
+           entregas_comida.lugar, entregas_comida.entregado_por
+    FROM viandas_dias
+    CROSS JOIN viandas_comidas
+    CROSS JOIN deportistas
+    LEFT JOIN necesidades_apoyo ON necesidades_apoyo.deportista_id = deportistas.id
+    LEFT JOIN entregas_comida
+           ON entregas_comida.deportista_id = deportistas.id
+          AND entregas_comida.fecha  = viandas_dias.fecha
+          AND entregas_comida.comida = viandas_comidas.comida
+    WHERE deportistas.estado <> 'INACTIVO'
+      AND (viandas_comidas.comida IN ('DESAYUNO','MERIENDA')
+        OR (viandas_comidas.comida = 'ALMUERZO' AND ${RECIBE_ALMUERZO_SQL})
+        OR (viandas_comidas.comida = 'CENA'     AND ${RECIBE_CENA_SQL}))
+  )`;
+
+const viandasCobertura: Dataset = {
+  id: 'viandas_cobertura',
+  label: 'Viandas (cobertura)',
+  description:
+    'Comidas esperadas vs. retiradas: el indicador operativo del módulo. Dos límites deliberados. (1) El universo de días es `SELECT DISTINCT fecha FROM entregas_comida`: un día en que nadie registró nada es invisible. Es el proxy de "día operativo" — un generate_series metería fines de semana y recesos e inflaría las no retiradas; la medida "Días con registro" de Viandas (entregas) sirve para detectar huecos. (2) El plantel es el ACTUAL (estado distinto de Inactivo): un deportista dado de baja desaparece de las esperadas históricas mientras sus filas siguen en Viandas (entregas), así que las retiradas de acá son ≤ las entregas de allá. Se excluye solo Inactivo y no se exige Activo a propósito: un lesionado o suspendido sigue comiendo.',
+  grain: '1 fila = 1 comida esperada por un deportista en un día operativo',
+  cte: VIANDAS_COBERTURA_CTE,
+  from: 'viandas_cobertura',
+  joins: [
+    'LEFT JOIN deportistas ON deportistas.id = viandas_cobertura.deportista_id',
+    JOIN_DISCIPLINA_DE_DEPORTISTA,
+    JOIN_CATEGORIA_DE_DEPORTISTA,
+  ],
+  dimensions: [
+    { id: 'fecha', label: 'Fecha', sql: 'viandas_cobertura.fecha', type: 'date' },
+    dimComida('viandas_cobertura'),
+    // `lugar` y `entregado_por` salen del lado derecho de un LEFT JOIN: son NULL
+    // en toda fila "no retirada". Filtrarlas descartaría justo las filas que este
+    // dataset existe para contar, y el "% de retiro" daría 100% sin avisar. Por
+    // eso van con `filterable: false` — se pueden mostrar, no filtrar. Para
+    // cortar por lugar hay que usar el dataset Viandas (entregas).
+    dimLugarRetiro('viandas_cobertura', {
+      label: 'Lugar de retiro (vacío = no retirada)',
+      filterable: false,
+    }),
+    {
+      id: 'entregado_por',
+      label: 'Entregado por (vacío = no retirada)',
+      sql: 'viandas_cobertura.entregado_por',
+      type: 'string',
+      filterable: false,
+    },
+    DIM_DISCIPLINA,
+    DIM_CATEGORIA,
+    DIM_DEPORTISTA,
+    DIM_ESTADO_DEPORTISTA,
+    DIM_GENERO,
+    DIM_RANGO_ETARIO,
+  ],
+  measures: [
+    { id: 'esperadas', label: 'Comidas esperadas', agg: 'count', sql: '*', format: 'integer' },
+    {
+      id: 'retiradas',
+      label: 'Comidas retiradas',
+      agg: 'count',
+      sql: '*',
+      filterSql: 'viandas_cobertura.entrega_id IS NOT NULL',
+      format: 'integer',
+    },
+    {
+      id: 'no_retiradas',
+      label: 'Comidas no retiradas',
+      agg: 'count',
+      sql: '*',
+      filterSql: 'viandas_cobertura.entrega_id IS NULL',
+      format: 'integer',
+    },
+    {
+      id: 'porcentaje_retiro',
+      label: '% de retiro',
+      formula: 'retiradas / esperadas * 100',
+      operands: ['retiradas', 'esperadas'],
+      format: 'percent',
+    },
+    {
+      id: 'deportistas_distintos',
+      label: 'Deportistas distintos',
+      agg: 'count_distinct',
+      sql: 'viandas_cobertura.deportista_id',
+      format: 'integer',
+    },
+    {
+      id: 'dias',
+      label: 'Días operativos',
+      agg: 'count_distinct',
+      sql: 'viandas_cobertura.fecha',
+      format: 'integer',
+    },
+  ],
+};
+
 export const DATASETS: Dataset[] = [
   deportistas,
   seguimientos,
@@ -794,6 +1016,8 @@ export const DATASETS: Dataset[] = [
   convocatorias,
   triageUltimo,
   triageHistorico,
+  viandasEntregas,
+  viandasCobertura,
 ];
 
 export const CATALOG: Record<string, Dataset> = Object.fromEntries(

@@ -4,13 +4,15 @@
  *   - datos_salud            (+ enfermedades_preexistentes, antecedentes_enfermedades_familiares 1:N)
  *   - datos_escolares        (coherente con la edad)
  *   - datos_sociales
+ *   - necesidades_apoyo      (+ apoyos_requeridos 1:N) — define quién recibe almuerzo y/o cena
  *
  * Uses Neon's HTTP driver (avoids the TCP/IPv6 issue like apply-migration.mjs).
  * NO recrea deportistas: los lee de la DB (deben estar sembrados con seed:deportistas).
  *
  * ⚠️  IDEMPOTENCIA: Al inicio ejecuta `DELETE FROM "datos_salud"` (cascade sobre
  * enfermedades_preexistentes y antecedentes_enfermedades_familiares),
- * `DELETE FROM "datos_escolares"` y `DELETE FROM "datos_sociales"`.
+ * `DELETE FROM "datos_escolares"`, `DELETE FROM "datos_sociales"` y
+ * `DELETE FROM "necesidades_apoyo"` (cascade sobre apoyos_requeridos).
  * Re-correr no duplica. Corré esto sólo en entornos de prueba.
  *
  * Usage: node scripts/seed-datos-deportistas.mjs
@@ -109,6 +111,19 @@ const materiasAdeudadas = [
   "Matemática", "Inglés, Historia", "Biología", "Física", "Lengua",
 ];
 
+// Distribución de viandas: ~40% no recibe, ~20% sólo almuerzo, ~15% sólo cena, ~25% ambas.
+// Se sortea una vez por deportista para que /viandas tenga los cuatro casos representados.
+function sortearVianda() {
+  const r = Math.random();
+  if (r < 0.4) return { recibe_almuerzo: false, recibe_cena: false };
+  if (r < 0.6) return { recibe_almuerzo: true, recibe_cena: false };
+  if (r < 0.75) return { recibe_almuerzo: false, recibe_cena: true };
+  return { recibe_almuerzo: true, recibe_cena: true };
+}
+
+// Enum TipoApoyo (sin ALIMENTACION: ese se agrega según la vianda)
+const apoyosNoAlimentarios = ["ECONOMICO", "TRANSPORTE", "EDUCATIVO", "PSICOLOGICO", "OTRO"];
+
 const conQuienVive = ["Padres", "Madre", "Padre", "Abuelos", "Pareja", "Solo/a", "Tutor"];
 const composicionesFamiliares = [
   "Padre, madre y 2 hermanos", "Madre y 1 hermano", "Vive con abuelos",
@@ -131,7 +146,8 @@ async function main() {
   await sql.query('DELETE FROM "datos_salud"');
   await sql.query('DELETE FROM "datos_escolares"');
   await sql.query('DELETE FROM "datos_sociales"');
-  console.log("  ✓ datos_salud / datos_escolares / datos_sociales limpiados");
+  await sql.query('DELETE FROM "necesidades_apoyo"');
+  console.log("  ✓ datos_salud / datos_escolares / datos_sociales / necesidades_apoyo limpiados");
 
   // 3. Generar filas.
   const saludRows = [];
@@ -139,6 +155,8 @@ async function main() {
   const antecedentesRows = [];
   const escolaresRows = [];
   const socialesRows = [];
+  const necesidadesRows = [];
+  const apoyosRows = [];
 
   for (const dep of deportistas) {
     const edad = edadDesde(dep.fecha_nacimiento);
@@ -239,6 +257,35 @@ async function main() {
       con_quien_vive: conQuien,
       composicion_grupo_familiar: rand(composicionesFamiliares),
     });
+
+    // --- necesidades_apoyo (1:1) ---
+    const vianda = sortearVianda();
+    const recibeVianda = vianda.recibe_almuerzo || vianda.recibe_cena;
+    const necesidadId = randomUUID();
+    necesidadesRows.push({
+      id: necesidadId,
+      deportista_id: dep.id,
+      // Quien recibe vianda tiende a reportar más dificultad para alimentarse.
+      dificultad_alimentacion: recibeVianda
+        ? rand(["A_VECES", "A_VECES", "FRECUENTEMENTE"])
+        : rand(["NUNCA", "NUNCA", "NUNCA", "A_VECES"]),
+      recibe_almuerzo: vianda.recibe_almuerzo,
+      recibe_cena: vianda.recibe_cena,
+      es_socio: chance(0.7),
+    });
+
+    // --- apoyos_requeridos (1:N) ---
+    const apoyos = new Set();
+    if (recibeVianda) apoyos.add("ALIMENTACION");
+    if (chance(recibeVianda ? 0.6 : 0.2)) apoyos.add(rand(apoyosNoAlimentarios));
+    if (apoyos.size === 0) apoyos.add("NINGUNO");
+    for (const tipo of apoyos) {
+      apoyosRows.push({
+        id: randomUUID(),
+        necesidades_apoyo_id: necesidadId,
+        tipo,
+      });
+    }
   }
 
   // 4. Insertar en chunks de ~30.
@@ -289,12 +336,36 @@ async function main() {
   );
   console.log(`  ✓ ${socialesRows.length} filas en datos_sociales`);
 
+  await insertAll(
+    "necesidades_apoyo",
+    ["id", "deportista_id", "dificultad_alimentacion", "recibe_almuerzo", "recibe_cena", "es_socio"],
+    necesidadesRows
+  );
+  console.log(`  ✓ ${necesidadesRows.length} filas en necesidades_apoyo`);
+
+  await insertAll(
+    "apoyos_requeridos",
+    ["id", "necesidades_apoyo_id", "tipo"],
+    apoyosRows
+  );
+  console.log(`  ✓ ${apoyosRows.length} filas en apoyos_requeridos`);
+
   // 5. Conteos reales desde la DB.
   const [{ salud }] = await sql.query('SELECT COUNT(*)::int AS salud FROM "datos_salud"');
   const [{ escolares }] = await sql.query('SELECT COUNT(*)::int AS escolares FROM "datos_escolares"');
   const [{ sociales }] = await sql.query('SELECT COUNT(*)::int AS sociales FROM "datos_sociales"');
   const [{ enfermedades }] = await sql.query('SELECT COUNT(*)::int AS enfermedades FROM "enfermedades_preexistentes"');
   const [{ antecedentes }] = await sql.query('SELECT COUNT(*)::int AS antecedentes FROM "antecedentes_enfermedades_familiares"');
+  const [{ necesidades }] = await sql.query('SELECT COUNT(*)::int AS necesidades FROM "necesidades_apoyo"');
+  const [{ apoyos }] = await sql.query('SELECT COUNT(*)::int AS apoyos FROM "apoyos_requeridos"');
+  const [viandas] = await sql.query(`
+    SELECT
+      COUNT(*) FILTER (WHERE "recibe_almuerzo" AND "recibe_cena")::int         AS ambas,
+      COUNT(*) FILTER (WHERE "recibe_almuerzo" AND NOT "recibe_cena")::int     AS solo_almuerzo,
+      COUNT(*) FILTER (WHERE NOT "recibe_almuerzo" AND "recibe_cena")::int     AS solo_cena,
+      COUNT(*) FILTER (WHERE NOT "recibe_almuerzo" AND NOT "recibe_cena")::int AS ninguna
+    FROM "necesidades_apoyo"
+  `);
 
   console.log("\nConteos finales (desde la DB):");
   console.log(`  datos_salud                          ${salud}`);
@@ -302,6 +373,13 @@ async function main() {
   console.log(`  datos_sociales                       ${sociales}`);
   console.log(`  enfermedades_preexistentes           ${enfermedades}`);
   console.log(`  antecedentes_enfermedades_familiares ${antecedentes}`);
+  console.log(`  necesidades_apoyo                    ${necesidades}`);
+  console.log(`  apoyos_requeridos                    ${apoyos}`);
+  console.log("\nViandas:");
+  console.log(`  almuerzo + cena   ${viandas.ambas}`);
+  console.log(`  sólo almuerzo     ${viandas.solo_almuerzo}`);
+  console.log(`  sólo cena         ${viandas.solo_cena}`);
+  console.log(`  no recibe vianda  ${viandas.ninguna}`);
   console.log(`\nTotal deportistas: ${deportistas.length}`);
   console.log("✓ Seed completado.");
 }

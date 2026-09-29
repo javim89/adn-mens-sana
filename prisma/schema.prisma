@@ -141,6 +141,7 @@ model Deportista {
   convocatorias           ConvocatoriaDeportista[]
   pasosPorDivision        PasoPorDivision[]
   triages                 Triage[]
+  entregasComida          EntregaComida[]
 
   // 1:1 satellite models
   datosEscolares          DatosEscolares?
@@ -253,7 +254,8 @@ model NecesidadesApoyo {
   id                     String                  @id @default(cuid())
   deportistaId           String                  @unique @map("deportista_id")
   dificultadAlimentacion DificultadAlimentacion? @map("dificultad_alimentacion")
-  recibeVianda           Boolean                 @default(false) @map("recibe_vianda")
+  recibeAlmuerzo         Boolean                 @default(false) @map("recibe_almuerzo")
+  recibeCena             Boolean                 @default(false) @map("recibe_cena")
   esSocio                Boolean                 @default(false) @map("es_socio")
 
   apoyosRequeridos       ApoyoRequerido[]
@@ -846,4 +848,47 @@ model InsightsFilterTarget {
   @@id([filterId, widgetId])
   @@index([widgetId])
   @@map("insights_filter_targets")
+}
+
+// ---------------------------------------------------------------------------
+// Enums — Viandas
+// ---------------------------------------------------------------------------
+
+enum TipoComida {
+  DESAYUNO
+  ALMUERZO
+  MERIENDA
+  CENA
+}
+
+enum LugarRetiro {
+  BOSQUESITO
+  SEDE
+  ESTANCIA_CHICA
+}
+
+// ---------------------------------------------------------------------------
+// Models — Viandas
+// ---------------------------------------------------------------------------
+
+/// Una fila = un deportista retiró una comida un día. La PRESENCIA de la fila es
+/// el hecho: no hay boolean `retirada`. El @@unique es la propiedad anti-fraude:
+/// nadie retira la misma comida dos veces el mismo día, ni yendo a otro lugar.
+model EntregaComida {
+  id           String      @id @default(cuid())
+  deportistaId String      @map("deportista_id")
+  fecha        DateTime    @db.Date
+  comida       TipoComida
+  lugar        LugarRetiro
+  /// Clerk userId. Sin FK, como el resto de los ids de Clerk en el schema.
+  entregadoPor String      @map("entregado_por")
+
+  deportista   Deportista  @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  @@unique([deportistaId, fecha, comida])
+  @@index([fecha, lugar])
+  @@index([entregadoPor])
+  @@map("entregas_comida")
 }

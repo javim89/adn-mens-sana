@@ -26,7 +26,8 @@ const DEPORTISTA_SELECT = {
   necesidadesApoyo: {
     select: {
       dificultadAlimentacion: true,
-      recibeVianda: true,
+      recibeAlmuerzo: true,
+      recibeCena: true,
       apoyosRequeridos: { select: { tipo: true } },
     },
   },
@@ -128,7 +129,12 @@ function buildInput(
     historialLesiones: d.datosSalud?.historialLesiones ?? null,
     obraSocial: d.datosSalud?.obraSocial ?? null,
     dificultadAlimentacion: d.necesidadesApoyo?.dificultadAlimentacion ?? null,
-    recibeVianda: d.necesidadesApoyo?.recibeVianda ?? false,
+    // `recibeVianda` sigue siendo la entrada del triage, pero ahora es DERIVADA:
+    // el flag viejo significaba exactamente "almuerzo o cena", así que el OR de
+    // los dos nuevos preserva el scoring bit a bit. Se deriva acá, en la capa de
+    // datos, para que `rules.ts` y sus tests queden intactos — que sigan verdes
+    // es la prueba de que el desdoblamiento no movió ningún puntaje.
+    recibeVianda: (d.necesidadesApoyo?.recibeAlmuerzo ?? false) || (d.necesidadesApoyo?.recibeCena ?? false),
     vivePensionClub: d.vivePensionClub,
     vivePensionExterna: d.vivePensionExterna,
     situacionLaboralHogar: d.datosSociales?.situacionLaboralHogar ?? null,
