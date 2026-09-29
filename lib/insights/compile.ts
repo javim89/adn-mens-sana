@@ -509,6 +509,7 @@ export function compile(spec: QuerySpec, now: Date = new Date()): CompiledQuery 
       type: dim.id === timeDimensionId ? 'date' : dim.type,
       role: 'dimension',
       ...(dim.enumLabels ? { enumLabels: dim.enumLabels } : {}),
+      ...(dim.labelSource ? { labelSource: dim.labelSource } : {}),
     });
   }
 

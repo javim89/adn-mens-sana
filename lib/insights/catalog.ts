@@ -861,11 +861,16 @@ const viandasEntregas: Dataset = {
     { id: 'fecha', label: 'Fecha', sql: 'entregas_comida.fecha', type: 'date' },
     dimComida('entregas_comida'),
     dimLugarRetiro('entregas_comida'),
+    // El nombre de quien entregó no está en Postgres: `entregado_por` es un
+    // Clerk userId sin FK. `labelSource` hace que el motor lo traduzca contra
+    // Clerk después de correr la query, así que la tabla muestra el nombre. El
+    // filtro, en cambio, sigue comparando contra el id crudo.
     {
       id: 'entregado_por',
-      label: 'Entregado por (id)',
+      label: 'Entregado por',
       sql: 'entregas_comida.entregado_por',
       type: 'string',
+      labelSource: 'clerk_user',
     },
     DIM_DISCIPLINA,
     DIM_CATEGORIA,
@@ -955,6 +960,7 @@ const viandasCobertura: Dataset = {
       label: 'Entregado por (vacío = no retirada)',
       sql: 'viandas_cobertura.entregado_por',
       type: 'string',
+      labelSource: 'clerk_user',
       filterable: false,
     },
     DIM_DISCIPLINA,

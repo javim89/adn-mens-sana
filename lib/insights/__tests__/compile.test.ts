@@ -342,6 +342,25 @@ describe('SQL generado', () => {
     expectParamParity(compiled);
   });
 
+  // `entregado_por` guarda un Clerk userId: el nombre no está en Postgres y se
+  // resuelve después de la query, así que la columna tiene que salir marcada.
+  it('la columna entregado_por sale marcada para resolver el nombre contra Clerk', () => {
+    for (const dataset of ['viandas_entregas', 'viandas_cobertura']) {
+      const compiled = compile(
+        spec({
+          dataset,
+          dimensions: ['entregado_por'],
+          measures: [dataset === 'viandas_entregas' ? 'entregas' : 'esperadas'],
+        }),
+        NOW,
+      );
+
+      const columna = compiled.columns.find((c) => c.id === 'entregado_por');
+      expect(columna?.labelSource).toBe('clerk_user');
+      expect(columna?.label).not.toMatch(/\(id\)/);
+    }
+  });
+
   // Filtrar por lugar en cobertura tiraría todas las filas "no retirada" (el
   // lado derecho del LEFT JOIN es NULL) y el % de retiro daría 100%.
   it('lugar y entregado_por de cobertura se pueden mostrar pero no filtrar', () => {

@@ -140,9 +140,50 @@ test.describe('Insights — flujos de admin', () => {
     expect((await descarga).suggestedFilename()).toMatch(/\.csv$/);
   });
 
-  test('un dashboard del sistema no se puede eliminar', async ({ page }) => {
+  test('eliminar un dashboard propio desde el listado', async ({ page }) => {
+    await page.goto('/insights');
+
+    // Se crea uno para borrarlo, así el test no depende de los seedeados.
+    await page.getByRole('button', { name: 'Nuevo dashboard' }).click();
+    await page.getByLabel('Nombre').fill('Tablero a eliminar');
+    await page.getByRole('button', { name: 'Crear' }).click();
+    await page.waitForURL('**/editar');
+
+    await page.goto('/insights');
+    await page.getByRole('button', { name: 'Acciones de Tablero a eliminar' }).click();
+    await page.getByRole('menuitem', { name: 'Eliminar' }).click();
+
+    await expect(page.getByRole('dialog')).toContainText('Tablero a eliminar');
+    await page.getByRole('button', { name: 'Eliminar', exact: true }).click();
+
+    await expect(page.getByText('Dashboard eliminado')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Tablero a eliminar' })).toHaveCount(0);
+  });
+
+  test('un dashboard del sistema no ofrece el menú de eliminar', async ({ page }) => {
     await page.goto('/insights');
     await expect(page.getByText('Sistema')).toBeVisible();
+
+    // La card del sistema muestra el badge en lugar del menú de acciones.
+    await expect(
+      page.getByRole('button', { name: 'Acciones de Panorama general' }),
+    ).toHaveCount(0);
+  });
+
+  test('la tabla de entregas por responsable muestra nombres, no ids de Clerk', async ({
+    page,
+  }) => {
+    await page.goto('/insights');
+    await page.getByRole('link', { name: /Viandas/ }).click();
+    await page.waitForURL('**/insights/**');
+
+    const tabla = page
+      .locator('[class*="rounded-xl"]')
+      .filter({ hasText: 'Entregas por responsable' })
+      .locator('table');
+
+    await expect(tabla.getByRole('columnheader', { name: 'Entregado por' })).toBeVisible();
+    await expect(tabla.getByText(/^user_/)).toHaveCount(0);
   });
 });
 
