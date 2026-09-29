@@ -154,6 +154,9 @@ describe('marcarRetiro — la fecha la pone el servidor', () => {
     expect(data.fecha.toISOString()).toBe('2026-03-14T00:00:00.000Z');
   });
 
+  // El blindaje que sostiene el histórico de solo lectura: la UI del admin ahora
+  // puede estar mirando un día pasado, así que si la action aceptara una fecha del
+  // cliente, un click en esa grilla escribiría en el día equivocado. No la acepta.
   test('la fecha no se puede inyectar desde el cliente', async () => {
     comoSesion('responsable_viandas', 'SEDE');
     await marcarRetiro({
@@ -164,6 +167,18 @@ describe('marcarRetiro — la fecha la pone el servidor', () => {
     });
     const { data } = mockPrisma.entregaComida.create.mock.calls[0][0];
     expect(data.fecha.toISOString()).toBe('2026-03-14T00:00:00.000Z');
+  });
+
+  test('desmarcar tampoco acepta una fecha del cliente: borra en el día del servidor', async () => {
+    comoSesion('admin');
+    await desmarcarRetiro({
+      deportistaId: 'd1',
+      comida: 'ALMUERZO',
+      // @ts-expect-error el tipo no admite fecha; el test comprueba que además se ignora
+      fecha: '2020-01-01',
+    });
+    const { where } = mockPrisma.entregaComida.deleteMany.mock.calls[0][0];
+    expect(where.fecha.toISOString()).toBe('2026-03-14T00:00:00.000Z');
   });
 });
 

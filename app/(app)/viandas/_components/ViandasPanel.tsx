@@ -2,13 +2,13 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Search, TriangleAlert, UtensilsCrossed } from 'lucide-react';
+import { History, Search, TriangleAlert, UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
 import { CustomSelect } from '@/app/components/ui/custom-select';
 import { marcarRetiro, desmarcarRetiro } from '@/lib/actions/viandas';
 import { COMIDAS, LUGARES_RETIRO, comidasPrevistas, tagElegibilidad } from '@/lib/utils/viandas';
 import { LUGAR_RETIRO_LABELS, TIPO_COMIDA_LABELS, ESTADO_LABELS } from '@/lib/utils/enum-labels';
-import { formatearClaveFecha } from '@/lib/utils/fecha';
+import { esClaveFechaValida, formatearClaveFecha } from '@/lib/utils/fecha';
 import type { DisciplinaConCategorias } from '@/lib/queries/disciplinas';
 import type { DeportistaVianda, EntregaView } from '@/lib/types/viandas';
 import type { LugarRetiro, TipoComida } from '@/lib/generated/prisma/enums';
@@ -26,6 +26,8 @@ const TODAS = '__all__';
 
 interface Props {
   fechaHoy: string;
+  /** El día que se está mirando. Distinto de `fechaHoy` = histórico en solo lectura. */
+  fechaActiva: string;
   isAdmin: boolean;
   lugarActivo: LugarRetiro | null;
   sinLugarAsignado: boolean;
@@ -43,6 +45,7 @@ function celda(deportistaId: string, comida: TipoComida) {
 
 export default function ViandasPanel({
   fechaHoy,
+  fechaActiva,
   isAdmin,
   lugarActivo,
   sinLugarAsignado,
@@ -70,6 +73,19 @@ export default function ViandasPanel({
     setFilas(plantel);
   }
 
+  // La fecha activa la decide el servidor: puede degradar a hoy un `?fecha=`
+  // inválido o futuro, así que el input tiene que seguirla en vez de quedarse con
+  // lo que se tipeó. Mismo patrón derived-state que `filas`/`planteRef`, y hace
+  // falta porque `navigate` va dentro de una transition: sin esto el input
+  // mostraría el valor viejo mientras la transition está en vuelo.
+  const esHistorico = fechaActiva !== fechaHoy;
+  const [fechaInput, setFechaInput] = useState(fechaActiva);
+  const [fechaRef, setFechaRef] = useState(fechaActiva);
+  if (fechaRef !== fechaActiva) {
+    setFechaRef(fechaActiva);
+    setFechaInput(fechaActiva);
+  }
+
   const categorias = useMemo(
     () => disciplinas.find((d) => d.id === disciplinaId)?.categorias ?? [],
     [disciplinas, disciplinaId],
@@ -89,12 +105,40 @@ export default function ViandasPanel({
     startTransition(() => router.push(url));
   }
 
-  const puedeMarcar = !sinLugarAsignado && !!lugarActivo;
-  const motivoBloqueo = sinLugarAsignado
-    ? 'Tu usuario no tiene un lugar de retiro asignado.'
-    : !lugarActivo
-      ? 'Elegí el lugar de retiro para poder marcar.'
-      : undefined;
+  function onCambioFecha(valor: string) {
+    // Un `input[type=date]` sanea lo que no sea una fecha completa y válida: lo que
+    // llega acá es siempre una clave entera o `''` (campo vaciado). No hay estados
+    // intermedios que preservar mientras se tipea.
+    //
+    // Y un valor que NO vamos a navegar — futuro, o el campo vaciado — no puede
+    // quedarse en pantalla: como no se navega, `fechaActiva` no cambia, el
+    // derived-state de arriba nunca resincroniza y el campo terminaría mostrando un
+    // día distinto al de la grilla. Volver a `fechaActiva` es lo único que mantiene
+    // al input diciendo la verdad.
+    const navegable = esClaveFechaValida(valor) && valor <= fechaHoy;
+    setFechaInput(navegable ? valor : fechaActiva);
+    if (!navegable) return;
+    // Hoy NO se escribe en la URL: la canónica queda sin `fecha` y un link
+    // compartido no congela un día.
+    navigate(buildUrl({ fecha: valor === fechaHoy ? null : valor }));
+  }
+
+  function volverAHoy() {
+    // Borra el param en vez de setear `fechaHoy`: si se cruzó la medianoche con la
+    // pestaña abierta, `fechaHoy` está rancio y el servidor recalcula el día real.
+    setFechaInput(fechaHoy);
+    navigate(buildUrl({ fecha: null }));
+  }
+
+  // El histórico va PRIMERO: en una fecha pasada "elegí el lugar" es ruido.
+  const puedeMarcar = !esHistorico && !sinLugarAsignado && !!lugarActivo;
+  const motivoBloqueo = esHistorico
+    ? `Estás viendo el ${formatearClaveFecha(fechaActiva)}. Solo se puede registrar el día de hoy.`
+    : sinLugarAsignado
+      ? 'Tu usuario no tiene un lugar de retiro asignado.'
+      : !lugarActivo
+        ? 'Elegí el lugar de retiro para poder marcar.'
+        : undefined;
 
   function aplicar(deportistaId: string, comida: TipoComida, entrega: EntregaView | null) {
     setFilas((prev) =>
@@ -109,6 +153,9 @@ export default function ViandasPanel({
   }
 
   async function onToggle(fila: DeportistaVianda, comida: TipoComida) {
+    // Segunda capa detrás del `disabled` del toggle: cubre también el histórico,
+    // porque `puedeMarcar` ya lo incluye. Sin esto, un click sintético alcanzaría
+    // para escribir en el día de hoy mirando un día pasado.
     if (!puedeMarcar) return;
 
     const key = celda(fila.id, comida);
@@ -172,7 +219,14 @@ export default function ViandasPanel({
     });
   }
 
-  /** El día cambió con la pestaña abierta: lo que se ve en pantalla ya no es hoy. */
+  /**
+   * El día cambió con la pestaña abierta: lo que se ve en pantalla ya no es hoy.
+   *
+   * Los dos llamadores comparan contra `fechaHoy` y NO contra `fechaActiva`: la
+   * action siempre escribe el día del servidor, así que lo que hay que detectar es
+   * que ese día ya no sea el que el cliente cree que es hoy. Con `fechaActiva` en
+   * histórico no se marca nada (`puedeMarcar` es false) y en hoy son lo mismo.
+   */
   function avisarCambioDeDia() {
     toast.error('Cambió el día. Recargando el registro de hoy.');
     router.refresh();
@@ -224,23 +278,56 @@ export default function ViandasPanel({
             Viandas
           </h1>
           <p className="text-sm text-[#6B7280] mt-1">
-            Registro del <strong className="text-[#1C1C1C]">{formatearClaveFecha(fechaHoy)}</strong>
-            . Solo se puede registrar el día de hoy.
+            {esHistorico ? 'Histórico del ' : 'Registro del '}
+            <strong className="text-[#1C1C1C]">{formatearClaveFecha(fechaActiva)}</strong>
+            {esHistorico ? '. Solo lectura.' : '. Solo se puede registrar el día de hoy.'}
           </p>
         </div>
 
         {isAdmin ? (
-          <div className="flex flex-col gap-1 sm:w-64">
-            <label htmlFor="lugar" className="text-xs font-medium text-[#6B7280] uppercase tracking-wide">
-              Lugar de retiro
-            </label>
-            <CustomSelect
-              id="lugar"
-              value={lugarActivo ?? ''}
-              onChange={(v) => navigate(buildUrl({ lugar: v || null }))}
-              placeholder="Elegí el lugar..."
-              options={LUGARES_RETIRO.map((l) => ({ value: l, label: LUGAR_RETIRO_LABELS[l] }))}
-            />
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+            {/* `input type="date"` nativo con la clase canónica de PresentismoForm:
+                no hay DatePicker reutilizable en app/components/ui/. */}
+            <div className="flex flex-col gap-1 sm:w-52">
+              <label
+                htmlFor="viandas-fecha"
+                className="text-xs font-medium text-[#6B7280] uppercase tracking-wide"
+              >
+                Fecha
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="viandas-fecha"
+                  type="date"
+                  value={fechaInput}
+                  max={fechaHoy}
+                  onChange={(e) => onCambioFecha(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+                />
+                {esHistorico && (
+                  <button
+                    type="button"
+                    onClick={volverAHoy}
+                    className="shrink-0 px-3 py-2 text-sm font-medium text-[#3346CC] border border-gray-200 rounded-lg hover:bg-[#F3F4F6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3346CC]/30"
+                  >
+                    Hoy
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1 sm:w-64">
+              <label htmlFor="lugar" className="text-xs font-medium text-[#6B7280] uppercase tracking-wide">
+                Lugar de retiro
+              </label>
+              <CustomSelect
+                id="lugar"
+                value={lugarActivo ?? ''}
+                onChange={(v) => navigate(buildUrl({ lugar: v || null }))}
+                placeholder="Elegí el lugar..."
+                options={LUGARES_RETIRO.map((l) => ({ value: l, label: LUGAR_RETIRO_LABELS[l] }))}
+              />
+            </div>
           </div>
         ) : (
           lugarActivo && (
@@ -253,6 +340,29 @@ export default function ViandasPanel({
           )
         )}
       </div>
+
+      {/* Solo lectura del histórico. `role="status"` y no `role="alert"`: no es un
+          error, y los tests existentes buscan el `alert` en singular. Gris y no
+          ámbar porque acá el ámbar ya significa "algo está mal / fuera de ficha". */}
+      {esHistorico && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-5 flex items-start gap-2 px-4 py-3 bg-[#F3F4F6] border border-gray-200 rounded-lg text-sm text-[#1C1C1C]"
+        >
+          <History size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+          <span>
+            Estás viendo el histórico del {formatearClaveFecha(fechaActiva)}. Los días
+            pasados son solo lectura: para registrar entregas volvé a hoy.{' '}
+            {/* La elegibilidad no está historizada: `comidasPrevistas` lee los flags
+                de la ficha de HOY. Lo decimos acá porque un "3 esperadas" de hace un
+                mes puede ser literalmente falso y el admin no tiene cómo saberlo. */}
+            Tené en cuenta que las esperadas, las sin retirar y los tags de
+            elegibilidad se calculan con la ficha actual de cada deportista, no con
+            la que tenía ese día: de un día pasado, lo fiable es lo retirado.
+          </span>
+        </div>
+      )}
 
       {/* Estados bloqueantes */}
       {sinLugarAsignado && (
@@ -268,7 +378,8 @@ export default function ViandasPanel({
         </div>
       )}
 
-      {isAdmin && !lugarActivo && (
+      {/* En histórico el lugar no hace falta: no se va a marcar nada. */}
+      {isAdmin && !esHistorico && !lugarActivo && (
         <div
           role="alert"
           className="mb-5 flex items-start gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800"
@@ -351,8 +462,12 @@ export default function ViandasPanel({
                 </span>
                 <span className="text-emerald-700">{retiradas} retiradas</span>
                 <span className="text-[#6B7280]">/ {esperadas} esperadas</span>
+                {/* En un día cerrado "pendientes" miente: ya no van a retirarse.
+                    Cambia la etiqueta, no el cálculo. */}
                 {pendientes > 0 && (
-                  <span className="font-medium text-amber-700">{pendientes} pendientes</span>
+                  <span className="font-medium text-amber-700">
+                    {pendientes} {esHistorico ? 'sin retirar' : 'pendientes'}
+                  </span>
                 )}
                 {fueraDeFicha > 0 && (
                   <span
@@ -411,6 +526,7 @@ export default function ViandasPanel({
                           previstaEnFicha={comidasPrevistas(d)[comida]}
                           bloqueado={!puedeMarcar}
                           motivoBloqueo={motivoBloqueo}
+                          soloLectura={esHistorico}
                           pendiente={enVuelo.has(celda(d.id, comida))}
                           onToggle={() => onToggle(d, comida)}
                         />
@@ -455,6 +571,7 @@ export default function ViandasPanel({
                               previstaEnFicha={comidasPrevistas(d)[comida]}
                               bloqueado={!puedeMarcar}
                               motivoBloqueo={motivoBloqueo}
+                              soloLectura={esHistorico}
                               pendiente={enVuelo.has(celda(d.id, comida))}
                               onToggle={() => onToggle(d, comida)}
                             />

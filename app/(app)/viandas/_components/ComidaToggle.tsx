@@ -27,9 +27,18 @@ interface Props {
    * para que se vea de un vistazo cuándo lo entregado se aparta de la ficha.
    */
   previstaEnFicha: boolean;
-  /** El admin sin lugar elegido no puede marcar; tampoco un responsable sin lugar. */
+  /**
+   * Sin lugar de retiro resuelto (admin que no eligió, responsable sin lugar
+   * asignado) o mirando una fecha pasada, que es solo lectura. El motivo lo
+   * decide el panel: acá solo se muestra.
+   */
   bloqueado: boolean;
   motivoBloqueo?: string;
+  /**
+   * El bloqueo es por estar mirando un día pasado, no por algo que se pueda
+   * resolver. Cambia solo el contraste: ver `atenuado` abajo.
+   */
+  soloLectura?: boolean;
   pendiente: boolean;
   onToggle: () => void;
 }
@@ -42,6 +51,7 @@ export default function ComidaToggle({
   previstaEnFicha,
   bloqueado,
   motivoBloqueo,
+  soloLectura = false,
   pendiente,
   onToggle,
 }: Props) {
@@ -49,15 +59,23 @@ export default function ComidaToggle({
   const label = TIPO_COMIDA_LABELS[comida];
 
   const fueraDeFicha = !previstaEnFicha;
-  // Lo único que bloquea es no tener lugar de retiro resuelto (o un request en
-  // vuelo). La ficha nunca bloquea: puede estar incompleta y el responsable
-  // igual tiene que poder entregar.
+  // Bloquea `bloqueado` (lo decide el panel) o un request en vuelo. La ficha
+  // nunca bloquea: puede estar incompleta y el responsable igual tiene que poder
+  // entregar.
   const deshabilitado = bloqueado || pendiente;
   const title = bloqueado
     ? motivoBloqueo
     : fueraDeFicha
       ? `${deportistaNombre} no tiene ${label.toLowerCase()} en su ficha. Se puede registrar igual.`
       : undefined;
+
+  // El `opacity-60` del bloqueo deja el texto en ~2.4:1, debajo del mínimo AA
+  // (4.5:1). Se acepta cuando el bloqueo es transitorio y no hay nada que leer
+  // (falta elegir el lugar, falta asignarlo): atenuar comunica "todavía no".
+  // En solo lectura es al revés — el rastro de supervisión de un día pasado es
+  // justo lo que el admin vino a leer, y el estado no se va a resolver. Queda el
+  // `cursor-not-allowed`, y el botón sigue `disabled` + `aria-disabled` igual.
+  const atenuado = bloqueado && !soloLectura;
 
   const base =
     'w-full flex flex-col items-center justify-center gap-0.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3346CC]/30';
@@ -83,7 +101,9 @@ export default function ComidaToggle({
       disabled={deshabilitado}
       title={title}
       onClick={onToggle}
-      className={`${base} ${estilo} ${bloqueado ? 'cursor-not-allowed opacity-60' : ''}`}
+      className={`${base} ${estilo} ${bloqueado ? 'cursor-not-allowed' : ''} ${
+        atenuado ? 'opacity-60' : ''
+      }`}
     >
       <span className="flex items-center gap-1">
         {pendiente ? (

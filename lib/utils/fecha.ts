@@ -46,11 +46,45 @@ export function hoyEnArgentina(now: Date = new Date()): string {
 }
 
 /**
+ * ¿`valor` es una clave `'YYYY-MM-DD'` de un día que existe?
+ *
+ * La regex sola no alcanza: `'2026-02-31'` la pasa y `fechaDbDesdeClave` devolvería
+ * el 3 de marzo — leer un día que nadie pidió. El round-trip por `toISOString` lo
+ * descarta. Devuelve booleano y no `throw` porque el llamador recibe input de la
+ * URL y tiene que poder degradar a hoy en vez de romper el render.
+ */
+export function esClaveFechaValida(valor: unknown): valor is string {
+  if (typeof valor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
+  const d = new Date(`${valor}T00:00:00.000Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === valor;
+}
+
+/**
+ * Qué día tiene que mostrar `/viandas`, a partir del `?fecha=` de la URL.
+ *
+ * Las tres reglas del histórico, en un solo lugar y sin tocar Clerk ni la base,
+ * así se pueden testear sin sesión:
+ *
+ * 1. **Admin-only.** Si no es admin el param se ignora, aunque sea válido. Un
+ *    `responsable_viandas` que arma la URL a mano ve hoy.
+ * 2. **Nunca futura ni inválida.** La comparación `<=` es lexicográfica y es
+ *    correcta porque el formato es ISO.
+ * 3. **Degrada a hoy**, no tira ni redirige: una fecha basura en la URL no
+ *    amerita una pantalla de error, y así `fechaDbDesdeClave` (que TIRA) nunca
+ *    ve un string sin validar.
+ *
+ * `param` es `unknown` porque viene de `searchParams`, donde puede ser un array.
+ */
+export function resolverFechaActiva(isAdmin: boolean, param: unknown, hoy: string): string {
+  return isAdmin && esClaveFechaValida(param) && param <= hoy ? param : hoy;
+}
+
+/**
  * `'YYYY-MM-DD'` → `Date` a medianoche UTC, que es lo que Prisma escribe y lee en
  * una columna `@db.Date`. Es el inverso explícito de `toDateString`.
  */
 export function fechaDbDesdeClave(clave: string): Date {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(clave)) {
+  if (!esClaveFechaValida(clave)) {
     throw new Error(`Clave de fecha inválida: "${clave}" (se espera YYYY-MM-DD)`);
   }
   return new Date(`${clave}T00:00:00.000Z`);

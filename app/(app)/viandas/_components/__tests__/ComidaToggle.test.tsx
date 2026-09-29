@@ -75,8 +75,9 @@ describe('la ficha informa, no bloquea', () => {
 });
 
 describe('por qué una celda está cerrada', () => {
-  // Sin el title, una celda deshabilitada es indistinguible de un bug. Ya solo
-  // queda un motivo real de cierre: no hay lugar de retiro resuelto.
+  // Sin el title, una celda deshabilitada es indistinguible de un bug. Hay dos
+  // motivos reales de cierre: no hay lugar de retiro resuelto, o se está mirando
+  // un día pasado (solo lectura).
   test('el bloqueo por falta de lugar muestra su propio motivo', () => {
     renderToggle({ bloqueado: true, motivoBloqueo: 'Elegí el lugar de retiro para poder marcar.' });
     const celda = screen.getByRole('switch');
@@ -98,6 +99,52 @@ describe('por qué una celda está cerrada', () => {
 
     await user.click(screen.getByRole('switch'));
     expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * El `opacity-60` del bloqueo deja el texto de la celda en ~2.4:1, debajo del
+ * mínimo AA de 4.5:1. Se banca cuando el bloqueo es transitorio y no hay nada que
+ * leer, pero en solo lectura atenúa justo el rastro de supervisión que el admin
+ * abrió el histórico para leer — y ese estado no se resuelve solo.
+ */
+describe('contraste del histórico', () => {
+  test('en solo lectura no se atenúa, pero sigue sin poder marcarse', async () => {
+    const user = userEvent.setup();
+    const { onToggle } = renderToggle({
+      bloqueado: true,
+      soloLectura: true,
+      motivoBloqueo: 'Estás viendo el 13/03/2026. Solo se puede registrar el día de hoy.',
+      entrega: ENTREGA,
+    });
+
+    const celda = screen.getByRole('switch');
+    expect(celda).not.toHaveClass('opacity-60');
+    // Lo que NO cambia: es un botón cerrado, y se nota al pasar el mouse.
+    expect(celda).toBeDisabled();
+    expect(celda).toHaveAttribute('aria-disabled', 'true');
+    expect(celda).toHaveClass('cursor-not-allowed');
+    await user.click(celda);
+    expect(onToggle).not.toHaveBeenCalled();
+
+    // El dato que justifica no atenuar tiene que seguir legible.
+    expect(celda).toHaveTextContent('Estancia Chica');
+  });
+
+  test('el bloqueo transitorio sí se atenúa', () => {
+    renderToggle({ bloqueado: true, motivoBloqueo: 'Elegí el lugar de retiro para poder marcar.' });
+
+    const celda = screen.getByRole('switch');
+    expect(celda).toHaveClass('opacity-60');
+    expect(celda).toHaveClass('cursor-not-allowed');
+  });
+
+  test('una celda normal no lleva ninguna de las dos', () => {
+    renderToggle();
+
+    const celda = screen.getByRole('switch');
+    expect(celda).not.toHaveClass('opacity-60');
+    expect(celda).not.toHaveClass('cursor-not-allowed');
   });
 });
 

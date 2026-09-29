@@ -21,14 +21,41 @@ test.describe('Viandas — acceso sin sesión', () => {
     expect(new URL(page.url()).pathname).toBe('/sign-in');
   });
 
-  // Los query params del módulo no abren una puerta lateral.
+  // Los query params del módulo no abren una puerta lateral. `fecha` incluida: el
+  // histórico es admin-only y el gate está en la page, no en el cliente.
   test('los filtros en la URL no saltean el proxy', async ({ page }) => {
     await page.context().clearCookies();
-    await page.goto('/viandas?disciplina=cualquiera&categoria=cualquiera&lugar=SEDE');
+    await page.goto(
+      '/viandas?disciplina=cualquiera&categoria=cualquiera&lugar=SEDE&fecha=2020-01-01',
+    );
     await page.waitForURL('**/sign-in**');
 
     expect(new URL(page.url()).pathname).toBe('/sign-in');
   });
+
+  /**
+   * Una `?fecha=` malformada no cambia el resultado del control de acceso: sigue
+   * siendo redirect a /sign-in, sin 5xx.
+   *
+   * OJO con lo que esto NO prueba: `proxy.ts` corta ANTES de que la page corra, así
+   * que el RSC nunca ejecuta `resolverFechaActiva` ni `fechaDbDesdeClave` y estos
+   * casos pasarían igual aunque la validación no existiera. La validación en sí
+   * está cubierta por los unit tests de `resolverFechaActiva` y `esClaveFechaValida`
+   * (`lib/utils/__tests__/fecha.test.ts`); lo que se verifica acá es que el
+   * parámetro no abre una puerta lateral en el proxy.
+   */
+  for (const fecha of ['no-es-una-fecha', '2026-02-31', '2099-01-01', '../../etc/passwd']) {
+    test(`una fecha inválida (${fecha}) no saltea el login`, async ({
+      page,
+    }) => {
+      await page.context().clearCookies();
+      const res = await page.goto(`/viandas?fecha=${encodeURIComponent(fecha)}`);
+
+      expect(res?.status()).toBeLessThan(500);
+      await page.waitForURL('**/sign-in**');
+      expect(new URL(page.url()).pathname).toBe('/sign-in');
+    });
+  }
 
   test('sin sesión no se filtra ningún nombre de deportista', async ({ page }) => {
     await page.context().clearCookies();

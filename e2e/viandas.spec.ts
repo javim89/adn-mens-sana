@@ -86,6 +86,35 @@ test.describe('Viandas — registro del día', () => {
     await expect(page.getByRole('alert')).toContainText(/no tiene un lugar de retiro/i);
   });
 
+  // El histórico existe para consultar, no para corregir: la fecha de escritura
+  // siempre la pone el servidor, así que un día pasado tiene que quedar cerrado
+  // entero — no celda por celda.
+  test('el admin consulta un día pasado en solo lectura', async ({ page }) => {
+    test.skip(true, MOTIVO);
+
+    await page.goto('/viandas?lugar=SEDE&fecha=2026-03-13');
+
+    await expect(page.getByRole('status')).toContainText(/histórico del 13\/03\/2026/i);
+    const celda = page.getByRole('switch', { name: /desayuno de/i }).first();
+    await expect(celda).toBeDisabled();
+
+    // "Hoy" saca el param en vez de fijarlo, para no congelar el día en un link.
+    await page.getByRole('button', { name: 'Hoy' }).click();
+    await expect(page).toHaveURL(/^(?!.*fecha=).*\/viandas/);
+    await expect(page.getByRole('switch', { name: /desayuno de/i }).first()).toBeEnabled();
+  });
+
+  // El gate del histórico es server-side: armar la URL a mano no alcanza.
+  test('un responsable_viandas con ?fecha= igual ve el día de hoy', async ({ page }) => {
+    test.skip(true, MOTIVO);
+
+    await page.goto('/viandas?fecha=2026-03-13');
+
+    await expect(page.getByRole('status')).toHaveCount(0);
+    await expect(page.getByLabel('Fecha')).toHaveCount(0);
+    await expect(page.getByRole('switch', { name: /desayuno de/i }).first()).toBeEnabled();
+  });
+
   // El empleado marca desde el teléfono, parado en la puerta del comedor: la
   // vista de cards y el rastro de supervisión tienen que ser usables ahí, y la
   // página no puede desbordar a lo ancho.

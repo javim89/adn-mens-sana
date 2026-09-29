@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { currentUser, clerkClient } from '@clerk/nextjs/server';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { getPlantelViandas } from '@/lib/queries/viandas';
-import { hoyEnArgentina } from '@/lib/utils/fecha';
+import { hoyEnArgentina, resolverFechaActiva } from '@/lib/utils/fecha';
 import { esLugarRetiro } from '@/lib/utils/viandas';
 import ViandasPanel from './_components/ViandasPanel';
 import type { DeportistaVianda } from '@/lib/types/viandas';
@@ -47,12 +47,16 @@ export default async function ViandasPage({
 
   const fechaHoy = hoyEnArgentina();
 
+  // Histórico: SOLO admin, nunca futura, degrada a hoy. Las tres reglas viven en
+  // `resolverFechaActiva` — el gate es server-side, no un `hidden` en el cliente.
+  const fechaActiva = resolverFechaActiva(isAdmin, sp.fecha, fechaHoy);
+
   // Se exigen AMBOS filtros, como el form de convocatoria: con solo disciplina
   // serían cientos de filas por cuatro comidas y los contadores dejarían de
   // decir algo operativo.
   const plantel: DeportistaVianda[] =
     disciplinaId && categoriaId
-      ? await getPlantelViandas(disciplinaId, categoriaId, fechaHoy)
+      ? await getPlantelViandas(disciplinaId, categoriaId, fechaActiva)
       : [];
 
   // Nombres de quienes entregaron, para que el subtexto de cada celda marcada
@@ -83,6 +87,7 @@ export default async function ViandasPage({
   return (
     <ViandasPanel
       fechaHoy={fechaHoy}
+      fechaActiva={fechaActiva}
       isAdmin={isAdmin}
       lugarActivo={lugarActivo}
       sinLugarAsignado={!isAdmin && !lugarResponsable}

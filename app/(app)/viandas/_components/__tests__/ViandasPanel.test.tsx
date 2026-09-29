@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 
@@ -30,6 +30,7 @@ import ViandasPanel from '../ViandasPanel';
 import type { DeportistaVianda } from '@/lib/types/viandas';
 
 const HOY = '2026-03-14';
+const AYER = '2026-03-13';
 
 const DISCIPLINAS = [
   { id: 'disc-1', nombre: 'Fútbol', categorias: [{ id: 'cat-1', nombre: 'Sub 17' }] },
@@ -48,10 +49,13 @@ function deportista(over: Partial<DeportistaVianda> = {}): DeportistaVianda {
   } as DeportistaVianda;
 }
 
-function renderPanel(over: Partial<React.ComponentProps<typeof ViandasPanel>> = {}) {
-  return render(
+type PanelProps = React.ComponentProps<typeof ViandasPanel>;
+
+function panel(over: Partial<PanelProps> = {}) {
+  return (
     <ViandasPanel
       fechaHoy={HOY}
+      fechaActiva={HOY}
       isAdmin={false}
       lugarActivo="SEDE"
       sinLugarAsignado={false}
@@ -61,8 +65,19 @@ function renderPanel(over: Partial<React.ComponentProps<typeof ViandasPanel>> = 
       plantel={[deportista()]}
       entregadores={{}}
       {...over}
-    />,
+    />
   );
+}
+
+function renderPanel(over: Partial<PanelProps> = {}) {
+  const { rerender, ...resto } = render(panel(over));
+  return {
+    ...resto,
+    rerender,
+    /** Re-renderiza con los mismos defaults, para probar cambios de props del RSC. */
+    rerenderPanel: (siguiente: Partial<PanelProps> = {}) =>
+      rerender(panel({ ...over, ...siguiente })),
+  };
 }
 
 
@@ -76,6 +91,11 @@ function sw(name: RegExp) {
 
 function swQuery(name: RegExp) {
   return within(screen.getByRole('table')).queryByRole('switch', { name });
+}
+
+/** La otra mitad del render duplicado: las cards que ve el empleado en el teléfono. */
+function swMobile(name: RegExp) {
+  return within(screen.getByRole('list')).getByRole('switch', { name });
 }
 
 beforeEach(() => {
@@ -429,6 +449,229 @@ describe('filtros en la URL', () => {
   test('la categoría queda deshabilitada mientras no haya disciplina', () => {
     renderPanel({ disciplinaId: '', categoriaId: '', plantel: [] });
     expect(screen.getByText('Seleccioná una categoría').closest('button')).toBeDisabled();
+  });
+});
+
+/**
+ * Histórico: el admin puede mirar un día pasado, pero el día pasado es INTOCABLE.
+ * Las actions siempre escriben el día del servidor, así que si la grilla de ayer
+ * dejara marcar, el retiro se registraría en hoy sobre un deportista elegido
+ * mirando otra fecha. De ahí que el bloqueo sea total y no por celda.
+ *
+ * `fireEvent.change` y no `user.type`: jsdom no maneja bien el tipeo parcial en un
+ * `input[type=date]`.
+ */
+describe('histórico por fecha', () => {
+  const ADMIN_AYER = { isAdmin: true, lugarActivo: 'SEDE' as const, fechaActiva: AYER };
+
+  test('todas las celdas quedan deshabilitadas', () => {
+    renderPanel(ADMIN_AYER);
+
+    const switches = screen.getAllByRole('switch');
+    expect(switches.length).toBeGreaterThan(0);
+    for (const celda of switches) {
+      expect(celda).toBeDisabled();
+    }
+  });
+
+  test('avisa que es solo lectura, con la fecha que se está mirando', () => {
+    renderPanel(ADMIN_AYER);
+
+    const aviso = screen.getByRole('status');
+    expect(aviso).toHaveTextContent(/histórico del 13\/03\/2026/i);
+    expect(aviso).toHaveTextContent(/solo lectura/i);
+  });
+
+  // LA regla de negocio del histórico: ni un click sintético escribe nada.
+  test('un click no llega a ninguna action', () => {
+    renderPanel(ADMIN_AYER);
+
+    fireEvent.click(sw(/desayuno de pérez, juan/i));
+
+    expect(mockMarcar).not.toHaveBeenCalled();
+    expect(mockDesmarcar).not.toHaveBeenCalled();
+  });
+
+  test('desmarcar una entrega de un día pasado tampoco llama a la action', () => {
+    renderPanel({
+      ...ADMIN_AYER,
+      plantel: [
+        deportista({
+          entregas: {
+            DESAYUNO: {
+              lugar: 'SEDE',
+              entregadoPor: 'user_1',
+              createdAt: '2026-03-13T11:00:00.000Z',
+            },
+          },
+        }),
+      ],
+    });
+
+    const celda = sw(/desayuno de pérez, juan/i);
+    expect(celda).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(celda);
+
+    expect(mockDesmarcar).not.toHaveBeenCalled();
+    expect(mockMarcar).not.toHaveBeenCalled();
+  });
+
+  test('el toggle explica por qué no responde', () => {
+    renderPanel(ADMIN_AYER);
+    expect(sw(/desayuno de pérez, juan/i)).toHaveAttribute(
+      'title',
+      expect.stringContaining('13/03/2026'),
+    );
+  });
+
+  test('el responsable de viandas no ve el selector de fecha', () => {
+    renderPanel({ isAdmin: false });
+    expect(screen.queryByLabelText('Fecha')).not.toBeInTheDocument();
+  });
+
+  test('el admin sí, y no puede elegir una fecha futura', () => {
+    renderPanel({ isAdmin: true, lugarActivo: 'SEDE' });
+
+    const input = screen.getByLabelText('Fecha');
+    expect(input).toHaveValue(HOY);
+    expect(input).toHaveAttribute('max', HOY);
+  });
+
+  test('elegir un día pasado lo escribe en la URL sin perder los filtros', () => {
+    renderPanel({ isAdmin: true, lugarActivo: 'SEDE' });
+
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: AYER } });
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    const url = mockPush.mock.calls[0][0] as string;
+    expect(url).toContain(`fecha=${AYER}`);
+    expect(url).toContain('disciplina=disc-1');
+    expect(url).toContain('categoria=cat-1');
+  });
+
+  // La URL canónica de hoy no lleva `fecha`: un link compartido no congela un día.
+  test('volver a hoy desde el input borra el param en vez de fijarlo', () => {
+    renderPanel(ADMIN_AYER);
+
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: HOY } });
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush.mock.calls[0][0]).not.toContain('fecha=');
+  });
+
+  test('el botón "Hoy" solo existe en histórico y borra el param', () => {
+    const { unmount } = renderPanel({ isAdmin: true, lugarActivo: 'SEDE' });
+    expect(screen.queryByRole('button', { name: 'Hoy' })).not.toBeInTheDocument();
+    unmount();
+
+    renderPanel(ADMIN_AYER);
+    fireEvent.click(screen.getByRole('button', { name: 'Hoy' }));
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush.mock.calls[0][0]).not.toContain('fecha=');
+  });
+
+  test('una fecha futura no navega a ninguna parte', () => {
+    renderPanel({ isAdmin: true, lugarActivo: 'SEDE' });
+
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-03-15' } });
+
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  test('el contador dice "sin retirar" y no "pendientes"', () => {
+    renderPanel(ADMIN_AYER);
+
+    const resumen = screen.getByRole('group', { name: /resumen por comida/i });
+    expect(within(resumen).getAllByText(/sin retirar/).length).toBeGreaterThan(0);
+    expect(within(resumen).queryByText(/pendientes/)).not.toBeInTheDocument();
+  });
+
+  // En un día cerrado, "elegí el lugar de retiro" es ruido: no se va a marcar nada.
+  test('el aviso de elegir lugar se suprime', () => {
+    renderPanel({ isAdmin: true, lugarActivo: null, fechaActiva: AYER });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  // El bloqueo vive en `puedeMarcar`, que comparten los dos renders, pero los otros
+  // tests de click usan `sw()` — acotado a la tabla. Sin este caso, el camino que
+  // realmente usa el empleado (el teléfono) no estaría probado en histórico.
+  test('tampoco se puede marcar desde las cards de mobile', () => {
+    renderPanel(ADMIN_AYER);
+
+    const celda = swMobile(/desayuno de pérez, juan/i);
+    expect(celda).toBeDisabled();
+    fireEvent.click(celda);
+
+    expect(mockMarcar).not.toHaveBeenCalled();
+    expect(mockDesmarcar).not.toHaveBeenCalled();
+  });
+
+  test('el aviso nombra el límite de las esperadas, que se calculan con la ficha de hoy', () => {
+    renderPanel(ADMIN_AYER);
+    expect(screen.getByRole('status')).toHaveTextContent(/ficha actual/i);
+  });
+
+  // Regresión: mirar hoy no deja rastro del modo histórico.
+  test('en el día de hoy no hay aviso y las celdas responden', () => {
+    renderPanel({ isAdmin: true, lugarActivo: 'SEDE', fechaActiva: HOY });
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(sw(/desayuno de pérez, juan/i)).toBeEnabled();
+  });
+});
+
+/**
+ * El input de fecha no puede mostrar un día distinto al de la grilla. Es fácil que
+ * pase: cuando el valor tipeado no se navega, `fechaActiva` no cambia, y entonces
+ * el derived-state que resincroniza nunca se dispara.
+ */
+describe('el input de fecha nunca miente', () => {
+  test('una fecha futura completa no se queda en el campo', () => {
+    renderPanel({ isAdmin: true, lugarActivo: 'SEDE' });
+
+    const input = screen.getByLabelText('Fecha');
+    fireEvent.change(input, { target: { value: '2099-12-31' } });
+
+    expect(mockPush).not.toHaveBeenCalled();
+    // La grilla sigue en hoy, así que el campo también.
+    expect(input).toHaveValue(HOY);
+  });
+
+  test('vaciar el campo en histórico lo devuelve al día que se está viendo', () => {
+    renderPanel({ isAdmin: true, lugarActivo: 'SEDE', fechaActiva: AYER });
+
+    const input = screen.getByLabelText('Fecha');
+    fireEvent.change(input, { target: { value: '' } });
+
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(input).toHaveValue(AYER);
+  });
+
+  // Documenta por qué `onCambioFecha` no necesita un caso especial de "a medio
+  // tipear": el elemento sanea todo lo que no sea una fecha completa, así que un
+  // valor parcial llega como '' y no como '2026-03-0'. Si alguien vuelve a agregar
+  // una rama para valores parciales, este test explica que no se usa nunca.
+  test('un valor incompleto ni siquiera llega: el input lo sanea a vacío', () => {
+    renderPanel({ isAdmin: true, lugarActivo: 'SEDE' });
+
+    const input = screen.getByLabelText('Fecha');
+    fireEvent.change(input, { target: { value: '2026-03-0' } });
+
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(input).toHaveValue(HOY);
+  });
+
+  // Sin este test, el mecanismo `fechaRef` se podría borrar entero sin que falle
+  // nada: es lo que hace que el campo siga a la fecha que el servidor confirmó.
+  test('si el servidor devuelve otra fecha, el campo la adopta', () => {
+    const { rerenderPanel } = renderPanel({ isAdmin: true, lugarActivo: 'SEDE' });
+    expect(screen.getByLabelText('Fecha')).toHaveValue(HOY);
+
+    rerenderPanel({ fechaActiva: AYER });
+
+    expect(screen.getByLabelText('Fecha')).toHaveValue(AYER);
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 });
 
