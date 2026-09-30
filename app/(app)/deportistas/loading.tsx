@@ -15,7 +15,7 @@ export default function DeportistasLoading() {
         <table className="w-full">
           <thead>
             <tr className="bg-[#F3F4F6] border-b border-gray-100">
-              {['Nombre', 'DNI', 'Disciplina', 'Categoría', 'Estado', 'Ingreso', ''].map((h) => (
+              {['Nombre', 'DNI', 'Disciplina', 'Categoría', 'Estado', 'Triage', ''].map((h) => (
                 <th key={h} className="px-5 py-3 text-left">
                   <div className="h-3 w-16 bg-gray-200 rounded animate-pulse" />
                 </th>

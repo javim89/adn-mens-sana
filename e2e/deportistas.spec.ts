@@ -84,6 +84,24 @@ test.describe('Deportistas — List page', () => {
     await categoriaFilter.click();
     await expect(page.getByRole('button', { name: 'Primera', exact: true })).toBeVisible();
   });
+
+  test('the table shows a Triage column', async ({ page }) => {
+    await page.goto('/deportistas');
+    await page.waitForSelector('table');
+
+    await expect(page.getByRole('columnheader', { name: /triage/i })).toBeVisible();
+  });
+
+  test('filtering by triage updates the URL with filter[nivelTriage] param', async ({ page }) => {
+    await page.goto('/deportistas');
+    await page.waitForSelector('table');
+
+    // El filtro de triage es un CustomSelect (button, no <select> nativo).
+    await page.getByRole('button', { name: /todos los triage/i }).click();
+    await page.getByRole('button', { name: 'Rojo', exact: true }).click();
+
+    await expect(page).toHaveURL(/filter%5BnivelTriage%5D=ROJO/);
+  });
 });
 
 test.describe('Deportistas — Pagination', () => {

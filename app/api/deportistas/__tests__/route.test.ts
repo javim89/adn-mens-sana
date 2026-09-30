@@ -27,6 +27,7 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
+import type { DeportistaListItem } from '@/lib/types/deportistas';
 import { auth } from '@clerk/nextjs/server';
 import { getDeportistas } from '@/lib/queries/deportistas';
 import { prisma } from '@/lib/db';
@@ -50,8 +51,8 @@ const mockDeportistaListItem = {
   categoriaId: 'cat-primera',
   categoria: { id: 'cat-primera', nombre: 'Primera' },
   estado: 'ACTIVO',
-  fechaIngreso: new Date('2023-01-01'),
-};
+  nivelTriage: 'ROJO',
+} satisfies DeportistaListItem;
 
 const mockDeportistaFull = {
   id: 'cuid1',
@@ -133,6 +134,9 @@ describe('GET /api/deportistas', () => {
     // Disciplina se serializa como objeto {id,nombre} + disciplinaId (ya no un string enum).
     expect(body.data[0].attributes.disciplinaId).toBe('disc-futbol');
     expect(body.data[0].attributes.disciplina).toEqual({ id: 'disc-futbol', nombre: 'Fútbol' });
+    // La columna Fecha Ingreso se reemplazó por Triage en el listado.
+    expect(body.data[0].attributes.nivelTriage).toBe('ROJO');
+    expect(body.data[0].attributes).not.toHaveProperty('fechaIngreso');
     expect(body.meta.total).toBe(1);
     expect(body.links).toBeDefined();
     expect(body.links.self).toBeDefined();
@@ -228,6 +232,52 @@ describe('GET /api/deportistas', () => {
 
     expect(body.links.prev).toContain('page%5Bnumber%5D=1');
     expect(body.links.next).toContain('page%5Bnumber%5D=3');
+  });
+
+  it('applies filter[nivelTriage] param', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    vi.mocked(getDeportistas).mockResolvedValue({
+      deportistas: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    });
+
+    const req = makeRequest('http://localhost/api/deportistas?filter%5BnivelTriage%5D=ROJO');
+    await GET(req);
+
+    expect(getDeportistas).toHaveBeenCalledWith(
+      expect.objectContaining({ nivelTriage: 'ROJO' }),
+    );
+  });
+
+  it('accepts SIN_CALCULAR as filter[nivelTriage]', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    vi.mocked(getDeportistas).mockResolvedValue({
+      deportistas: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    });
+
+    const req = makeRequest('http://localhost/api/deportistas?filter%5BnivelTriage%5D=SIN_CALCULAR');
+    await GET(req);
+
+    expect(getDeportistas).toHaveBeenCalledWith(
+      expect.objectContaining({ nivelTriage: 'SIN_CALCULAR' }),
+    );
+  });
+
+  it('returns 422 when filter[nivelTriage] is not a valid level', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+
+    const req = makeRequest('http://localhost/api/deportistas?filter%5BnivelTriage%5D=FUCSIA');
+    const res = await GET(req);
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.errors[0].status).toBe('422');
+    expect(getDeportistas).not.toHaveBeenCalled();
   });
 });
 

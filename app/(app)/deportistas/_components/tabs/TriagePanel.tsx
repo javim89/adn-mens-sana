@@ -10,6 +10,7 @@ import {
   CardContent,
 } from '@/app/components/ui/card';
 import { recomputeTriageAction } from '@/lib/actions/triage';
+import { NIVEL_TRIAGE_BADGE } from '@/lib/utils/enum-labels';
 import type {
   AreaTriage,
   NivelTriage,
@@ -34,24 +35,24 @@ const NIVEL_TRIAGE_META: Record<
 > = {
   VERDE: {
     label: 'Verde — Sin alerta',
-    badge: 'bg-green-100 text-green-700',
+    badge: NIVEL_TRIAGE_BADGE.VERDE,
     description:
       'Sin indicadores de vulnerabilidad activos. Continuar seguimiento de rutina.',
   },
   AMARILLO: {
     label: 'Amarillo — Atención',
-    badge: 'bg-yellow-100 text-yellow-800',
+    badge: NIVEL_TRIAGE_BADGE.AMARILLO,
     description: 'Indicadores leves. Monitorear y dar seguimiento sostenido.',
   },
   NARANJA: {
     label: 'Naranja — Riesgo Moderado',
-    badge: 'bg-orange-100 text-orange-700',
+    badge: NIVEL_TRIAGE_BADGE.NARANJA,
     description:
       'Riesgo moderado. Se recomienda intervención interdisciplinaria coordinada.',
   },
   ROJO: {
     label: 'Rojo — Riesgo Alto',
-    badge: 'bg-red-100 text-red-700',
+    badge: NIVEL_TRIAGE_BADGE.ROJO,
     description:
       'Situación crítica. Requiere atención inmediata y coordinación urgente.',
   },

@@ -11,6 +11,7 @@ import type {
   Servicio,
   EnfermedadPreexistente,
   AntecedenteEnfermedadFamiliar,
+  NivelTriage,
 } from '@/lib/generated/prisma/enums';
 import type { Deportista } from '@/lib/generated/prisma/client';
 
@@ -100,10 +101,11 @@ export type DeportistaFormData = {
 // Tipo para la fila de la tabla (proyección parcial)
 export type DeportistaListItem = Pick<
   Deportista,
-  'id' | 'nombre' | 'apellido' | 'dni' | 'disciplinaId' | 'categoriaId' | 'estado' | 'fechaIngreso'
+  'id' | 'nombre' | 'apellido' | 'dni' | 'disciplinaId' | 'categoriaId' | 'estado'
 > & {
   disciplina: { id: string; nombre: string } | null;
   categoria: { id: string; nombre: string } | null;
+  nivelTriage: NivelTriage | null;
 };
 
 // Tipo con todas las relaciones incluidas (para detalle y edición)

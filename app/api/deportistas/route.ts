@@ -48,6 +48,10 @@ const AntecedenteEnfermedadFamiliarValues = [
   'CHAGAS', 'MIGRANA', 'HIPERTENSION_ARTERIAL', 'CORONARIOPATIAS', 'OTRO',
 ] as const;
 
+const NivelTriageFilterValues = [
+  'VERDE', 'AMARILLO', 'NARANJA', 'ROJO', 'SIN_CALCULAR',
+] as const;
+
 const getQuerySchema = z.object({
   'page[number]': z.coerce.number().int().min(1).default(1),
   'page[size]': z.coerce.number().int().min(1).max(100).default(20),
@@ -55,6 +59,7 @@ const getQuerySchema = z.object({
   'filter[disciplina]': z.string().optional(),
   'filter[categoriaId]': z.string().optional(),
   'filter[estado]': z.enum(EstadoValues).optional(),
+  'filter[nivelTriage]': z.enum(NivelTriageFilterValues).optional(),
   sort: z.string().optional(),
 });
 
@@ -171,7 +176,7 @@ function serializeListItem(
       categoriaId: item.categoriaId ?? null,
       categoria: item.categoria ?? null,
       estado: item.estado,
-      fechaIngreso: item.fechaIngreso ? item.fechaIngreso.toISOString() : null,
+      nivelTriage: item.nivelTriage,
     },
   };
 }
@@ -352,6 +357,7 @@ export async function GET(request: Request) {
     'filter[disciplina]': disciplina,
     'filter[categoriaId]': categoriaId,
     'filter[estado]': estado,
+    'filter[nivelTriage]': nivelTriage,
   } = parsed.data;
 
   const result = await getDeportistas({
@@ -359,6 +365,7 @@ export async function GET(request: Request) {
     disciplinaId: disciplina,
     categoriaId,
     estado: estado as import('@/lib/generated/prisma/enums').EstadoDeportista | undefined,
+    nivelTriage,
     page: pageNumber,
     pageSize,
   });

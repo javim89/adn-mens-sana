@@ -8,19 +8,13 @@ import { useQuery } from '@tanstack/react-query';
 import { CustomSelect } from '@/app/components/ui/custom-select';
 import { fetchDeportistas, fetchDisciplinas } from '@/lib/api/deportistas';
 import type { FetchDeportistasParams } from '@/lib/api/deportistas';
-import { ESTADO_LABELS } from '@/lib/utils/enum-labels';
-import { EstadoDeportista } from '@/lib/generated/prisma/enums';
+import {
+  ESTADO_LABELS,
+  NIVEL_TRIAGE_BADGE,
+  NIVEL_TRIAGE_LABELS,
+} from '@/lib/utils/enum-labels';
+import { EstadoDeportista, NivelTriage } from '@/lib/generated/prisma/enums';
 import type { EstadoDeportista as EstadoType } from '@/lib/generated/prisma/enums';
-
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—';
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(dateStr));
-}
 
 const ESTADO_BADGE: Record<string, string> = {
   ACTIVO: 'bg-green-100 text-green-700',
@@ -40,6 +34,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
   const filterDisciplina = searchParams.get('filter[disciplina]') ?? '';
   const filterCategoria = searchParams.get('filter[categoriaId]') ?? '';
   const filterEstado = searchParams.get('filter[estado]') ?? '';
+  const filterNivelTriage = searchParams.get('filter[nivelTriage]') ?? '';
 
   const [localSearch, setLocalSearch] = useState(filterSearch);
 
@@ -50,6 +45,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
     ...(filterDisciplina ? { 'filter[disciplina]': filterDisciplina } : {}),
     ...(filterCategoria ? { 'filter[categoriaId]': filterCategoria } : {}),
     ...(filterEstado ? { 'filter[estado]': filterEstado } : {}),
+    ...(filterNivelTriage ? { 'filter[nivelTriage]': filterNivelTriage } : {}),
   };
 
   const { data, isLoading, isError } = useQuery({
@@ -72,7 +68,13 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
   const from = total === 0 ? 0 : (pageNumber - 1) * pageSize + 1;
   const to = Math.min(total, (pageNumber - 1) * pageSize + deportistas.length);
 
-  const hasFilters = !!(filterSearch || filterDisciplina || filterCategoria || filterEstado);
+  const hasFilters = !!(
+    filterSearch ||
+    filterDisciplina ||
+    filterCategoria ||
+    filterEstado ||
+    filterNivelTriage
+  );
 
   const pushFilters = useCallback(
     (overrides: {
@@ -80,6 +82,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
       'filter[disciplina]'?: string;
       'filter[categoriaId]'?: string;
       'filter[estado]'?: string;
+      'filter[nivelTriage]'?: string;
       'page[number]'?: string;
     }) => {
       const params = new URLSearchParams();
@@ -88,6 +91,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
         'filter[disciplina]': filterDisciplina,
         'filter[categoriaId]': filterCategoria,
         'filter[estado]': filterEstado,
+        'filter[nivelTriage]': filterNivelTriage,
         'page[number]': String(pageNumber),
         ...overrides,
       };
@@ -95,13 +99,24 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
       if (merged['filter[disciplina]']) params.set('filter[disciplina]', merged['filter[disciplina]']);
       if (merged['filter[categoriaId]']) params.set('filter[categoriaId]', merged['filter[categoriaId]']);
       if (merged['filter[estado]']) params.set('filter[estado]', merged['filter[estado]']);
+      if (merged['filter[nivelTriage]'])
+        params.set('filter[nivelTriage]', merged['filter[nivelTriage]']);
       params.set('page[number]', merged['page[number]'] ?? '1');
       params.set('page[size]', String(pageSize));
       startTransition(() => {
         router.push('/deportistas?' + params.toString());
       });
     },
-    [filterSearch, filterDisciplina, filterCategoria, filterEstado, pageNumber, pageSize, router],
+    [
+      filterSearch,
+      filterDisciplina,
+      filterCategoria,
+      filterEstado,
+      filterNivelTriage,
+      pageNumber,
+      pageSize,
+      router,
+    ],
   );
 
   function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -148,9 +163,9 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-3">
+        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:flex-wrap gap-3">
           {/* Search */}
-          <div className="relative flex-1">
+          <div className="relative flex-1 sm:min-w-[220px]">
             <Search
               size={16}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]"
@@ -196,6 +211,23 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
             searchable
             disabled={!filterDisciplina}
             className="min-w-[160px]"
+          />
+
+          {/* Triage */}
+          <CustomSelect
+            value={filterNivelTriage || '__all__'}
+            onChange={(v) =>
+              pushFilters({ 'filter[nivelTriage]': v === '__all__' ? undefined : v, 'page[number]': '1' })
+            }
+            options={[
+              { value: '__all__', label: 'Todos los triage' },
+              ...Object.values(NivelTriage).map((n) => ({
+                value: n,
+                label: NIVEL_TRIAGE_LABELS[n],
+              })),
+              { value: 'SIN_CALCULAR', label: 'Sin calcular' },
+            ]}
+            className="min-w-[150px]"
           />
 
           {/* Estado */}
@@ -277,9 +309,20 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-[#6B7280] mt-1">
-                        Ingreso: {formatDate(item.attributes.fechaIngreso)}
-                      </p>
+                      <div className="mt-2">
+                        {item.attributes.nivelTriage ? (
+                          <span
+                            className={[
+                              'text-xs font-medium px-2.5 py-1 rounded-full',
+                              NIVEL_TRIAGE_BADGE[item.attributes.nivelTriage],
+                            ].join(' ')}
+                          >
+                            {NIVEL_TRIAGE_LABELS[item.attributes.nivelTriage]}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[#6B7280]">—</span>
+                        )}
+                      </div>
                     </div>
                     <ChevronRight size={16} className="text-[#6B7280] shrink-0 mt-1" />
                   </Link>
@@ -300,7 +343,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                   <th className="px-5 py-3 text-left">Disciplina</th>
                   <th className="px-5 py-3 text-left">Categoría</th>
                   <th className="px-5 py-3 text-left">Estado</th>
-                  <th className="px-5 py-3 text-left">Fecha Ingreso</th>
+                  <th className="px-5 py-3 text-left">Triage</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
@@ -355,8 +398,19 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                           {ESTADO_LABELS[item.attributes.estado as EstadoType]}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-[#6B7280]">
-                        {formatDate(item.attributes.fechaIngreso)}
+                      <td className="px-5 py-3.5">
+                        {item.attributes.nivelTriage ? (
+                          <span
+                            className={[
+                              'text-xs font-medium px-2.5 py-1 rounded-full',
+                              NIVEL_TRIAGE_BADGE[item.attributes.nivelTriage],
+                            ].join(' ')}
+                          >
+                            {NIVEL_TRIAGE_LABELS[item.attributes.nivelTriage]}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-[#6B7280]">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <Link href={`/deportistas/${item.id}`}>
