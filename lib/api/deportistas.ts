@@ -18,6 +18,7 @@ import type {
   Servicio,
   EnfermedadPreexistente,
   AntecedenteEnfermedadFamiliar,
+  NivelTriage,
 } from '@/lib/generated/prisma/enums';
 
 // ---------------------------------------------------------------------------
@@ -45,7 +46,7 @@ export type DeportistaListAttributes = {
   categoriaId: string | null;
   categoria: CategoriaRef;
   estado: EstadoDeportista;
-  fechaIngreso: string | null;
+  nivelTriage: NivelTriage | null;
 };
 
 export type DeportistaDetailAttributes = {
@@ -141,6 +142,7 @@ export type FetchDeportistasParams = {
   'filter[disciplina]'?: string;
   'filter[categoriaId]'?: string;
   'filter[estado]'?: string;
+  'filter[nivelTriage]'?: string;
   sort?: string;
 };
 

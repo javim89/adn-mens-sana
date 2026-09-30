@@ -158,6 +158,13 @@ export const NIVEL_TRIAGE_LABELS: Record<NivelTriage, string> = {
   ROJO: 'Rojo',
 };
 
+export const NIVEL_TRIAGE_BADGE: Record<NivelTriage, string> = {
+  VERDE: 'bg-green-100 text-green-700',
+  AMARILLO: 'bg-yellow-100 text-yellow-800',
+  NARANJA: 'bg-orange-100 text-orange-700',
+  ROJO: 'bg-red-100 text-red-700',
+};
+
 export const ESTADO_EVENTO_LABELS: Record<EstadoEvento, string> = {
   PROGRAMADO: 'Programado',
   SUSPENDIDO: 'Suspendido',

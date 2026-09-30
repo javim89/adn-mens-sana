@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db';
 import { notFound } from 'next/navigation';
-import type { EstadoDeportista } from '@/lib/generated/prisma/enums';
+import type { EstadoDeportista, NivelTriage } from '@/lib/generated/prisma/enums';
+import type { Prisma } from '@/lib/generated/prisma/client';
+import { getNivelTriageActual } from '@/lib/queries/triage';
 import type { DeportistaListItem, DeportistaWithRelations } from '@/lib/types/deportistas';
 
 export interface GetDeportistasFilters {
@@ -8,6 +10,7 @@ export interface GetDeportistasFilters {
   disciplinaId?: string;
   categoriaId?: string;
   estado?: EstadoDeportista;
+  nivelTriage?: NivelTriage | 'SIN_CALCULAR';
   page?: number;
   pageSize?: number;
 }
@@ -22,9 +25,25 @@ export interface GetDeportistasResult {
 export async function getDeportistas(
   filters: GetDeportistasFilters = {},
 ): Promise<GetDeportistasResult> {
-  const { search, disciplinaId, categoriaId, estado, page = 1, pageSize = 20 } = filters;
+  const { search, disciplinaId, categoriaId, estado, nivelTriage, page = 1, pageSize = 20 } = filters;
 
-  const where = {
+  // Con filtro de triage hay que resolver los niveles ANTES de paginar, para que
+  // el `count` y el `findMany` compartan el mismo `where` y el total sea correcto.
+  const nivelPorDeportista = nivelTriage ? await getNivelTriageActual() : null;
+
+  const filtroTriage: Prisma.DeportistaWhereInput = !nivelPorDeportista
+    ? {}
+    : nivelTriage === 'SIN_CALCULAR'
+      ? { id: { notIn: [...nivelPorDeportista.keys()] } }
+      : {
+          id: {
+            in: [...nivelPorDeportista.entries()]
+              .filter(([, nivel]) => nivel === nivelTriage)
+              .map(([id]) => id),
+          },
+        };
+
+  const where: Prisma.DeportistaWhereInput = {
     ...(search
       ? {
           OR: [
@@ -37,9 +56,10 @@ export async function getDeportistas(
     ...(disciplinaId ? { disciplinaId } : {}),
     ...(categoriaId ? { categoriaId } : {}),
     ...(estado ? { estado } : {}),
+    ...filtroTriage,
   };
 
-  const [deportistas, total] = await Promise.all([
+  const [rows, total] = await Promise.all([
     prisma.deportista.findMany({
       where,
       select: {
@@ -52,7 +72,6 @@ export async function getDeportistas(
         categoriaId: true,
         categoria: { select: { id: true, nombre: true } },
         estado: true,
-        fechaIngreso: true,
       },
       orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
       skip: (page - 1) * pageSize,
@@ -60,6 +79,13 @@ export async function getDeportistas(
     }),
     prisma.deportista.count({ where }),
   ]);
+
+  const niveles = nivelPorDeportista ?? (await getNivelTriageActual(rows.map((d) => d.id)));
+
+  const deportistas: DeportistaListItem[] = rows.map((d) => ({
+    ...d,
+    nivelTriage: niveles.get(d.id) ?? null,
+  }));
 
   return { deportistas, total, page, pageSize };
 }

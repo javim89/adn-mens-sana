@@ -80,7 +80,7 @@ const mockItem1: DeportistaListAttributes = {
   categoriaId: 'cat-primera',
   categoria: { id: 'cat-primera', nombre: 'Primera' },
   estado: 'ACTIVO',
-  fechaIngreso: '2022-01-01T00:00:00.000Z',
+  nivelTriage: 'ROJO',
 };
 
 const mockItem2: DeportistaListAttributes = {
@@ -92,7 +92,7 @@ const mockItem2: DeportistaListAttributes = {
   categoriaId: 'cat-reserva',
   categoria: { id: 'cat-reserva', nombre: 'Reserva' },
   estado: 'INACTIVO',
-  fechaIngreso: null,
+  nivelTriage: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -161,9 +161,10 @@ describe('DeportistasTable', () => {
     render(<DeportistasTable />, { wrapper });
     await screen.findByPlaceholderText(/buscar/i);
     // CustomSelect renderiza triggers como <button>. Los filtros son
-    // Disciplina, Categoría y Estado, identificables por su placeholder.
+    // Disciplina, Categoría, Triage y Estado, identificables por su placeholder.
     expect(screen.getByRole('button', { name: /todas las disciplinas/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /todas las categorías/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /todos los triage/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /todos los estados/i })).toBeInTheDocument();
   });
 
@@ -313,5 +314,89 @@ describe('DeportistasTable', () => {
     expect(fetchDeportistas).toHaveBeenCalledWith(
       expect.objectContaining({ 'page[number]': 2 }),
     );
+  });
+
+  test('la tabla tiene una columna Triage', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    expect(screen.getByRole('columnheader', { name: 'Triage' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: /fecha ingreso/i })).not.toBeInTheDocument();
+  });
+
+  test('muestra el badge de triage Rojo con clase roja', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '1', attrs: mockItem1 }]),
+    );
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findAllByText('García, Juan');
+
+    // Se renderiza en la card mobile y en la fila desktop.
+    const badges = await screen.findAllByText('Rojo');
+    const badge = badges.find((el) => el.tagName.toLowerCase() === 'span');
+    expect(badge).toHaveClass('bg-red-100');
+  });
+
+  test('muestra — cuando el deportista no tiene triage calculado', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '2', attrs: mockItem2 }]),
+    );
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findAllByText('López, María');
+
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Rojo')).not.toBeInTheDocument();
+  });
+
+  test('elegir un nivel en el filtro de triage pushea filter[nivelTriage] y resetea la página', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    // CustomSelect es un <button>: se abre con click y se elige la opción.
+    fireEvent.click(screen.getByRole('button', { name: /todos los triage/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rojo' }));
+
+    await waitFor(() => expect(mockRouterPush).toHaveBeenCalled());
+    const url = mockRouterPush.mock.calls.at(-1)![0] as string;
+    expect(url).toContain('filter%5BnivelTriage%5D=ROJO');
+    expect(url).toContain('page%5Bnumber%5D=1');
+  });
+
+  test('pasa filter[nivelTriage] en los params de la query cuando está en la URL', async () => {
+    mockSearchParamsGet.mockImplementation((key: string) => {
+      if (key === 'filter[nivelTriage]') return 'ROJO';
+      return null;
+    });
+
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    expect(fetchDeportistas).toHaveBeenCalledWith(
+      expect.objectContaining({ 'filter[nivelTriage]': 'ROJO' }),
+    );
+  });
+
+  test('Limpiar resetea el filtro de triage', async () => {
+    mockSearchParamsGet.mockImplementation((key: string) => {
+      if (key === 'filter[nivelTriage]') return 'ROJO';
+      return null;
+    });
+
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /limpiar$/i }));
+
+    await waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith('/deportistas'));
   });
 });
