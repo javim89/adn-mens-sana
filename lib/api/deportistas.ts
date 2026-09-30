@@ -111,7 +111,8 @@ export type DeportistaDetailAttributes = {
   necesidadesApoyo: {
     id: string;
     dificultadAlimentacion: DificultadAlimentacion | null;
-    recibeVianda: boolean;
+    recibeAlmuerzo: boolean;
+    recibeCena: boolean;
     esSocio: boolean;
     apoyosRequeridos: Array<{ id: string; tipo: TipoApoyo }>;
   } | null;

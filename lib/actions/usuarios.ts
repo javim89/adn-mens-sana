@@ -4,6 +4,9 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { clerkClient } from '@clerk/nextjs/server';
 import type { Usuario, UsuarioActivo, UsuarioPendiente } from '@/lib/types/usuarios';
 import { ROLES_PERMITIDOS } from '@/lib/roles';
+import { LUGARES_RETIRO, esLugarRetiro } from '@/lib/utils/viandas';
+
+const LUGARES_VALIDOS = LUGARES_RETIRO.join(', ');
 
 async function assertAdmin(): Promise<{ ok: false; error: string } | { ok: true; userId: string }> {
   const { userId } = await auth();
@@ -33,6 +36,7 @@ export async function getUsuarios(): Promise<Usuario[]> {
       lastName: u.lastName || String(meta.lastName ?? ''),
       email: u.emailAddresses[0]?.emailAddress ?? '',
       rol: String(meta.role ?? ''),
+      lugarRetiro: esLugarRetiro(meta.lugarRetiro) ? meta.lugarRetiro : null,
       lastSignInAt: u.lastSignInAt != null ? new Date(u.lastSignInAt) : null,
       createdAt: new Date(u.createdAt),
       status: 'activo' as const,
@@ -48,6 +52,7 @@ export async function getUsuarios(): Promise<Usuario[]> {
       lastName: String(meta.lastName ?? ''),
       email: inv.emailAddress,
       rol: String(meta.role ?? ''),
+      lugarRetiro: esLugarRetiro(meta.lugarRetiro) ? meta.lugarRetiro : null,
       createdAt: new Date(inv.createdAt),
       status: 'pendiente' as const,
     };
@@ -65,12 +70,25 @@ export async function invitarUsuario(data: {
   lastName: string;
   email: string;
   rol: string;
+  lugarRetiro?: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const check = await assertAdmin();
   if (!check.ok) return { ok: false, error: check.error };
 
   if (!ROLES_PERMITIDOS.includes(data.rol as (typeof ROLES_PERMITIDOS)[number])) {
     return { ok: false, error: 'Rol no permitido' };
+  }
+
+  // Se valida ANTES de `createInvitation`: una invitación a medio configurar ya
+  // salió por mail y solo se arregla revocando y reenviando.
+  const esResponsable = data.rol === 'responsable_viandas';
+  if (esResponsable) {
+    if (!data.lugarRetiro) {
+      return { ok: false, error: 'Elegí un lugar de retiro para el responsable de viandas' };
+    }
+    if (!esLugarRetiro(data.lugarRetiro)) {
+      return { ok: false, error: `Lugar de retiro inválido. Valores válidos: ${LUGARES_VALIDOS}` };
+    }
   }
 
   try {
@@ -84,6 +102,7 @@ export async function invitarUsuario(data: {
         role: data.rol,
         firstName: data.firstName,
         lastName: data.lastName,
+        ...(esResponsable ? { lugarRetiro: data.lugarRetiro } : {}),
       },
       redirectUrl,
     });
@@ -224,7 +243,12 @@ export async function cambiarRol(
     const client = await clerkClient();
 
     await client.users.updateUserMetadata(userId, {
-      publicMetadata: { role: nuevoRol },
+      publicMetadata: {
+        role: nuevoRol,
+        // PATCH /metadata MERGEA. Sin este null explícito, un ex-responsable de viandas
+        // se queda con el lugar huérfano en el metadata.
+        ...(nuevoRol === 'responsable_viandas' ? {} : { lugarRetiro: null }),
+      },
     });
 
     return { ok: true };
@@ -233,5 +257,32 @@ export async function cambiarRol(
       return { ok: false, error: error.message };
     }
     return { ok: false, error: 'Error al actualizar el rol' };
+  }
+}
+
+/**
+ * Corrige el lugar de un responsable sin tocarle el rol. `null` lo limpia — es el
+ * camino para dejar a un responsable "sin lugar asignado" a propósito.
+ */
+export async function asignarLugarRetiro(
+  userId: string,
+  lugar: string | null,
+): Promise<{ ok: boolean; error?: string }> {
+  const check = await assertAdmin();
+  if (!check.ok) return { ok: false, error: check.error };
+
+  if (lugar !== null && !esLugarRetiro(lugar)) {
+    return { ok: false, error: `Lugar de retiro inválido. Valores válidos: ${LUGARES_VALIDOS}` };
+  }
+
+  try {
+    const client = await clerkClient();
+    await client.users.updateUserMetadata(userId, {
+      publicMetadata: { lugarRetiro: lugar },
+    });
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof Error) return { ok: false, error: error.message };
+    return { ok: false, error: 'Error al asignar el lugar de retiro' };
   }
 }

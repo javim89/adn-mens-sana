@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Seeds the default Insights dashboard ("Panorama general").
+ * Seeds the system Insights dashboards ("Panorama general" y "Viandas").
  * Uses Neon's HTTP driver (avoids the TCP/IPv6 issue like apply-migration.mjs).
  *
- * ⚠️  IDEMPOTENCIA: upsert del dashboard por "slug"; sus widgets y filtros se
+ * ⚠️  IDEMPOTENCIA: upsert de cada dashboard por "slug"; sus widgets y filtros se
  * borran y se recrean en cada corrida, así el seed puede evolucionar sin dejar
  * widgets viejos colgados. Los demás dashboards no se tocan.
  *
@@ -253,8 +253,240 @@ export const widgetsPanoramaGeneral = [
   },
 ];
 
+const SLUG_VIANDAS = "viandas";
+const NOMBRE_VIANDAS = "Viandas";
+const DESCRIPCION_VIANDAS =
+  "Comidas esperadas vs. retiradas, quién no retira y quién entrega. " +
+  "Los KPIs y las tablas salen de Viandas (cobertura) — el plantel actual; " +
+  "los cortes por lugar y por responsable salen de Viandas (entregas), el libro mayor.";
+
+// Grilla de 12 columnas, rowHeight 40px.
+export const widgetsViandas = [
+  {
+    titulo: "% de retiro (30 días)",
+    descripcion: "Comidas retiradas sobre comidas esperadas en los últimos 30 días.",
+    tipo: "kpi",
+    querySpec: {
+      mode: "builder",
+      dataset: "viandas_cobertura",
+      dimensions: [],
+      measures: ["porcentaje_retiro"],
+      filters: {
+        op: "all",
+        children: [{ field: "fecha", operator: "last_n_days", value: 30 }],
+      },
+    },
+    vizConfig: { type: "kpi" },
+    x: 0,
+    y: 0,
+    w: 4,
+    h: 4,
+  },
+  {
+    titulo: "Comidas no retiradas (30 días)",
+    descripcion: "Comidas que se esperaban y nadie retiró en los últimos 30 días.",
+    tipo: "kpi",
+    querySpec: {
+      mode: "builder",
+      dataset: "viandas_cobertura",
+      dimensions: [],
+      measures: ["no_retiradas"],
+      filters: {
+        op: "all",
+        children: [{ field: "fecha", operator: "last_n_days", value: 30 }],
+      },
+    },
+    vizConfig: { type: "kpi" },
+    x: 4,
+    y: 0,
+    w: 4,
+    h: 4,
+  },
+  {
+    titulo: "Entregas de hoy",
+    descripcion: "Comidas retiradas en el día.",
+    tipo: "kpi",
+    querySpec: {
+      mode: "builder",
+      dataset: "viandas_entregas",
+      dimensions: [],
+      measures: ["entregas"],
+      filters: {
+        op: "all",
+        children: [{ field: "fecha", operator: "last_n_days", value: 1 }],
+      },
+    },
+    vizConfig: { type: "kpi" },
+    x: 8,
+    y: 0,
+    w: 4,
+    h: 4,
+  },
+  {
+    titulo: "% de retiro por día",
+    descripcion: "Evolución diaria del retiro en los últimos 60 días.",
+    tipo: "line",
+    querySpec: {
+      mode: "builder",
+      dataset: "viandas_cobertura",
+      dimensions: ["fecha"],
+      measures: ["porcentaje_retiro"],
+      timeGrain: "day",
+      timeDimension: "fecha",
+      filters: {
+        op: "all",
+        children: [{ field: "fecha", operator: "last_n_days", value: 60 }],
+      },
+      sort: [{ field: "fecha", direction: "asc" }],
+    },
+    vizConfig: { type: "line" },
+    x: 0,
+    y: 4,
+    w: 8,
+    h: 8,
+  },
+  {
+    titulo: "No retiradas por comida",
+    descripcion: "Qué comida se desperdicia más, en los últimos 30 días.",
+    tipo: "bar",
+    querySpec: {
+      mode: "builder",
+      dataset: "viandas_cobertura",
+      dimensions: ["comida"],
+      measures: ["no_retiradas"],
+      filters: {
+        op: "all",
+        children: [{ field: "fecha", operator: "last_n_days", value: 30 }],
+      },
+      sort: [{ field: "no_retiradas", direction: "desc" }],
+    },
+    vizConfig: { type: "bar" },
+    x: 8,
+    y: 4,
+    w: 4,
+    h: 8,
+  },
+  {
+    // Desde `viandas_entregas` a propósito: en cobertura el lugar es NULL en
+    // toda fila no retirada, así que no puede cortar por lugar.
+    titulo: "Entregas por lugar (30 días)",
+    descripcion: "Comidas retiradas en cada lugar de retiro.",
+    tipo: "bar",
+    querySpec: {
+      mode: "builder",
+      dataset: "viandas_entregas",
+      dimensions: ["lugar"],
+      measures: ["entregas"],
+      filters: {
+        op: "all",
+        children: [{ field: "fecha", operator: "last_n_days", value: 30 }],
+      },
+      sort: [{ field: "entregas", direction: "desc" }],
+    },
+    vizConfig: { type: "bar" },
+    x: 0,
+    y: 12,
+    w: 4,
+    h: 8,
+  },
+  {
+    // La respuesta al problema del negocio: a quién se le está sirviendo una
+    // comida que no retira.
+    titulo: "Top deportistas con más comidas sin retirar (30 días)",
+    descripcion: "Los 15 deportistas con más comidas esperadas y no retiradas.",
+    tipo: "table",
+    querySpec: {
+      mode: "builder",
+      dataset: "viandas_cobertura",
+      dimensions: ["deportista", "disciplina", "categoria"],
+      measures: ["no_retiradas", "esperadas", "porcentaje_retiro"],
+      filters: {
+        op: "all",
+        children: [{ field: "fecha", operator: "last_n_days", value: 30 }],
+      },
+      sort: [{ field: "no_retiradas", direction: "desc" }],
+      limit: 15,
+    },
+    vizConfig: { type: "table" },
+    x: 4,
+    y: 12,
+    w: 8,
+    h: 10,
+  },
+  {
+    titulo: "Entregas por responsable (30 días)",
+    descripcion: "Cuántas comidas registró cada empleado y en qué lugar.",
+    tipo: "table",
+    querySpec: {
+      mode: "builder",
+      dataset: "viandas_entregas",
+      dimensions: ["entregado_por", "lugar"],
+      measures: ["entregas", "deportistas_distintos"],
+      filters: {
+        op: "all",
+        children: [{ field: "fecha", operator: "last_n_days", value: 30 }],
+      },
+      sort: [{ field: "entregas", direction: "desc" }],
+      limit: 50,
+    },
+    vizConfig: { type: "table" },
+    x: 0,
+    y: 22,
+    w: 6,
+    h: 8,
+  },
+  {
+    // El desvío entre ficha y entrega real, en UN solo widget: el árbol de
+    // filtros soporta `any` de dos grupos `all`, así que el OR "almuerzo sin
+    // recibe_almuerzo O cena sin recibe_cena" se expresa sin retorcer nada. Los
+    // flags están coalescidos en el catálogo, así que una ficha de apoyos
+    // ausente también cuenta como no prevista y el desvío no se esconde.
+    //
+    // NO es una lista de errores: /viandas deja entregar cualquier comida a
+    // cualquiera a propósito. Cada fila es o una necesidad real que la ficha
+    // todavía no refleja, o una entrega a revisar — y distinguirlas es el
+    // trabajo del que mira el tablero, no del que entrega.
+    titulo: "Entregas fuera de la ficha: almuerzo o cena no previstos",
+    descripcion:
+      "Almuerzos y cenas entregados a deportistas cuya ficha no los prevé. Sirve para detectar fichas desactualizadas y para revisar entregas fuera de lo planificado.",
+    tipo: "table",
+    querySpec: {
+      mode: "builder",
+      dataset: "viandas_entregas",
+      dimensions: ["deportista", "comida", "lugar", "fecha"],
+      measures: ["entregas"],
+      filters: {
+        op: "any",
+        children: [
+          {
+            op: "all",
+            children: [
+              { field: "comida", operator: "eq", value: "ALMUERZO" },
+              { field: "recibe_almuerzo", operator: "is_false" },
+            ],
+          },
+          {
+            op: "all",
+            children: [
+              { field: "comida", operator: "eq", value: "CENA" },
+              { field: "recibe_cena", operator: "is_false" },
+            ],
+          },
+        ],
+      },
+      sort: [{ field: "fecha", direction: "desc" }],
+      limit: 100,
+    },
+    vizConfig: { type: "table" },
+    x: 6,
+    y: 22,
+    w: 6,
+    h: 8,
+  },
+];
+
 // La conexión se arma dentro de main(): así el módulo puede importarse (los
-// tests validan `widgetsPanoramaGeneral` contra el catálogo) sin DATABASE_URL.
+// tests validan las listas de widgets contra el catálogo) sin DATABASE_URL.
 async function connect() {
   const { neon } = await import("@neondatabase/serverless");
   const { config } = await import("dotenv");
@@ -268,22 +500,19 @@ async function connect() {
   return neon(url);
 }
 
-async function main() {
-  console.log('Seeding Insights: dashboard "Panorama general"...');
-
-  const sql = await connect();
-  const dashboardId = randomUUID();
+async function seedDashboard(sql, { slug, nombre, descripcion, orden, widgets }) {
   const [dashboard] = await sql.query(
     `INSERT INTO "insights_dashboards"
        ("id", "slug", "nombre", "descripcion", "es_sistema", "orden", "creado_por", "updated_at")
-     VALUES ($1, $2, $3, $4, true, 0, 'seed', NOW())
+     VALUES ($1, $2, $3, $4, true, $5, 'seed', NOW())
      ON CONFLICT ("slug") DO UPDATE
        SET "nombre" = EXCLUDED."nombre",
            "descripcion" = EXCLUDED."descripcion",
            "es_sistema" = true,
+           "orden" = EXCLUDED."orden",
            "updated_at" = NOW()
      RETURNING "id"`,
-    [dashboardId, SLUG, NOMBRE, DESCRIPCION]
+    [randomUUID(), slug, nombre, descripcion, orden]
   );
 
   const id = dashboard.id;
@@ -292,7 +521,7 @@ async function main() {
   await sql.query('DELETE FROM "insights_filters" WHERE "dashboard_id" = $1', [id]);
   await sql.query('DELETE FROM "insights_widgets" WHERE "dashboard_id" = $1', [id]);
 
-  for (const w of widgetsPanoramaGeneral) {
+  for (const w of widgets) {
     await sql.query(
       `INSERT INTO "insights_widgets"
          ("id", "dashboard_id", "titulo", "descripcion", "tipo", "query_spec", "viz_config",
@@ -314,8 +543,30 @@ async function main() {
     );
   }
 
-  console.log(`  ✓ dashboard "${SLUG}" (${id})`);
-  console.log(`  ✓ ${widgetsPanoramaGeneral.length} widgets recreados`);
+  console.log(`  ✓ dashboard "${slug}" (${id}) — ${widgets.length} widgets recreados`);
+}
+
+async function main() {
+  console.log("Seeding Insights...");
+
+  const sql = await connect();
+
+  await seedDashboard(sql, {
+    slug: SLUG,
+    nombre: NOMBRE,
+    descripcion: DESCRIPCION,
+    orden: 0,
+    widgets: widgetsPanoramaGeneral,
+  });
+
+  await seedDashboard(sql, {
+    slug: SLUG_VIANDAS,
+    nombre: NOMBRE_VIANDAS,
+    descripcion: DESCRIPCION_VIANDAS,
+    orden: 1,
+    widgets: widgetsViandas,
+  });
+
   console.log("✓ Seed completado.");
 }
 

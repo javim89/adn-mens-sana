@@ -114,7 +114,8 @@ const patchAttributesSchema = z.object({
   necesidadesApoyo: z
     .object({
       dificultadAlimentacion: z.enum(DificultadAlimentacionValues).optional(),
-      recibeVianda: z.boolean().optional(),
+      recibeAlmuerzo: z.boolean().optional(),
+      recibeCena: z.boolean().optional(),
       esSocio: z.boolean().optional(),
       apoyosRequeridos: z.array(z.enum(TipoApoyoValues)).optional(),
     })
@@ -235,7 +236,8 @@ function serializeFullItem(
         ? {
             id: item.necesidadesApoyo.id,
             dificultadAlimentacion: item.necesidadesApoyo.dificultadAlimentacion ?? null,
-            recibeVianda: item.necesidadesApoyo.recibeVianda,
+            recibeAlmuerzo: item.necesidadesApoyo.recibeAlmuerzo,
+            recibeCena: item.necesidadesApoyo.recibeCena,
             esSocio: item.necesidadesApoyo.esSocio,
             apoyosRequeridos: item.necesidadesApoyo.apoyosRequeridos.map((a) => ({
               id: a.id,
@@ -603,7 +605,8 @@ export async function PATCH(
     if (
       na &&
       (na.dificultadAlimentacion ||
-        na.recibeVianda != null ||
+        na.recibeAlmuerzo != null ||
+        na.recibeCena != null ||
         na.esSocio != null ||
         (na.apoyosRequeridos && na.apoyosRequeridos.length > 0))
     ) {
@@ -616,7 +619,8 @@ export async function PATCH(
           where: { deportistaId: id },
           data: {
             dificultadAlimentacion: na.dificultadAlimentacion || null,
-            recibeVianda: na.recibeVianda ?? false,
+            recibeAlmuerzo: na.recibeAlmuerzo ?? false,
+            recibeCena: na.recibeCena ?? false,
             esSocio: na.esSocio ?? false,
             ...(na.apoyosRequeridos && na.apoyosRequeridos.length > 0
               ? {
@@ -634,7 +638,8 @@ export async function PATCH(
           data: {
             deportistaId: id,
             dificultadAlimentacion: na.dificultadAlimentacion || null,
-            recibeVianda: na.recibeVianda ?? false,
+            recibeAlmuerzo: na.recibeAlmuerzo ?? false,
+            recibeCena: na.recibeCena ?? false,
             esSocio: na.esSocio ?? false,
             ...(na.apoyosRequeridos && na.apoyosRequeridos.length > 0
               ? {

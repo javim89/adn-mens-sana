@@ -11,6 +11,7 @@
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { runQuery, runRawSql } from '@/lib/insights/run';
+import { resolveUserLabels } from '@/lib/insights/user-labels';
 import { formatZodError, queryRequestSchema } from '@/lib/insights/schemas';
 import type { ColumnMeta, Row } from '@/lib/insights/types';
 
@@ -89,15 +90,22 @@ export async function POST(request: Request) {
     );
   }
 
+  // Se mide acá: `elapsedMs` es el costo de la consulta, no el de resolver
+  // nombres contra Clerk, que pasa después y solo si alguna columna lo pide.
+  const elapsedMs = Date.now() - startedAt;
+
   const { rows, truncated } = fitPayload(result.rows as Row[]);
 
+  // Después de recortar, así no se resuelven ids de filas que no se devuelven.
+  const labeled = await resolveUserLabels({ columns: result.columns, rows });
+
   return NextResponse.json({
-    data: rows,
-    columns: result.columns,
+    data: labeled.rows,
+    columns: labeled.columns,
     meta: {
       rowCount: rows.length,
       truncated,
-      elapsedMs: Date.now() - startedAt,
+      elapsedMs,
     },
   });
 }

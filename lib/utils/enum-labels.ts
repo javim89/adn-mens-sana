@@ -14,6 +14,8 @@ import type {
   NivelTriage,
   EstadoEvento,
   TipoDia,
+  TipoComida,
+  LugarRetiro,
 } from '@/lib/generated/prisma/enums';
 
 // `Disciplina` dejó de ser un enum (ahora es modelo DB). Los labels se conservan
@@ -99,6 +101,19 @@ export const DIFICULTAD_ALIMENTACION_LABELS: Record<DificultadAlimentacion, stri
   NUNCA: 'Nunca',
   A_VECES: 'A veces',
   FRECUENTEMENTE: 'Frecuentemente',
+};
+
+export const TIPO_COMIDA_LABELS: Record<TipoComida, string> = {
+  DESAYUNO: 'Desayuno',
+  ALMUERZO: 'Almuerzo',
+  MERIENDA: 'Merienda',
+  CENA: 'Cena',
+};
+
+export const LUGAR_RETIRO_LABELS: Record<LugarRetiro, string> = {
+  BOSQUESITO: 'Bosquesito',
+  SEDE: 'Sede',
+  ESTANCIA_CHICA: 'Estancia Chica',
 };
 
 export const TIPO_APOYO_LABELS: Record<TipoApoyo, string> = {

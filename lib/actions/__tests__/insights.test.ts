@@ -68,8 +68,8 @@ import {
 } from '../insights';
 import { querySpecSchema } from '@/lib/insights/schemas';
 import { compile } from '@/lib/insights/compile';
-import { VIZ_BY_ID, type VizId } from '@/lib/insights/visualizations';
-import { widgetsPanoramaGeneral } from '@/scripts/seed-insights.mjs';
+import { VIZ_BY_ID, checkCompatibility, type VizId } from '@/lib/insights/visualizations';
+import { widgetsPanoramaGeneral, widgetsViandas } from '@/scripts/seed-insights.mjs';
 
 function asRole(role: string | null) {
   mockCurrentUser.mockResolvedValue(role ? { publicMetadata: { role } } : null);
@@ -498,5 +498,55 @@ describe('seed "Panorama general"', () => {
       expect(w.vizConfig.type).toBe(w.tipo);
       expect(VIZ_BY_ID[w.tipo as VizId]).toBeDefined();
     }
+  });
+});
+
+describe('seed "Viandas"', () => {
+  it('define 9 widgets', () => {
+    expect(widgetsViandas).toHaveLength(9);
+  });
+
+  it('cada querySpec es válido contra el catálogo y compila a SQL', () => {
+    for (const w of widgetsViandas) {
+      const parsed = querySpecSchema.safeParse(w.querySpec);
+      expect(
+        parsed.success ? null : `${w.titulo}: ${JSON.stringify(parsed.error.issues)}`,
+      ).toBeNull();
+      expect(() => compile(querySpecSchema.parse(w.querySpec))).not.toThrow();
+    }
+  });
+
+  it('cada vizConfig declara un tipo conocido y compatible con su query', () => {
+    for (const w of widgetsViandas) {
+      expect(w.vizConfig.type).toBe(w.tipo);
+      expect(VIZ_BY_ID[w.tipo as VizId]).toBeDefined();
+      const compat = checkCompatibility(w.tipo, {
+        dimensions: w.querySpec.dimensions,
+        measures: w.querySpec.measures,
+        timeDimension: w.querySpec.timeDimension ?? null,
+      });
+      expect(compat.compatible ? null : `${w.titulo}: ${compat.reason}`).toBeNull();
+    }
+  });
+
+  // El % de retiro solo tiene sentido sobre el universo completo de comidas
+  // esperadas; filtrar por lugar o por responsable descarta justo las no
+  // retiradas y lo deja clavado en 100%.
+  it('ningún widget de cobertura filtra por lugar ni por responsable', () => {
+    const campos: string[] = [];
+    const recorrer = (nodo: unknown) => {
+      if (!nodo || typeof nodo !== 'object') return;
+      if ('children' in nodo) {
+        for (const hijo of (nodo as { children: unknown[] }).children) recorrer(hijo);
+        return;
+      }
+      campos.push((nodo as { field: string }).field);
+    };
+    for (const w of widgetsViandas) {
+      if (w.querySpec.dataset !== 'viandas_cobertura') continue;
+      recorrer(w.querySpec.filters);
+    }
+    expect(campos).not.toContain('lugar');
+    expect(campos).not.toContain('entregado_por');
   });
 });

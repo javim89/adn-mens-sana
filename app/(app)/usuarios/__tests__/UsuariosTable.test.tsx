@@ -36,6 +36,7 @@ const mockActivo: Usuario = {
   rol: 'admin',
   lastSignInAt: new Date('2026-06-08'),
   createdAt: new Date('2026-01-01'),
+  lugarRetiro: null,
   status: 'activo',
   disabled: false,
 };
@@ -48,6 +49,7 @@ const mockDeshabilitado: Usuario = {
   rol: 'entrenador',
   lastSignInAt: new Date('2026-05-01'),
   createdAt: new Date('2026-01-01'),
+  lugarRetiro: null,
   status: 'activo',
   disabled: true,
 };
@@ -59,6 +61,7 @@ const mockPendiente: Usuario = {
   email: 's.blanco@gimnasia.org.ar',
   rol: 'entrenador',
   createdAt: new Date('2026-06-01'),
+  lugarRetiro: null,
   status: 'pendiente',
 };
 
@@ -189,6 +192,7 @@ describe('UsuariosTable', () => {
       rol: 'kinesiologo',
       lastSignInAt: null,
       createdAt: new Date('2026-01-01'),
+      lugarRetiro: null,
       status: 'activo',
       disabled: false,
     };

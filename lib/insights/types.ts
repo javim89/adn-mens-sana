@@ -26,6 +26,19 @@ export interface Dimension {
   sql: string;
   type: FieldType;
   enumLabels?: Record<string, string>;
+  /**
+   * De dónde salen los labels de los VALORES cuando no son un enum del schema.
+   *
+   * `clerk_user`: la columna guarda un Clerk userId. Postgres no tiene tabla de
+   * usuarios (viven en Clerk), así que el nombre no se puede resolver en el SQL:
+   * se resuelve DESPUÉS de correr la query, sobre los ids que efectivamente
+   * aparecieron en el resultado (ver `lib/insights/user-labels.ts`), y viaja en
+   * `ColumnMeta.enumLabels` como cualquier otro enum.
+   *
+   * Ojo: los FILTROS siguen operando sobre el id crudo — el nombre no existe en
+   * la base y no hay con qué compararlo en el WHERE.
+   */
+  labelSource?: 'clerk_user';
   /** default true */
   filterable?: boolean;
 }
@@ -163,6 +176,13 @@ export interface ColumnMeta {
    * consultar el catálogo (que es código de servidor).
    */
   enumLabels?: Record<string, string>;
+  /**
+   * Marca que los labels de esta columna se resuelven después de la query. El
+   * handler de `/api/insights/query` la usa para rellenar `enumLabels` antes de
+   * responder; para el cliente, una columna resuelta es indistinguible de un
+   * enum del catálogo.
+   */
+  labelSource?: 'clerk_user';
 }
 
 /** Una fila del resultado, indexada por el `id` de cada columna. */

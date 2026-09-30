@@ -55,6 +55,36 @@ describe('AppLayout role resolution from publicMetadata', () => {
     expect(screen.getByText('Usuarios')).toBeInTheDocument()
   })
 
+  // Este caso renderiza de verdad el nav item de /viandas, así que es el que
+  // atrapa un ICON_MAP incompleto en Sidebar: el icono viaja como string y un
+  // IconKey sin entrada en el mapa revienta en runtime, no en compilación.
+  it('responsable_viandas sees Viandas and nothing beyond Dashboard', async () => {
+    mockCurrentUser.mockResolvedValue({
+      publicMetadata: { role: 'responsable_viandas' },
+    })
+
+    const result = await AppLayout({ children: <div /> })
+    render(result)
+
+    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Viandas')).toBeInTheDocument()
+    expect(screen.queryByText('Deportistas')).not.toBeInTheDocument()
+    expect(screen.queryByText('Convocatorias')).not.toBeInTheDocument()
+    expect(screen.queryByText('Usuarios')).not.toBeInTheDocument()
+  })
+
+  it('roles outside the module do not see Viandas', async () => {
+    mockCurrentUser.mockResolvedValue({
+      publicMetadata: { role: 'entrenador' },
+    })
+
+    const result = await AppLayout({ children: <div /> })
+    render(result)
+
+    expect(screen.getByText('Convocatorias')).toBeInTheDocument()
+    expect(screen.queryByText('Viandas')).not.toBeInTheDocument()
+  })
+
   it('user without role sees only Dashboard (fallback)', async () => {
     mockCurrentUser.mockResolvedValue({
       publicMetadata: {},

@@ -53,7 +53,7 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
   const fam = data.datosFamiliares ?? {};
   const soc = data.datosSociales ?? {};
   const viv = data.viviendaFamiliar ?? { servicios: [] };
-  const nec = data.necesidadesApoyo ?? { recibeVianda: false, esSocio: false, apoyosRequeridos: [] };
+  const nec = data.necesidadesApoyo ?? { recibeAlmuerzo: false, recibeCena: false, esSocio: false, apoyosRequeridos: [] };
 
   function patchFam(patch: Partial<NonNullable<DeportistaFormData['datosFamiliares']>>) {
     onChange({ datosFamiliares: { ...fam, ...patch } });
@@ -68,7 +68,8 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
     onChange({
       necesidadesApoyo: {
         ...nec,
-        recibeVianda: nec.recibeVianda ?? false,
+        recibeAlmuerzo: nec.recibeAlmuerzo ?? false,
+        recibeCena: nec.recibeCena ?? false,
         esSocio: nec.esSocio ?? false,
         apoyosRequeridos: nec.apoyosRequeridos ?? [],
         ...patch,
@@ -270,13 +271,24 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
       <div className="sm:col-span-2 flex flex-wrap gap-6">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
-            id="recibeVianda"
+            id="recibeAlmuerzo"
             type="checkbox"
-            checked={nec.recibeVianda ?? false}
-            onChange={(e) => patchNec({ recibeVianda: e.target.checked })}
+            checked={nec.recibeAlmuerzo ?? false}
+            onChange={(e) => patchNec({ recibeAlmuerzo: e.target.checked })}
             className="w-4 h-4 text-[#121A61] rounded border-gray-300"
           />
-          <span className="text-sm text-[#1C1C1C]">Recibe vianda</span>
+          <span className="text-sm text-[#1C1C1C]">Recibe almuerzo</span>
+        </label>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            id="recibeCena"
+            type="checkbox"
+            checked={nec.recibeCena ?? false}
+            onChange={(e) => patchNec({ recibeCena: e.target.checked })}
+            className="w-4 h-4 text-[#121A61] rounded border-gray-300"
+          />
+          <span className="text-sm text-[#1C1C1C]">Recibe cena</span>
         </label>
 
         <label className="flex items-center gap-2 cursor-pointer">

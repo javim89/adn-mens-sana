@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ChartColumn } from 'lucide-react';
 import { getDashboards } from '@/lib/actions/insights';
 import NuevoDashboardButton from './_components/NuevoDashboardButton';
+import DashboardCardActions from './_components/DashboardCardActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,12 +45,20 @@ async function DashboardsContent() {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+      {/* La card ya no ES el link: el menú de acciones no puede vivir dentro de
+          un <a>. En su lugar el link se estira sobre toda la card (absolute
+          inset-0) y el menú se levanta por encima con z-10, así que sigue
+          alcanzando con clickear cualquier parte de la card para entrar. */}
       {dashboards.map((d) => (
-        <Link
+        <div
           key={d.id}
-          href={`/insights/${d.id}`}
-          className="group bg-white rounded-xl shadow-sm border border-gray-100 p-5 transition-all hover:shadow-md hover:-translate-y-0.5"
+          className="group relative bg-white rounded-xl shadow-sm border border-gray-100 p-5 transition-all hover:shadow-md hover:-translate-y-0.5"
         >
+          <Link
+            href={`/insights/${d.id}`}
+            aria-label={d.nombre}
+            className="absolute inset-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3346CC]"
+          />
           <div className="flex items-start justify-between gap-2 mb-2">
             <h2
               className="text-lg font-semibold text-[#121A61] group-hover:text-[#1E2A8A]"
@@ -57,11 +66,15 @@ async function DashboardsContent() {
             >
               {d.nombre}
             </h2>
-            {d.esSistema && (
-              <span className="shrink-0 px-2 py-0.5 rounded-full bg-[#C9A84C]/15 text-[#8C6D1F] text-xs font-medium">
-                Sistema
-              </span>
-            )}
+            <div className="relative z-10 flex shrink-0 items-center gap-1.5">
+              {d.esSistema ? (
+                <span className="px-2 py-0.5 rounded-full bg-[#C9A84C]/15 text-[#8C6D1F] text-xs font-medium">
+                  Sistema
+                </span>
+              ) : (
+                <DashboardCardActions id={d.id} nombre={d.nombre} />
+              )}
+            </div>
           </div>
           {d.descripcion && (
             <p className="text-sm text-[#6B7280] mb-3 line-clamp-2">{d.descripcion}</p>
@@ -71,7 +84,7 @@ async function DashboardsContent() {
             <span className="mx-1.5 text-gray-300">·</span>
             {formatFecha(d.updatedAt)}
           </p>
-        </Link>
+        </div>
       ))}
     </div>
   );

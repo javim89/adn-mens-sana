@@ -35,7 +35,7 @@ function expectParamParity(compiled: { sql: string; params: unknown[] }) {
 // ---------------------------------------------------------------------------
 
 describe('catálogo', () => {
-  it('expone los 9 datasets del plan', () => {
+  it('expone los 11 datasets del plan', () => {
     expect(DATASETS.map((d) => d.id)).toEqual([
       'deportistas',
       'seguimientos',
@@ -46,6 +46,8 @@ describe('catálogo', () => {
       'convocatorias',
       'triage_ultimo',
       'triage_historico',
+      'viandas_entregas',
+      'viandas_cobertura',
     ]);
   });
 
@@ -96,6 +98,8 @@ describe('catálogo', () => {
       ['evaluacion_psicologica', 'evaluaciones'],
       ['convocatorias', 'convocatorias'],
       ['convocatorias', 'deportistas_distintos'],
+      ['viandas_entregas', 'deportistas_distintos'],
+      ['viandas_cobertura', 'deportistas_distintos'],
     ];
     for (const [datasetId, measureId] of casos) {
       const measure = CATALOG[datasetId].measures.find((m) => m.id === measureId);
@@ -114,6 +118,44 @@ describe('catálogo', () => {
     const dim = CATALOG.deportistas.dimensions.find((d) => d.id === 'rango_etario');
     expect(dim?.sql).toContain("date_part('year', age(deportistas.fecha_nacimiento))");
     expect(dim?.sql.startsWith('CASE')).toBe(true);
+  });
+
+  // La columna `recibe_vianda` ya no existe, pero el id del catálogo sí: los
+  // widgets y filtros guardados lo referencian y `findDimension` lanza ante un
+  // id desconocido, así que borrarlo rompería el dashboard entero.
+  it('deportistas sigue exponiendo recibe_vianda, ahora derivada de los dos flags', () => {
+    const dim = CATALOG.deportistas.dimensions.find((d) => d.id === 'recibe_vianda');
+    expect(dim).toBeDefined();
+    expect(dim!.type).toBe('boolean');
+    expect(dim!.sql).toContain('COALESCE(necesidades_apoyo.recibe_almuerzo, false)');
+    expect(dim!.sql).toContain('COALESCE(necesidades_apoyo.recibe_cena, false)');
+    expect(dim!.sql).not.toContain('necesidades_apoyo.recibe_vianda');
+  });
+
+  it('el CTE de viandas_cobertura define los tres pasos del cruce', () => {
+    const cte = CATALOG.viandas_cobertura.cte ?? '';
+    expect(cte).toContain('WITH viandas_dias AS (');
+    expect(cte).toContain('viandas_comidas AS (');
+    expect(cte).toContain('viandas_cobertura AS (');
+    expect(cte).toContain(`unnest(ARRAY['DESAYUNO','ALMUERZO','MERIENDA','CENA']::"TipoComida"[])`);
+    expect(cte).toContain('CROSS JOIN viandas_comidas');
+    expect(cte).toContain('CROSS JOIN deportistas');
+    expect(cte).toContain('COALESCE(necesidades_apoyo.recibe_almuerzo, false)');
+    expect(cte).toContain('COALESCE(necesidades_apoyo.recibe_cena, false)');
+    // El plantel es el actual, y se excluye solo INACTIVO: un lesionado come.
+    expect(cte).toContain("deportistas.estado <> 'INACTIVO'");
+  });
+
+  it('las medidas de cobertura cuentan con FILTER sobre entrega_id', () => {
+    const measures = CATALOG.viandas_cobertura.measures;
+    const retiradas = measures.find((m) => m.id === 'retiradas');
+    const noRetiradas = measures.find((m) => m.id === 'no_retiradas');
+    expect(isFormulaMeasure(retiradas!) ? null : retiradas!.filterSql).toBe(
+      'viandas_cobertura.entrega_id IS NOT NULL',
+    );
+    expect(isFormulaMeasure(noRetiradas!) ? null : noRetiradas!.filterSql).toBe(
+      'viandas_cobertura.entrega_id IS NULL',
+    );
   });
 });
 
@@ -266,6 +308,102 @@ describe('SQL generado', () => {
 
     expect(compiled.sql.startsWith('WITH triage_ultimo AS (')).toBe(true);
     expect(compiled.sql).toContain('FROM triage_ultimo');
+  });
+
+  it('cobertura de viandas emite el CTE completo antes del SELECT', () => {
+    const compiled = compile(
+      spec({
+        dataset: 'viandas_cobertura',
+        dimensions: ['comida'],
+        measures: ['esperadas', 'retiradas', 'porcentaje_retiro'],
+        filters: {
+          op: 'all',
+          children: [{ field: 'fecha', operator: 'last_n_days', value: 30 }],
+        },
+      }),
+      NOW,
+    );
+
+    expect(compiled.sql.startsWith('WITH viandas_dias AS (')).toBe(true);
+    // Las tres definiciones van antes del SELECT externo, en orden.
+    const selectIndex = compiled.sql.indexOf('\nSELECT ');
+    for (const parte of ['viandas_dias AS (', 'viandas_comidas AS (', 'viandas_cobertura AS (']) {
+      const i = compiled.sql.indexOf(parte);
+      expect(i).toBeGreaterThan(-1);
+      expect(i).toBeLessThan(selectIndex);
+    }
+    expect(compiled.sql).toContain('FROM viandas_cobertura');
+    expect(compiled.sql).toContain(
+      "COUNT(*) FILTER (WHERE viandas_cobertura.entrega_id IS NOT NULL)",
+    );
+    expect(compiled.sql).toContain(
+      'WHERE (viandas_cobertura.fecha >= $1 AND viandas_cobertura.fecha < $2)',
+    );
+    expectParamParity(compiled);
+  });
+
+  // `entregado_por` guarda un Clerk userId: el nombre no está en Postgres y se
+  // resuelve después de la query, así que la columna tiene que salir marcada.
+  it('la columna entregado_por sale marcada para resolver el nombre contra Clerk', () => {
+    for (const dataset of ['viandas_entregas', 'viandas_cobertura']) {
+      const compiled = compile(
+        spec({
+          dataset,
+          dimensions: ['entregado_por'],
+          measures: [dataset === 'viandas_entregas' ? 'entregas' : 'esperadas'],
+        }),
+        NOW,
+      );
+
+      const columna = compiled.columns.find((c) => c.id === 'entregado_por');
+      expect(columna?.labelSource).toBe('clerk_user');
+      expect(columna?.label).not.toMatch(/\(id\)/);
+    }
+  });
+
+  // Filtrar por lugar en cobertura tiraría todas las filas "no retirada" (el
+  // lado derecho del LEFT JOIN es NULL) y el % de retiro daría 100%.
+  it('lugar y entregado_por de cobertura se pueden mostrar pero no filtrar', () => {
+    for (const id of ['lugar', 'entregado_por']) {
+      const dim = CATALOG.viandas_cobertura.dimensions.find((d) => d.id === id);
+      expect(dim?.filterable).toBe(false);
+      expect(dim?.label).toMatch(/no retirada/);
+
+      // Mostrarla sí compila…
+      expect(() =>
+        compile(spec({ dataset: 'viandas_cobertura', dimensions: [id], measures: ['esperadas'] }), NOW),
+      ).not.toThrow();
+
+      // …filtrarla no.
+      expect(() =>
+        compile(
+          spec({
+            dataset: 'viandas_cobertura',
+            measures: ['esperadas'],
+            filters: { op: 'all', children: [{ field: id, operator: 'is_not_null' }] },
+          }),
+          NOW,
+        ),
+      ).toThrow(/no es filtrable/);
+    }
+  });
+
+  it('las entregas sí pueden cortarse por lugar', () => {
+    const dim = CATALOG.viandas_entregas.dimensions.find((d) => d.id === 'lugar');
+    expect(dim?.filterable).toBeUndefined();
+    const compiled = compile(
+      spec({
+        dataset: 'viandas_entregas',
+        dimensions: ['lugar'],
+        measures: ['entregas'],
+        filters: {
+          op: 'all',
+          children: [{ field: 'lugar', operator: 'in', value: ['SEDE', 'BOSQUESITO'] }],
+        },
+      }),
+      NOW,
+    );
+    expect(compiled.sql).toContain('WHERE entregas_comida.lugar = ANY($1)');
   });
 
   it('agrupa por posición ordinal y no reemite las expresiones', () => {

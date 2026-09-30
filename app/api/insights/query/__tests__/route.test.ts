@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockAuth, mockCurrentUser, mockRunQuery, mockRunRawSql } = vi.hoisted(() => ({
-  mockAuth: vi.fn().mockResolvedValue({ userId: 'user_admin_1' }),
-  mockCurrentUser: vi.fn().mockResolvedValue({ publicMetadata: { role: 'admin' } }),
-  mockRunQuery: vi.fn(),
-  mockRunRawSql: vi.fn(),
-}));
+const { mockAuth, mockCurrentUser, mockRunQuery, mockRunRawSql, mockGetUserList } =
+  vi.hoisted(() => ({
+    mockAuth: vi.fn().mockResolvedValue({ userId: 'user_admin_1' }),
+    mockCurrentUser: vi.fn().mockResolvedValue({ publicMetadata: { role: 'admin' } }),
+    mockRunQuery: vi.fn(),
+    mockRunRawSql: vi.fn(),
+    mockGetUserList: vi.fn(),
+  }));
 
-vi.mock('@clerk/nextjs/server', () => ({ auth: mockAuth, currentUser: mockCurrentUser }));
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: mockAuth,
+  currentUser: mockCurrentUser,
+  clerkClient: async () => ({ users: { getUserList: mockGetUserList } }),
+}));
 vi.mock('@/lib/insights/run', () => ({
   runQuery: mockRunQuery,
   runRawSql: mockRunRawSql,
@@ -50,6 +56,7 @@ beforeEach(() => {
   mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
   mockRunQuery.mockResolvedValue(resultado);
   mockRunRawSql.mockResolvedValue(resultado);
+  mockGetUserList.mockResolvedValue({ data: [] });
 });
 
 describe('POST /api/insights/query — autorización', () => {
@@ -203,5 +210,43 @@ describe('POST /api/insights/query — ejecución', () => {
     expect(body.meta.truncated).toBe(true);
     expect(body.data.length).toBeLessThan(2000);
     expect(body.meta.rowCount).toBe(body.data.length);
+  });
+
+  it('resuelve contra Clerk los labels de una columna de userId', async () => {
+    mockRunQuery.mockResolvedValue({
+      columns: [
+        {
+          id: 'entregado_por',
+          label: 'Entregado por',
+          type: 'string',
+          role: 'dimension',
+          labelSource: 'clerk_user',
+        },
+        { id: 'entregas', label: 'Entregas', type: 'number', role: 'measure', format: 'integer' },
+      ],
+      rows: [{ entregado_por: 'user_emp_1', entregas: 12 }],
+    });
+    mockGetUserList.mockResolvedValue({
+      data: [
+        {
+          id: 'user_emp_1',
+          firstName: 'Ana',
+          lastName: 'López',
+          publicMetadata: {},
+          emailAddresses: [{ emailAddress: 'ana@club.com' }],
+        },
+      ],
+    });
+
+    const res = await post({ spec: specValido });
+    const body = (await res.json()) as {
+      data: Record<string, unknown>[];
+      columns: { id: string; enumLabels?: Record<string, string> }[];
+    };
+
+    expect(res.status).toBe(200);
+    // El id sigue siendo el valor de la fila; el nombre viaja en la columna.
+    expect(body.data[0].entregado_por).toBe('user_emp_1');
+    expect(body.columns[0].enumLabels).toEqual({ user_emp_1: 'Ana López' });
   });
 });

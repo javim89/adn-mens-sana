@@ -77,7 +77,8 @@ export type DeportistaFormData = {
   };
   necesidadesApoyo?: {
     dificultadAlimentacion?: DificultadAlimentacion;
-    recibeVianda: boolean;
+    recibeAlmuerzo: boolean;
+    recibeCena: boolean;
     esSocio: boolean;
     apoyosRequeridos: TipoApoyo[];
   };
@@ -147,7 +148,8 @@ export type DeportistaWithRelations = Deportista & {
   necesidadesApoyo: ({
     id: string;
     dificultadAlimentacion?: DificultadAlimentacion | null;
-    recibeVianda: boolean;
+    recibeAlmuerzo: boolean;
+    recibeCena: boolean;
     esSocio: boolean;
     apoyosRequeridos: Array<{ id: string; tipo: TipoApoyo }>;
   }) | null;
