@@ -33,6 +33,18 @@ const FORMATO_HORA = new Intl.DateTimeFormat('en-US', {
   hourCycle: 'h23',
 });
 
+/** Fecha + hora del club en un solo `formatToParts`, para derivar el offset UTC. */
+const FORMATO_INSTANTE = new Intl.DateTimeFormat('en-US', {
+  timeZone: TZ_CLUB,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+});
+
 function parte(partes: Intl.DateTimeFormatPart[], tipo: Intl.DateTimeFormatPartTypes): string {
   const encontrada = partes.find((p) => p.type === tipo);
   if (!encontrada) throw new Error(`Intl no devolvió la parte "${tipo}" de la fecha`);
@@ -100,4 +112,126 @@ export function horaEnArgentina(d: Date): string {
 export function formatearClaveFecha(clave: string): string {
   const [anio, mes, dia] = clave.split('-');
   return `${dia}/${mes}/${anio}`;
+}
+
+// ---------------------------------------------------------------------------
+// Semana ISO del club (lunes → domingo)
+// ---------------------------------------------------------------------------
+
+/**
+ * CONVIVEN DOS NOCIONES DE SEMANA EN EL REPO, Y ES A PROPÓSITO.
+ *
+ * - `weekWindow()` (`lib/triage/data.ts`) es **rolling 7 días** y alimenta el
+ *   scoring de ausencias del triage. Cambiarla movería puntajes históricos.
+ * - Lo de acá abajo es la semana **ISO de reporte**, anclada a lunes en la zona
+ *   del club, porque cuando el usuario dice "esta semana" / "la semana anterior"
+ *   se refiere a la semana calendario.
+ *
+ * NO unificarlas: si el dashboard usara la ventana rolling, su número dejaría de
+ * coincidir con el del listado y con el del scoring. Quedan alineadas por
+ * construcción porque el cron de triage corre `"0 11 * * 1"` (lunes 11:00 UTC =
+ * 08:00 ART), o sea que el snapshot semanal cae dentro de la semana ISO en ART.
+ */
+export interface RangoSemana {
+  /** `'YYYY-MM-DD'` del lunes. */
+  desdeClave: string;
+  /** `'YYYY-MM-DD'` del domingo. INCLUSIVO, y existe solo para mostrar. */
+  hastaClave: string;
+  /** Lunes a medianoche UTC → para columnas de FECHA (`@db.Date` o fecha por convención). */
+  desdeDb: Date;
+  /** Lunes+7 a medianoche UTC → borde superior EXCLUSIVO de las columnas de fecha. */
+  finExclusivoDb: Date;
+  /** El instante en que empieza el lunes EN EL CLUB → para columnas de TIMESTAMP real. */
+  desdeInstante: Date;
+  /** El instante en que empieza el lunes siguiente. Borde superior EXCLUSIVO. */
+  finExclusivoInstante: Date;
+}
+
+/**
+ * Minutos de offset respecto de UTC que tiene la zona del club en el instante `d`
+ * (Argentina: siempre `-180`, pero no se hardcodea).
+ *
+ * Se leen las partes en `TZ_CLUB` y se reinterpretan con `Date.UTC`. NO se usa
+ * `timeZoneName: 'longOffset'` por la misma razón que el resto del archivo no
+ * concatena el `format()` de un locale: parsear `'GMT-03:00'` es depender de un
+ * string de formato que un bump de ICU puede cambiar en silencio.
+ */
+function offsetMinutos(d: Date): number {
+  const p = FORMATO_INSTANTE.formatToParts(d);
+  const comoSiFueraUtc = Date.UTC(
+    Number(parte(p, 'year')),
+    Number(parte(p, 'month')) - 1,
+    Number(parte(p, 'day')),
+    Number(parte(p, 'hour')),
+    Number(parte(p, 'minute')),
+    Number(parte(p, 'second')),
+  );
+  // El instante se trunca al segundo porque las partes no traen milisegundos:
+  // sin truncar, el resto se colaría como un offset de fracción de minuto.
+  return (comoSiFueraUtc - Math.floor(d.getTime() / 1000) * 1000) / 60_000;
+}
+
+/**
+ * El instante exacto en que arranca el día `clave` EN EL CLUB.
+ *
+ * Dos pasadas: la primera estima el offset mirando la medianoche UTC del día, la
+ * segunda lo revalida sobre el candidato. En Argentina las dos dan lo mismo
+ * (no hay DST), pero la revalidación es lo que haría correcto el cálculo si
+ * alguna vez volviera el horario de verano.
+ */
+function instanteMedianocheClub(clave: string): Date {
+  const base = fechaDbDesdeClave(clave).getTime();
+  const primero = offsetMinutos(new Date(base));
+  const candidato = base - primero * 60_000;
+  const segundo = offsetMinutos(new Date(candidato));
+  return new Date(segundo === primero ? candidato : base - segundo * 60_000);
+}
+
+/**
+ * Suma (o resta) días a una clave `'YYYY-MM-DD'`.
+ *
+ * Es exacto porque la clave se materializa a medianoche UTC y en UTC no hay DST,
+ * así que un día son siempre 86.400.000 ms.
+ */
+export function sumarDiasClave(clave: string, dias: number): string {
+  const d = new Date(fechaDbDesdeClave(clave).getTime() + dias * 86_400_000);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Día de la semana ISO de una clave: lunes = 1 … domingo = 7. */
+export function diaSemanaIso(clave: string): number {
+  const dia = fechaDbDesdeClave(clave).getUTCDay(); // 0 = domingo
+  return dia === 0 ? 7 : dia;
+}
+
+/** La semana ISO (lunes → domingo) que contiene al día `clave`. */
+export function semanaDeClave(clave: string): RangoSemana {
+  const lunes = sumarDiasClave(clave, 1 - diaSemanaIso(clave));
+  const lunesSiguiente = sumarDiasClave(lunes, 7);
+
+  return {
+    desdeClave: lunes,
+    hastaClave: sumarDiasClave(lunes, 6),
+    desdeDb: fechaDbDesdeClave(lunes),
+    finExclusivoDb: fechaDbDesdeClave(lunesSiguiente),
+    desdeInstante: instanteMedianocheClub(lunes),
+    finExclusivoInstante: instanteMedianocheClub(lunesSiguiente),
+  };
+}
+
+/**
+ * La semana en curso, según el día del club.
+ *
+ * El `now` explícito no es solo para los tests: el caso que justifica todo este
+ * bloque es `'2026-03-16T02:30:00Z'`, que es **lunes en UTC** pero domingo 23:30
+ * en ART, así que la semana correcta es la que arranca el 2026-03-09. Cualquier
+ * implementación con getters UTC devuelve la semana equivocada ahí.
+ */
+export function semanaActual(now: Date = new Date()): RangoSemana {
+  return semanaDeClave(hoyEnArgentina(now));
+}
+
+/** La semana anterior a la en curso. Es el baseline de comparación del dashboard. */
+export function semanaAnterior(now: Date = new Date()): RangoSemana {
+  return semanaDeClave(sumarDiasClave(hoyEnArgentina(now), -7));
 }

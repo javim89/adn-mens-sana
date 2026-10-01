@@ -51,6 +51,20 @@ export const ESTADO_LABELS: Record<EstadoDeportista, string> = {
   SUSPENDIDO: 'Suspendido',
 };
 
+/**
+ * Colores del estado del deportista. Vive acá, al lado de `NIVEL_TRIAGE_BADGE`, y no
+ * en `DeportistasTable.tsx`, porque la card de plantel del dashboard necesita los
+ * mismos: duplicarlos haría que las dos pantallas pintaran el mismo estado distinto.
+ *
+ * `DESIGN.md` no define una paleta semántica, así que ésta es la de facto.
+ */
+export const ESTADO_BADGE: Record<EstadoDeportista, string> = {
+  ACTIVO: 'bg-green-100 text-green-700',
+  INACTIVO: 'bg-gray-100 text-[#6B7280]',
+  LESIONADO: 'bg-amber-100 text-amber-700',
+  SUSPENDIDO: 'bg-red-100 text-red-700',
+};
+
 export const GENERO_LABELS: Record<Genero, string> = {
   MASCULINO: 'Masculino',
   FEMENINO: 'Femenino',
