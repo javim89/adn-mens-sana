@@ -9,19 +9,13 @@ import { CustomSelect } from '@/app/components/ui/custom-select';
 import { fetchDeportistas, fetchDisciplinas } from '@/lib/api/deportistas';
 import type { FetchDeportistasParams } from '@/lib/api/deportistas';
 import {
+  ESTADO_BADGE,
   ESTADO_LABELS,
   NIVEL_TRIAGE_BADGE,
   NIVEL_TRIAGE_LABELS,
 } from '@/lib/utils/enum-labels';
 import { EstadoDeportista, NivelTriage } from '@/lib/generated/prisma/enums';
 import type { EstadoDeportista as EstadoType } from '@/lib/generated/prisma/enums';
-
-const ESTADO_BADGE: Record<string, string> = {
-  ACTIVO: 'bg-green-100 text-green-700',
-  INACTIVO: 'bg-gray-100 text-[#6B7280]',
-  LESIONADO: 'bg-amber-100 text-amber-700',
-  SUSPENDIDO: 'bg-red-100 text-red-700',
-};
 
 export default function DeportistasTable({ canCreate = true }: { canCreate?: boolean }) {
   const router = useRouter();
