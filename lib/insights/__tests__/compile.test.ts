@@ -146,6 +146,50 @@ describe('catálogo', () => {
     expect(cte).toContain("deportistas.estado <> 'INACTIVO'");
   });
 
+  // Reserva y 4ta–9na reciben solo desayuno: su merienda no es "esperada", así que
+  // no puede aparecer como no retirada. El desayuno sigue siendo de todo el plantel.
+  it('cobertura no espera merienda de las categorías que solo reciben desayuno', () => {
+    const cte = CATALOG.viandas_cobertura.cte ?? '';
+    const sinEspacios = cte.replace(/\s+/g, ' ');
+    expect(sinEspacios).toContain(
+      'LEFT JOIN categorias cat_vianda ON cat_vianda.id = deportistas.categoria_id',
+    );
+    expect(sinEspacios).toContain("viandas_comidas.comida = 'DESAYUNO'");
+    expect(sinEspacios).toContain(
+      "(viandas_comidas.comida = 'MERIENDA' AND (cat_vianda.nombre IS NULL OR cat_vianda.nombre NOT IN ('Reserva','9na','8va','7ma','6ta','5ta','4ta')))",
+    );
+    // La merienda ya no va junto al desayuno como "de todo el plantel".
+    expect(cte).not.toContain("IN ('DESAYUNO','MERIENDA')");
+  });
+
+  it('viandas_entregas expone recibe_merienda derivada de la categoría', () => {
+    const dim = CATALOG.viandas_entregas.dimensions.find((d) => d.id === 'recibe_merienda');
+    expect(dim?.type).toBe('boolean');
+    // Sin categoría SÍ recibe merienda: el IS NULL evita que `NULL NOT IN` dé NULL.
+    expect(dim!.sql).toBe(
+      "(categorias.nombre IS NULL OR categorias.nombre NOT IN ('Reserva','9na','8va','7ma','6ta','5ta','4ta'))",
+    );
+
+    const compiled = compile(
+      spec({
+        dataset: 'viandas_entregas',
+        dimensions: ['comida', 'recibe_merienda'],
+        measures: ['entregas'],
+        filters: {
+          op: 'all',
+          children: [
+            { field: 'comida', operator: 'in', value: ['MERIENDA'] },
+            { field: 'recibe_merienda', operator: 'is_false' },
+          ],
+        },
+      }),
+      NOW,
+    );
+    expect(compiled.sql).toContain('LEFT JOIN categorias ON categorias.id = deportistas.categoria_id');
+    expect(compiled.sql).toContain('categorias.nombre NOT IN');
+    expectParamParity(compiled);
+  });
+
   it('las medidas de cobertura cuentan con FILTER sobre entrega_id', () => {
     const measures = CATALOG.viandas_cobertura.measures;
     const retiradas = measures.find((m) => m.id === 'retiradas');

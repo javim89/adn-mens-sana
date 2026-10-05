@@ -6,7 +6,15 @@ import { History, Search, TriangleAlert, UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
 import { CustomSelect } from '@/app/components/ui/custom-select';
 import { marcarRetiro, desmarcarRetiro } from '@/lib/actions/viandas';
-import { COMIDAS, LUGARES_RETIRO, comidasPrevistas, tagElegibilidad } from '@/lib/utils/viandas';
+import {
+  COMIDAS,
+  LUGARES_RETIRO,
+  coincideFiltroComida,
+  comidasPrevistas,
+  esFiltroComida,
+  tagElegibilidad,
+  type FiltroComida,
+} from '@/lib/utils/viandas';
 import { LUGAR_RETIRO_LABELS, TIPO_COMIDA_LABELS, ESTADO_LABELS } from '@/lib/utils/enum-labels';
 import { esClaveFechaValida, formatearClaveFecha } from '@/lib/utils/fecha';
 import type { DisciplinaConCategorias } from '@/lib/queries/disciplinas';
@@ -24,6 +32,18 @@ const ESTADO_DEPORTISTA_BADGE: Record<string, string> = {
 
 const TODAS = '__all__';
 
+const FILTRO_COMIDA_OPCIONES: { value: FiltroComida; label: string }[] = [
+  { value: 'ALMUERZO', label: 'Almuerzo' },
+  { value: 'CENA', label: 'Cena' },
+  { value: 'AMBAS', label: 'Almuerzo y cena' },
+];
+
+const FILTRO_COMIDA_VACIO: Record<FiltroComida, string> = {
+  ALMUERZO: 'almuerzo',
+  CENA: 'cena',
+  AMBAS: 'almuerzo y cena',
+};
+
 interface Props {
   fechaHoy: string;
   /** El día que se está mirando. Distinto de `fechaHoy` = histórico en solo lectura. */
@@ -34,6 +54,8 @@ interface Props {
   disciplinas: DisciplinaConCategorias[];
   disciplinaId: string;
   categoriaId: string;
+  /** Achica el plantel según la ficha; `null` = todos. */
+  filtroComida: FiltroComida | null;
   plantel: DeportistaVianda[];
   entregadores: Record<string, string>;
 }
@@ -52,6 +74,7 @@ export default function ViandasPanel({
   disciplinas,
   disciplinaId,
   categoriaId,
+  filtroComida,
   plantel,
   entregadores,
 }: Props) {
@@ -234,11 +257,16 @@ export default function ViandasPanel({
 
   const filtradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return filas;
-    return filas.filter((d) => `${d.apellido} ${d.nombre}`.toLowerCase().includes(q));
-  }, [filas, busqueda]);
+    return filas.filter(
+      (d) =>
+        coincideFiltroComida(d, filtroComida) &&
+        (!q || `${d.apellido} ${d.nombre}`.toLowerCase().includes(q)),
+    );
+  }, [filas, busqueda, filtroComida]);
 
   // Contadores de ESTA categoría, no del club: es lo que el empleado tiene enfrente.
+  // Van sobre `filas` y no sobre `filtradas`: el filtro de comida achica la lista,
+  // no el resumen de la categoría que dice el texto de abajo.
   //
   // `esperadas` sale de la ficha (el plan), pero `retiradas` cuenta TODO lo
   // entregado, esté en la ficha o no — si contara solo lo previsto, una entrega
@@ -355,7 +383,9 @@ export default function ViandasPanel({
             Estás viendo el histórico del {formatearClaveFecha(fechaActiva)}. Los días
             pasados son solo lectura: para registrar entregas volvé a hoy.{' '}
             {/* La elegibilidad no está historizada: `comidasPrevistas` lee los flags
-                de la ficha de HOY. Lo decimos acá porque un "3 esperadas" de hace un
+                de la ficha de HOY (y la merienda, la categoría actual: un chico que
+                pasó de SUB-16 a 5ta deja de "esperar" merienda también hacia atrás).
+                Lo decimos acá porque un "3 esperadas" de hace un
                 mes puede ser literalmente falso y el admin no tiene cómo saberlo. */}
             Tené en cuenta que las esperadas, las sin retirar y los tags de
             elegibilidad se calculan con la ficha actual de cada deportista, no con
@@ -391,7 +421,7 @@ export default function ViandasPanel({
 
       {/* Filtros */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label
               htmlFor="viandas-disciplina"
@@ -431,6 +461,21 @@ export default function ViandasPanel({
                 { value: TODAS, label: 'Seleccioná una categoría' },
                 ...categorias.map((c) => ({ value: c.id, label: c.nombre })),
               ]}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="viandas-comida"
+              className="block text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-1.5"
+            >
+              Comida
+            </label>
+            {/* No toca disciplina/categoría ni ellas lo resetean: no depende del plantel. */}
+            <CustomSelect
+              id="viandas-comida"
+              value={filtroComida ?? TODAS}
+              onChange={(v) => navigate(buildUrl({ comida: esFiltroComida(v) ? v : null }))}
+              options={[{ value: TODAS, label: 'Todas las comidas' }, ...FILTRO_COMIDA_OPCIONES]}
             />
           </div>
         </div>
@@ -503,7 +548,9 @@ export default function ViandasPanel({
 
           {filtradas.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-[#6B7280]">
-              Sin resultados para la búsqueda.
+              {filtroComida && !busqueda.trim()
+                ? `Nadie de esta categoría recibe ${FILTRO_COMIDA_VACIO[filtroComida]} según su ficha.`
+                : 'Sin resultados para la búsqueda.'}
             </div>
           ) : (
             <>

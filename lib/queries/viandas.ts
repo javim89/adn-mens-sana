@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { fechaDbDesdeClave } from '@/lib/utils/fecha';
+import { recibeMerienda } from '@/lib/utils/viandas';
 import type { DeportistaVianda, EntregaView } from '@/lib/types/viandas';
 
 /**
@@ -25,6 +26,9 @@ export async function getPlantelViandas(
       nombre: true,
       estado: true,
       necesidadesApoyo: { select: { recibeAlmuerzo: true, recibeCena: true } },
+      // Todos comparten la categoría del filtro, pero se lee por fila para que
+      // la regla de merienda viva en un solo lugar (`recibeMerienda`).
+      categoria: { select: { nombre: true } },
     },
     orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
   });
@@ -64,6 +68,7 @@ export async function getPlantelViandas(
     // Satélite ausente = no recibe ni almuerzo ni cena.
     recibeAlmuerzo: d.necesidadesApoyo?.recibeAlmuerzo ?? false,
     recibeCena: d.necesidadesApoyo?.recibeCena ?? false,
+    recibeMerienda: recibeMerienda(d.categoria?.nombre),
     entregas: porDeportista.get(d.id) ?? {},
   }));
 }

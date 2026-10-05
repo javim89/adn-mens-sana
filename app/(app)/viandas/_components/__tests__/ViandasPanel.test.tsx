@@ -3,7 +3,8 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 
-const { mockMarcar, mockDesmarcar, mockPush, mockRefresh, mockToastError } = vi.hoisted(() => ({
+const { mockMarcar, mockDesmarcar, mockPush, mockRefresh, mockToastError, urlActual } = vi.hoisted(() => ({
+  urlActual: { qs: '' },
   mockMarcar: vi.fn(),
   mockDesmarcar: vi.fn(),
   mockPush: vi.fn(),
@@ -19,7 +20,7 @@ vi.mock('@/lib/actions/viandas', () => ({
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
   usePathname: () => '/viandas',
-  useSearchParams: () => new URLSearchParams('disciplina=disc-1&categoria=cat-1'),
+  useSearchParams: () => new URLSearchParams(urlActual.qs),
 }));
 
 vi.mock('sonner', () => ({
@@ -44,6 +45,7 @@ function deportista(over: Partial<DeportistaVianda> = {}): DeportistaVianda {
     estado: 'ACTIVO',
     recibeAlmuerzo: true,
     recibeCena: true,
+    recibeMerienda: true,
     entregas: {},
     ...over,
   } as DeportistaVianda;
@@ -62,6 +64,7 @@ function panel(over: Partial<PanelProps> = {}) {
       disciplinas={DISCIPLINAS}
       disciplinaId="disc-1"
       categoriaId="cat-1"
+      filtroComida={null}
       plantel={[deportista()]}
       entregadores={{}}
       {...over}
@@ -100,6 +103,7 @@ function swMobile(name: RegExp) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  urlActual.qs = 'disciplina=disc-1&categoria=cat-1';
   mockMarcar.mockResolvedValue({
     success: true,
     fecha: HOY,
@@ -427,6 +431,54 @@ describe('contadores', () => {
     renderPanel();
     expect(screen.getByText(/no del club entero/i)).toBeInTheDocument();
   });
+
+  // Reserva y 4ta–9na reciben solo desayuno (`recibeMerienda` lo deriva
+  // `getPlantelViandas` de la categoría). El panel no tiene lógica propia para
+  // esto: alcanza con que `comidasPrevistas` diga que la merienda no está prevista.
+  describe('categoría sin merienda (p. ej. 5ta)', () => {
+    const plantel5ta = (entregas: DeportistaVianda['entregas'] = {}) => [
+      deportista({ id: 'd1', recibeMerienda: false, entregas }),
+      deportista({ id: 'd2', apellido: 'Gómez', recibeMerienda: false }),
+    ];
+
+    test('la merienda no suma esperadas ni pendientes; el desayuno sí', () => {
+      renderPanel({ plantel: plantel5ta() });
+
+      expect(chipDe('Merienda').getByText(/0 esperadas/)).toBeInTheDocument();
+      expect(chipDe('Merienda').queryByText(/pendientes/)).not.toBeInTheDocument();
+      expect(chipDe('Desayuno').getByText(/2 esperadas/)).toBeInTheDocument();
+    });
+
+    test('la celda de merienda se marca fuera de ficha pero sigue habilitada', () => {
+      renderPanel({ plantel: plantel5ta() });
+
+      const celda = sw(/merienda de pérez, juan \(fuera de su ficha\)/i);
+      expect(celda).toBeEnabled();
+      expect(sw(/^desayuno de pérez, juan$/i)).toBeEnabled();
+    });
+
+    test('una merienda entregada cuenta como fuera de ficha', () => {
+      renderPanel({
+        plantel: plantel5ta({
+          MERIENDA: { lugar: 'SEDE', entregadoPor: 'u1', createdAt: '2026-03-14T20:00:00.000Z' },
+        }),
+      });
+
+      const merienda = chipDe('Merienda');
+      expect(merienda.getByText(/1 retiradas/)).toBeInTheDocument();
+      expect(merienda.getByText(/0 esperadas/)).toBeInTheDocument();
+      expect(merienda.getByText(/1 fuera de ficha/)).toBeInTheDocument();
+    });
+
+    test('marcar la merienda llega a la action: la regla no bloquea el registro', async () => {
+      const user = userEvent.setup();
+      renderPanel({ plantel: plantel5ta() });
+
+      await user.click(sw(/merienda de pérez, juan/i));
+
+      expect(mockMarcar).toHaveBeenCalledWith({ deportistaId: 'd1', comida: 'MERIENDA' });
+    });
+  });
 });
 
 describe('filtros en la URL', () => {
@@ -446,9 +498,60 @@ describe('filtros en la URL', () => {
     expect(url).not.toContain('categoria=');
   });
 
+  // La comida no depende de la disciplina: cambiar de plantel no la resetea.
+  test('elegir disciplina conserva el filtro de comida y resetea la categoría', async () => {
+    const user = userEvent.setup();
+    urlActual.qs = 'categoria=cat-1&comida=CENA';
+    renderPanel({ disciplinaId: '', categoriaId: '', plantel: [], filtroComida: 'CENA' });
+
+    await user.click(screen.getByText('Seleccioná una disciplina'));
+    await user.click(screen.getByText('Fútbol'));
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    const url = mockPush.mock.calls[0][0] as string;
+    expect(url).toContain('disciplina=disc-1');
+    expect(url).toContain('comida=CENA');
+    expect(url).not.toContain('categoria=');
+  });
+
   test('la categoría queda deshabilitada mientras no haya disciplina', () => {
     renderPanel({ disciplinaId: '', categoriaId: '', plantel: [] });
     expect(screen.getByText('Seleccioná una categoría').closest('button')).toBeDisabled();
+  });
+
+  // El trigger toma su nombre del <label> ("Comida"). Las opciones son <button> y
+  // los toggles de la grilla role="switch", así que `name: 'Cena'` no choca.
+  test('elegir una comida la escribe en la URL y conserva disciplina y categoría', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    const trigger = screen.getByRole('button', { name: 'Comida' });
+    expect(trigger).toHaveTextContent('Todas las comidas');
+    await user.click(trigger);
+    await user.click(screen.getByRole('button', { name: 'Cena' }));
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    const url = mockPush.mock.calls[0][0] as string;
+    expect(url).toContain('comida=CENA');
+    expect(url).toContain('disciplina=disc-1');
+    expect(url).toContain('categoria=cat-1');
+  });
+
+  test('elegir "Todas las comidas" borra el param', async () => {
+    const user = userEvent.setup();
+    urlActual.qs = 'disciplina=disc-1&categoria=cat-1&comida=CENA';
+    renderPanel({ filtroComida: 'CENA' });
+
+    const trigger = screen.getByRole('button', { name: 'Comida' });
+    expect(trigger).toHaveTextContent('Cena');
+    await user.click(trigger);
+    await user.click(screen.getByRole('button', { name: 'Todas las comidas' }));
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    const url = mockPush.mock.calls[0][0] as string;
+    expect(url).not.toContain('comida=');
+    expect(url).toContain('disciplina=disc-1');
+    expect(url).toContain('categoria=cat-1');
   });
 });
 
@@ -689,5 +792,86 @@ describe('búsqueda', () => {
 
     expect(swQuery(/desayuno de pérez, juan/i)).not.toBeInTheDocument();
     expect(sw(/desayuno de gómez, ana/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * Filtro por comida: achica el plantel según la ficha. ALMUERZO y CENA incluyen a
+ * los que reciben las dos, porque el viandero que reparte una comida tiene que
+ * ver a todos los que la comen.
+ */
+describe('filtro por comida', () => {
+  const PLANTEL = [
+    deportista({ id: 'd1', apellido: 'Nadie', nombre: 'Uno', recibeAlmuerzo: false, recibeCena: false }),
+    deportista({ id: 'd2', apellido: 'Mediodía', nombre: 'Dos', recibeAlmuerzo: true, recibeCena: false }),
+    deportista({ id: 'd3', apellido: 'Noche', nombre: 'Tres', recibeAlmuerzo: false, recibeCena: true }),
+    deportista({ id: 'd4', apellido: 'Ambos', nombre: 'Cuatro', recibeAlmuerzo: true, recibeCena: true }),
+  ];
+
+  /** Apellidos visibles en la tabla, en orden. */
+  function apellidosEnTabla() {
+    return within(screen.getByRole('table'))
+      .getAllByRole('switch', { name: /^desayuno de/i })
+      .map((s) => s.getAttribute('aria-label')!.replace(/^desayuno de /i, '').split(',')[0]);
+  }
+
+  test.each([
+    [null, ['Nadie', 'Mediodía', 'Noche', 'Ambos']],
+    ['ALMUERZO', ['Mediodía', 'Ambos']],
+    ['CENA', ['Noche', 'Ambos']],
+    ['AMBAS', ['Ambos']],
+  ] as const)('%s muestra %o', (filtroComida, esperados) => {
+    renderPanel({ plantel: PLANTEL, filtroComida });
+    expect(apellidosEnTabla()).toEqual(esperados);
+    // Las cards de mobile filtran igual que la tabla.
+    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(
+      esperados.length,
+    );
+  });
+
+  test('se combina con la búsqueda', async () => {
+    const user = userEvent.setup();
+    renderPanel({ plantel: PLANTEL, filtroComida: 'CENA' });
+
+    await user.type(screen.getByRole('textbox', { name: /buscar deportista/i }), 'noch');
+
+    expect(apellidosEnTabla()).toEqual(['Noche']);
+  });
+
+  test('la búsqueda no trae a alguien que el filtro dejó afuera', async () => {
+    const user = userEvent.setup();
+    renderPanel({ plantel: PLANTEL, filtroComida: 'CENA' });
+
+    await user.type(screen.getByRole('textbox', { name: /buscar deportista/i }), 'mediod');
+
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getByText(/sin resultados para la búsqueda/i)).toBeInTheDocument();
+  });
+
+  test('los contadores siguen siendo de la categoría entera', () => {
+    renderPanel({ plantel: PLANTEL, filtroComida: 'AMBAS' });
+
+    const resumen = screen.getByRole('group', { name: /resumen por comida/i });
+    const chip = (comida: string) =>
+      within(within(resumen).getByText(comida).closest('div') as HTMLElement);
+    expect(chip('Desayuno').getByText(/4 esperadas/)).toBeInTheDocument();
+    expect(chip('Almuerzo').getByText(/2 esperadas/)).toBeInTheDocument();
+    expect(chip('Cena').getByText(/2 esperadas/)).toBeInTheDocument();
+  });
+
+  test.each([
+    ['ALMUERZO', 'almuerzo'],
+    ['CENA', 'cena'],
+    ['AMBAS', 'almuerzo y cena'],
+  ] as const)('si %s no deja a nadie, lo dice con un mensaje propio', (filtroComida, texto) => {
+    renderPanel({
+      plantel: [deportista({ recibeAlmuerzo: false, recibeCena: false })],
+      filtroComida,
+    });
+
+    expect(
+      screen.getByText(`Nadie de esta categoría recibe ${texto} según su ficha.`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/sin resultados para la búsqueda/i)).not.toBeInTheDocument();
   });
 });

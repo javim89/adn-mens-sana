@@ -18,6 +18,8 @@ export type DeportistaVianda = {
   estado: EstadoDeportista;
   recibeAlmuerzo: boolean;
   recibeCena: boolean;
+  /** Derivado de la categoría (ver `recibeMerienda` en `lib/utils/viandas`). */
+  recibeMerienda: boolean;
   /** Solo las comidas ya retiradas hoy; la ausencia de la clave es "no retirada". */
   entregas: Partial<Record<TipoComida, EntregaView>>;
 };

@@ -96,7 +96,7 @@ export default async function SeccionViandas({
          * que entrega hoy no puede quedar trabado por un dato que falta cargar. Esto
          * NO es una lista de errores: es una señal de supervisión.
          */
-        detalle="Almuerzos o cenas entregados a quien la ficha no se los prevé. No son errores: la ficha puede estar incompleta. Es una señal para revisar."
+        detalle="Almuerzos o cenas que la ficha no prevé, y meriendas a categorías que solo reciben desayuno. No son errores: la ficha puede estar incompleta. Es una señal para revisar."
         href="/viandas"
         linkLabel="Ir a viandas"
         ariaLabel="Ir al módulo de viandas para revisar las entregas"
