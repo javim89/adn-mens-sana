@@ -21,6 +21,7 @@ import {
   getResumenPlantel,
   getProximosEventos,
 } from '../dashboard';
+import { CATEGORIAS_SIN_MERIENDA } from '@/lib/utils/viandas';
 
 /**
  * Semana del 9 al 15 de marzo de 2026 (lunes a domingo), tal como la devuelve
@@ -94,11 +95,11 @@ describe('getResumenViandas', () => {
   });
 
   /**
-   * DESAYUNO y MERIENDA son de todo el plantel y NUNCA son anomalía. La regla vive
-   * en el `FILTER` del SQL y no en un `if` de la UI, así que es testeable: el
-   * predicado solo nombra ALMUERZO y CENA.
+   * DESAYUNO es de todo el plantel y NUNCA es anomalía. La regla vive en el
+   * `FILTER` del SQL y no en un `if` de la UI, así que es testeable: el predicado
+   * no nombra DESAYUNO.
    */
-  test('desayuno y merienda no pueden contar como fuera de ficha, por construcción del FILTER', async () => {
+  test('desayuno no puede contar como fuera de ficha, por construcción del FILTER', async () => {
     await getResumenViandas({ rango: SEMANA });
 
     const [query] = mockPrisma.$queryRaw.mock.calls[0];
@@ -109,7 +110,28 @@ describe('getResumenViandas', () => {
     expect(filtro).toContain("e.comida = 'ALMUERZO'");
     expect(filtro).toContain("e.comida = 'CENA'");
     expect(filtro).not.toContain('DESAYUNO');
-    expect(filtro).not.toContain('MERIENDA');
+  });
+
+  /**
+   * MERIENDA es anomalía solo para Reserva y 4ta–9na, que reciben solo desayuno.
+   * La lista entra como parámetros (no interpolada en el texto) y es la misma
+   * constante que usa `/viandas`, así la card y la pantalla cuentan igual.
+   */
+  test('merienda cuenta como fuera de ficha solo para las categorías sin merienda', async () => {
+    await getResumenViandas({ rango: SEMANA });
+
+    const [query] = mockPrisma.$queryRaw.mock.calls[0];
+    const sql = query.sql.replace(/\s+/g, ' ');
+    const filtro = sql.slice(sql.indexOf('COUNT(*) FILTER'), sql.indexOf('FROM entregas_comida'));
+    const placeholders = CATEGORIAS_SIN_MERIENDA.map(() => '?').join(',');
+    expect(filtro).toContain(`(e.comida = 'MERIENDA' AND c.nombre IN (${placeholders}))`);
+    expect(sql).toContain('LEFT JOIN deportistas d ON d.id = e.deportista_id');
+    expect(sql).toContain('LEFT JOIN categorias c ON c.id = d.categoria_id');
+    expect(query.values.slice(0, CATEGORIAS_SIN_MERIENDA.length)).toEqual([
+      ...CATEGORIAS_SIN_MERIENDA,
+    ]);
+    // Los nombres no van como literales en el texto del SQL.
+    expect(sql).not.toContain("'Reserva'");
   });
 
   test('los COUNT(*) llevan ::int y la comida ::text', async () => {
@@ -127,7 +149,12 @@ describe('getResumenViandas', () => {
 
     const [query] = mockPrisma.$queryRaw.mock.calls[0];
     expect(query.sql).toContain('WHERE e.fecha >= ? AND e.fecha < ?');
-    expect(query.values).toEqual([SEMANA.desdeDb, SEMANA.finExclusivoDb]);
+    // Los primeros parámetros son las categorías sin merienda del FILTER.
+    expect(query.values).toEqual([
+      ...CATEGORIAS_SIN_MERIENDA,
+      SEMANA.desdeDb,
+      SEMANA.finExclusivoDb,
+    ]);
   });
 
   // Scoping de viandas: el responsable ve solo SU lugar, que es el único que opera.
@@ -136,7 +163,12 @@ describe('getResumenViandas', () => {
 
     const [query] = mockPrisma.$queryRaw.mock.calls[0];
     expect(query.sql).toContain('AND e.lugar::text = ?');
-    expect(query.values).toEqual([SEMANA.desdeDb, SEMANA.finExclusivoDb, 'SEDE']);
+    expect(query.values).toEqual([
+      ...CATEGORIAS_SIN_MERIENDA,
+      SEMANA.desdeDb,
+      SEMANA.finExclusivoDb,
+      'SEDE',
+    ]);
   });
 
   test('sin lugar (admin) no filtra por lugar', async () => {
@@ -144,7 +176,7 @@ describe('getResumenViandas', () => {
 
     const [query] = mockPrisma.$queryRaw.mock.calls[0];
     expect(query.sql).not.toContain('e.lugar');
-    expect(query.values).toHaveLength(2);
+    expect(query.values).toHaveLength(CATEGORIAS_SIN_MERIENDA.length + 2);
   });
 
   test('lugar null se trata como admin, no como filtro vacío', async () => {

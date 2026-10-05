@@ -28,7 +28,7 @@ import type {
   PrioridadSeguimiento,
   TipoComida,
 } from '@/lib/generated/prisma/enums';
-import { COMIDAS } from '@/lib/utils/viandas';
+import { CATEGORIAS_SIN_MERIENDA, COMIDAS } from '@/lib/utils/viandas';
 
 /** Los dos bordes de una ventana de días, ya resueltos por `lib/utils/fecha.ts`. */
 export interface RangoFechas {
@@ -42,7 +42,7 @@ export interface RangoFechas {
 
 export interface ConteoComida {
   entregas: number;
-  /** Almuerzos/cenas entregados a quien la ficha NO se los prevé. */
+  /** Almuerzos/cenas que la ficha NO prevé, y meriendas a categorías sin merienda. */
   fueraDeFicha: number;
 }
 
@@ -71,9 +71,15 @@ type FilaViandas = { comida: string; entregas: number; fuera_de_ficha: number };
  * ficha incompleta, que es el más frecuente. Es el mismo `COALESCE` que
  * `lib/insights/catalog.ts:116-117`, así los dos números coinciden.
  *
- * **DESAYUNO y MERIENDA dan `fuera_de_ficha = 0` por construcción del `FILTER`**:
- * son de todo el plantel y nunca son anomalía. La regla queda declarativa en el SQL
- * en vez de ser un `if` en la UI, y por lo tanto testeable.
+ * **DESAYUNO da `fuera_de_ficha = 0` por construcción del `FILTER`**: es de todo
+ * el plantel y nunca es anomalía. **MERIENDA solo lo es para las categorías de
+ * `CATEGORIAS_SIN_MERIENDA`**, que reciben solo desayuno; por eso el join a
+ * `deportistas`/`categorias`. La lista entra como parámetros desde
+ * `lib/utils/viandas.ts` (la misma que usa `/viandas`) para que el número de la
+ * card y el de la pantalla no se desincronicen. Un deportista sin categoría da
+ * `c.nombre` NULL, y `NULL IN (...)` no es verdadero: sin categoría la merienda
+ * no es anomalía, igual que `recibeMerienda(null)`. La regla queda declarativa
+ * en el SQL en vez de ser un `if` en la UI, y por lo tanto testeable.
  *
  * NO es una lista de errores: `/viandas` deja entregar cualquier comida a
  * cualquiera a propósito, porque la ficha puede estar incompleta. Es una señal de
@@ -98,9 +104,12 @@ export async function getResumenViandas(params: {
            COUNT(*) FILTER (
              WHERE (e.comida = 'ALMUERZO' AND COALESCE(na.recibe_almuerzo, false) = false)
                 OR (e.comida = 'CENA'     AND COALESCE(na.recibe_cena,     false) = false)
+                OR (e.comida = 'MERIENDA' AND c.nombre IN (${Prisma.join([...CATEGORIAS_SIN_MERIENDA])}))
            )::int AS fuera_de_ficha
     FROM entregas_comida e
     LEFT JOIN necesidades_apoyo na ON na.deportista_id = e.deportista_id
+    LEFT JOIN deportistas d ON d.id = e.deportista_id
+    LEFT JOIN categorias c ON c.id = d.categoria_id
     WHERE e.fecha >= ${rango.desdeDb} AND e.fecha < ${rango.finExclusivoDb}
     ${filtroLugar}
     GROUP BY e.comida

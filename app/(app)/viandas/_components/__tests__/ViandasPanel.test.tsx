@@ -45,6 +45,7 @@ function deportista(over: Partial<DeportistaVianda> = {}): DeportistaVianda {
     estado: 'ACTIVO',
     recibeAlmuerzo: true,
     recibeCena: true,
+    recibeMerienda: true,
     entregas: {},
     ...over,
   } as DeportistaVianda;
@@ -429,6 +430,54 @@ describe('contadores', () => {
   test('aclara que el alcance es la categoría, no el club', () => {
     renderPanel();
     expect(screen.getByText(/no del club entero/i)).toBeInTheDocument();
+  });
+
+  // Reserva y 4ta–9na reciben solo desayuno (`recibeMerienda` lo deriva
+  // `getPlantelViandas` de la categoría). El panel no tiene lógica propia para
+  // esto: alcanza con que `comidasPrevistas` diga que la merienda no está prevista.
+  describe('categoría sin merienda (p. ej. 5ta)', () => {
+    const plantel5ta = (entregas: DeportistaVianda['entregas'] = {}) => [
+      deportista({ id: 'd1', recibeMerienda: false, entregas }),
+      deportista({ id: 'd2', apellido: 'Gómez', recibeMerienda: false }),
+    ];
+
+    test('la merienda no suma esperadas ni pendientes; el desayuno sí', () => {
+      renderPanel({ plantel: plantel5ta() });
+
+      expect(chipDe('Merienda').getByText(/0 esperadas/)).toBeInTheDocument();
+      expect(chipDe('Merienda').queryByText(/pendientes/)).not.toBeInTheDocument();
+      expect(chipDe('Desayuno').getByText(/2 esperadas/)).toBeInTheDocument();
+    });
+
+    test('la celda de merienda se marca fuera de ficha pero sigue habilitada', () => {
+      renderPanel({ plantel: plantel5ta() });
+
+      const celda = sw(/merienda de pérez, juan \(fuera de su ficha\)/i);
+      expect(celda).toBeEnabled();
+      expect(sw(/^desayuno de pérez, juan$/i)).toBeEnabled();
+    });
+
+    test('una merienda entregada cuenta como fuera de ficha', () => {
+      renderPanel({
+        plantel: plantel5ta({
+          MERIENDA: { lugar: 'SEDE', entregadoPor: 'u1', createdAt: '2026-03-14T20:00:00.000Z' },
+        }),
+      });
+
+      const merienda = chipDe('Merienda');
+      expect(merienda.getByText(/1 retiradas/)).toBeInTheDocument();
+      expect(merienda.getByText(/0 esperadas/)).toBeInTheDocument();
+      expect(merienda.getByText(/1 fuera de ficha/)).toBeInTheDocument();
+    });
+
+    test('marcar la merienda llega a la action: la regla no bloquea el registro', async () => {
+      const user = userEvent.setup();
+      renderPanel({ plantel: plantel5ta() });
+
+      await user.click(sw(/merienda de pérez, juan/i));
+
+      expect(mockMarcar).toHaveBeenCalledWith({ deportistaId: 'd1', comida: 'MERIENDA' });
+    });
   });
 });
 

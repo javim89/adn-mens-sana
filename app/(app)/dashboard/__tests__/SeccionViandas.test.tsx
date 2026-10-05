@@ -74,6 +74,14 @@ describe('SeccionViandas', () => {
     expect(screen.getByText(/No son errores/)).toBeInTheDocument();
   });
 
+  test('el copy de "fuera de ficha" incluye las meriendas a categorías sin merienda', async () => {
+    render(await SeccionViandas({ semana: SEMANA, isAdmin: true, lugar: null }));
+
+    expect(
+      screen.getByText(/meriendas a categorías que solo reciben desayuno/),
+    ).toBeInTheDocument();
+  });
+
   test('links con su aria-label', async () => {
     render(await SeccionViandas({ semana: SEMANA, isAdmin: true, lugar: null }));
 

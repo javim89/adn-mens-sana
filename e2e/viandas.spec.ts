@@ -16,6 +16,9 @@ import { test, expect } from '@playwright/test';
  *    uno con estado distinto de ACTIVO.
  * 5. Exportar sus ids en E2E_VIANDAS_DISCIPLINA_ID / E2E_VIANDAS_CATEGORIA_ID:
  *    la página no lista nada sin disciplina y categoría en la URL.
+ * 6. Para la regla de merienda: una categoría que solo recibe desayuno (Reserva o
+ *    4ta–9na) con al menos un deportista y sin meriendas registradas hoy, en
+ *    E2E_VIANDAS_CATEGORIA_SIN_MERIENDA_ID (misma disciplina).
  */
 const MOTIVO = 'Requiere sesión de Clerk con rol admin (storageState sin configurar)';
 
@@ -73,6 +76,33 @@ test.describe('Viandas — registro del día', () => {
     await expect(
       page.getByRole('group', { name: /resumen por comida/i }),
     ).toContainText(/fuera de ficha/i);
+  });
+
+  // Reserva y 4ta–9na reciben solo desayuno: la merienda se puede registrar igual
+  // (no se bloquea), pero queda como desvío en el resumen.
+  test('una merienda a una categoría que solo recibe desayuno cuenta como fuera de ficha', async ({
+    page,
+  }) => {
+    test.skip(true, MOTIVO);
+
+    const params = new URLSearchParams({
+      lugar: 'SEDE',
+      disciplina: process.env.E2E_VIANDAS_DISCIPLINA_ID ?? '',
+      categoria: process.env.E2E_VIANDAS_CATEGORIA_SIN_MERIENDA_ID ?? '',
+    });
+    await page.goto(`/viandas?${params}`);
+
+    const resumen = page.getByRole('group', { name: /resumen por comida/i });
+    const chipMerienda = resumen.locator('div', { hasText: /^Merienda/ });
+    await expect(chipMerienda).toContainText('/ 0 esperadas');
+
+    const celda = page
+      .getByRole('switch', { name: /merienda de .*\(fuera de su ficha\)/i })
+      .first();
+    await expect(celda).toBeEnabled();
+    await celda.click();
+    await expect(celda).toHaveAttribute('aria-checked', 'true');
+    await expect(chipMerienda).toContainText(/1 fuera de ficha/i);
   });
 
   // El caso que justifica el módulo: no se puede retirar dos veces, ni cambiando

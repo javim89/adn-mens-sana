@@ -32,6 +32,7 @@ import {
   ESTADO_ASISTENCIA_LABELS,
   TIPO_SESION_LABELS,
 } from '@/lib/utils/asistencia';
+import { CATEGORIAS_SIN_MERIENDA } from '@/lib/utils/viandas';
 import type { Dataset, Dimension, Measure } from './types';
 
 const TIPO_SEGUIMIENTO_LABELS: Record<string, string> = Object.fromEntries(
@@ -114,6 +115,21 @@ const DIM_RANGO_ETARIO: Dimension = {
 // incompleta — que es el más frecuente.
 const RECIBE_ALMUERZO_SQL = 'COALESCE(necesidades_apoyo.recibe_almuerzo, false)';
 const RECIBE_CENA_SQL = 'COALESCE(necesidades_apoyo.recibe_cena, false)';
+
+// La merienda no sale de la ficha sino de la categoría: Reserva y 4ta–9na reciben
+// solo desayuno. Se arma desde `CATEGORIAS_SIN_MERIENDA` (la misma lista que usa
+// /viandas y el dashboard) para que los tres números coincidan. Interpolar acá no
+// rompe la regla de la allowlist: son literales constantes del código, nunca input
+// del usuario, y igual se escapan las comillas por si el catálogo cambia. El
+// `IS NULL` explícito replica `recibeMerienda(null) === true`: sin categoría SÍ
+// recibe merienda, y `NULL NOT IN (...)` sería NULL, no verdadero. Es función del
+// alias porque el CTE de cobertura joinea `categorias` con otro nombre.
+const CATEGORIAS_SIN_MERIENDA_SQL = CATEGORIAS_SIN_MERIENDA.map(
+  (c) => `'${c.replace(/'/g, "''")}'`,
+).join(',');
+function recibeMeriendaSql(aliasCategorias: string): string {
+  return `(${aliasCategorias}.nombre IS NULL OR ${aliasCategorias}.nombre NOT IN (${CATEGORIAS_SIN_MERIENDA_SQL}))`;
+}
 
 // `comida` y `lugar` viven en dos relaciones distintas según el dataset
 // (`entregas_comida` y el CTE `viandas_cobertura`), así que son funciones y no
@@ -878,12 +894,15 @@ const viandasEntregas: Dataset = {
     DIM_ESTADO_DEPORTISTA,
     DIM_GENERO,
     DIM_RANGO_ETARIO,
-    // Los dos flags acá son el CRUCE FICHA vs. REALIDAD del módulo: un cruce
+    // Los tres flags acá son el CRUCE FICHA vs. REALIDAD del módulo: un cruce
     // `comida = ALMUERZO` × `recibe_almuerzo = false` con `entregas > 0` es
     // exactamente lo que hay que poder ver — cuántos que tienen solo cena
     // prevista están recibiendo almuerzo, y viceversa. Por eso van coalescidos
-    // (ver RECIBE_ALMUERZO_SQL): la ficha ausente es parte del dato.
+    // (ver RECIBE_ALMUERZO_SQL): la ficha ausente es parte del dato. Lo mismo con
+    // `comida = MERIENDA` × `recibe_merienda = false`: meriendas entregadas a
+    // categorías que solo reciben desayuno.
     { id: 'recibe_almuerzo', label: 'Recibe almuerzo', sql: RECIBE_ALMUERZO_SQL, type: 'boolean' },
+    { id: 'recibe_merienda', label: 'Recibe merienda', sql: recibeMeriendaSql('categorias'), type: 'boolean' },
     { id: 'recibe_cena', label: 'Recibe cena', sql: RECIBE_CENA_SQL, type: 'boolean' },
   ],
   measures: [
@@ -920,12 +939,14 @@ const VIANDAS_COBERTURA_CTE = `WITH viandas_dias AS (
     CROSS JOIN viandas_comidas
     CROSS JOIN deportistas
     LEFT JOIN necesidades_apoyo ON necesidades_apoyo.deportista_id = deportistas.id
+    LEFT JOIN categorias cat_vianda ON cat_vianda.id = deportistas.categoria_id
     LEFT JOIN entregas_comida
            ON entregas_comida.deportista_id = deportistas.id
           AND entregas_comida.fecha  = viandas_dias.fecha
           AND entregas_comida.comida = viandas_comidas.comida
     WHERE deportistas.estado <> 'INACTIVO'
-      AND (viandas_comidas.comida IN ('DESAYUNO','MERIENDA')
+      AND (viandas_comidas.comida = 'DESAYUNO'
+        OR (viandas_comidas.comida = 'MERIENDA' AND ${recibeMeriendaSql('cat_vianda')})
         OR (viandas_comidas.comida = 'ALMUERZO' AND ${RECIBE_ALMUERZO_SQL})
         OR (viandas_comidas.comida = 'CENA'     AND ${RECIBE_CENA_SQL}))
   )`;

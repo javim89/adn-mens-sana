@@ -26,14 +26,44 @@ export function esTipoComida(v: unknown): v is TipoComida {
   return typeof v === 'string' && (COMIDAS as readonly string[]).includes(v);
 }
 
+/**
+ * Categorías que reciben solo desayuno, sin merienda. Nombres exactos de
+ * `categorias.nombre` (ver `scripts/seed-categorias.mjs`): la regla se aplica por
+ * nombre y no por id porque el catálogo es global y los ids cambian entre
+ * entornos. Es la única fuente de la regla — el dashboard y los insights arman
+ * su SQL desde esta lista para que no se desincronicen.
+ */
+export const CATEGORIAS_SIN_MERIENDA = [
+  'Reserva',
+  '9na',
+  '8va',
+  '7ma',
+  '6ta',
+  '5ta',
+  '4ta',
+] as const;
+
+/**
+ * La merienda depende de la categoría, no de la ficha. Sin categoría asignada se
+ * asume que SÍ recibe: es el comportamiento que había antes de la regla, y un
+ * dato faltante no debería convertir cada merienda entregada en una anomalía.
+ */
+export function recibeMerienda(categoriaNombre: string | null | undefined): boolean {
+  if (!categoriaNombre) return true;
+  return !(CATEGORIAS_SIN_MERIENDA as readonly string[]).includes(categoriaNombre);
+}
+
 export type FlagsElegibilidad = {
   recibeAlmuerzo: boolean;
   recibeCena: boolean;
+  /** Derivado de la categoría con `recibeMerienda()`, no de `necesidadesApoyo`. */
+  recibeMerienda: boolean;
 };
 
 /**
- * Qué comidas prevé la ficha del deportista: desayuno y merienda son de todo el
- * plantel, almuerzo y cena salen del satélite `necesidadesApoyo`.
+ * Qué comidas prevé la ficha del deportista: el desayuno es de todo el plantel,
+ * la merienda depende de la categoría (`CATEGORIAS_SIN_MERIENDA` no la reciben),
+ * y almuerzo y cena salen del satélite `necesidadesApoyo`.
  *
  * Es INFORMATIVO, no un permiso. Cualquier comida se puede registrar para
  * cualquiera — `marcarRetiro` no valida esto a propósito, porque la ficha puede
@@ -45,10 +75,17 @@ export function comidasPrevistas(flags: FlagsElegibilidad): Record<TipoComida, b
   return {
     DESAYUNO: true,
     ALMUERZO: flags.recibeAlmuerzo,
-    MERIENDA: true,
+    MERIENDA: flags.recibeMerienda,
     CENA: flags.recibeCena,
   };
 }
+
+/**
+ * El filtro y el tag de `/viandas` miran solo almuerzo y cena: la merienda depende
+ * de la categoría y el panel ya está filtrado por categoría, así que sería el
+ * mismo valor en todas las filas.
+ */
+type FlagsAlmuerzoCena = Pick<FlagsElegibilidad, 'recibeAlmuerzo' | 'recibeCena'>;
 
 export const FILTROS_COMIDA = ['ALMUERZO', 'CENA', 'AMBAS'] as const;
 
@@ -64,7 +101,7 @@ export function esFiltroComida(v: unknown): v is FiltroComida {
  * los que comen al mediodía, no solo a los que comen únicamente ahí. `null` = todos.
  */
 export function coincideFiltroComida(
-  flags: FlagsElegibilidad,
+  flags: FlagsAlmuerzoCena,
   filtro: FiltroComida | null,
 ): boolean {
   switch (filtro) {
@@ -86,7 +123,7 @@ export function coincideFiltroComida(
  * dar).
  */
 export function tagElegibilidad(
-  flags: FlagsElegibilidad,
+  flags: FlagsAlmuerzoCena,
 ): { label: string; className: string } | null {
   if (!flags.recibeAlmuerzo && !flags.recibeCena) {
     return { label: 'No recibe vianda', className: 'bg-gray-100 text-[#6B7280]' };

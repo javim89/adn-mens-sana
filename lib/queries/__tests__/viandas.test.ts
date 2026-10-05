@@ -17,6 +17,7 @@ const LESIONADO = {
   nombre: 'Ana',
   estado: 'LESIONADO',
   necesidadesApoyo: { recibeAlmuerzo: true, recibeCena: false },
+  categoria: { nombre: 'SUB-16' },
 };
 
 const SIN_SATELITE = {
@@ -25,6 +26,7 @@ const SIN_SATELITE = {
   nombre: 'Bruno',
   estado: 'ACTIVO',
   necesidadesApoyo: null,
+  categoria: null,
 };
 
 beforeEach(() => {
@@ -67,6 +69,30 @@ describe('getPlantelViandas', () => {
     const [row] = await getPlantelViandas('disc-1', 'cat-1', '2026-03-14');
     expect(row.recibeAlmuerzo).toBe(true);
     expect(row.recibeCena).toBe(false);
+  });
+
+  test('selecciona el nombre de la categoría para derivar la merienda', async () => {
+    mockPrisma.deportista.findMany.mockResolvedValue([LESIONADO]);
+    await getPlantelViandas('disc-1', 'cat-1', '2026-03-14');
+    const { select } = mockPrisma.deportista.findMany.mock.calls[0][0];
+    expect(select.categoria).toEqual({ select: { nombre: true } });
+  });
+
+  test.each([
+    ['5ta', false],
+    ['Reserva', false],
+    ['SUB-16', true],
+    ['Primera', true],
+  ])('categoría %s → recibeMerienda = %s', async (nombre, esperado) => {
+    mockPrisma.deportista.findMany.mockResolvedValue([{ ...LESIONADO, categoria: { nombre } }]);
+    const [row] = await getPlantelViandas('disc-1', 'cat-1', '2026-03-14');
+    expect(row.recibeMerienda).toBe(esperado);
+  });
+
+  test('sin categoría asignada sí recibe merienda', async () => {
+    mockPrisma.deportista.findMany.mockResolvedValue([SIN_SATELITE]);
+    const [row] = await getPlantelViandas('disc-1', 'cat-1', '2026-03-14');
+    expect(row.recibeMerienda).toBe(true);
   });
 
   test('consulta las entregas del día pedido, a medianoche UTC', async () => {

@@ -383,7 +383,9 @@ export default function ViandasPanel({
             Estás viendo el histórico del {formatearClaveFecha(fechaActiva)}. Los días
             pasados son solo lectura: para registrar entregas volvé a hoy.{' '}
             {/* La elegibilidad no está historizada: `comidasPrevistas` lee los flags
-                de la ficha de HOY. Lo decimos acá porque un "3 esperadas" de hace un
+                de la ficha de HOY (y la merienda, la categoría actual: un chico que
+                pasó de SUB-16 a 5ta deja de "esperar" merienda también hacia atrás).
+                Lo decimos acá porque un "3 esperadas" de hace un
                 mes puede ser literalmente falso y el admin no tiene cómo saberlo. */}
             Tené en cuenta que las esperadas, las sin retirar y los tags de
             elegibilidad se calculan con la ficha actual de cada deportista, no con
