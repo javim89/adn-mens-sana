@@ -3,7 +3,7 @@ import { currentUser, clerkClient } from '@clerk/nextjs/server';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { getPlantelViandas } from '@/lib/queries/viandas';
 import { hoyEnArgentina, resolverFechaActiva } from '@/lib/utils/fecha';
-import { esLugarRetiro } from '@/lib/utils/viandas';
+import { esFiltroComida, esLugarRetiro } from '@/lib/utils/viandas';
 import ViandasPanel from './_components/ViandasPanel';
 import type { DeportistaVianda } from '@/lib/types/viandas';
 
@@ -44,6 +44,9 @@ export default async function ViandasPage({
 
   const disciplinaId = firstParam(sp.disciplina) || undefined;
   const categoriaId = firstParam(sp.categoria) || undefined;
+  // Un valor inválido cae a "todas" en vez de vaciar la grilla.
+  const comidaUrl = firstParam(sp.comida);
+  const filtroComida = esFiltroComida(comidaUrl) ? comidaUrl : null;
 
   const fechaHoy = hoyEnArgentina();
 
@@ -94,6 +97,7 @@ export default async function ViandasPage({
       disciplinas={disciplinas}
       disciplinaId={disciplinaId ?? ''}
       categoriaId={categoriaId ?? ''}
+      filtroComida={filtroComida}
       plantel={plantel}
       entregadores={entregadores}
     />

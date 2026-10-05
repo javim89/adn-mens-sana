@@ -14,8 +14,15 @@ import { test, expect } from '@playwright/test';
  * 4. Seedear una disciplina + categoría con, al menos: un deportista que no
  *    reciba vianda, uno con solo almuerzo, uno con solo cena, uno con ambas, y
  *    uno con estado distinto de ACTIVO.
+ * 5. Exportar sus ids en E2E_VIANDAS_DISCIPLINA_ID / E2E_VIANDAS_CATEGORIA_ID:
+ *    la página no lista nada sin disciplina y categoría en la URL.
  */
 const MOTIVO = 'Requiere sesión de Clerk con rol admin (storageState sin configurar)';
+
+const PLANTEL_SEEDEADO = new URLSearchParams({
+  disciplina: process.env.E2E_VIANDAS_DISCIPLINA_ID ?? '',
+  categoria: process.env.E2E_VIANDAS_CATEGORIA_ID ?? '',
+}).toString();
 
 test.describe('Viandas — registro del día', () => {
   test('el admin ve todo el plantel con su tag de elegibilidad', async ({ page }) => {
@@ -25,6 +32,17 @@ test.describe('Viandas — registro del día', () => {
     // Todos los deportistas de la categoría, reciban vianda o no.
     await expect(page.getByText('No recibe vianda').first()).toBeVisible();
     await expect(page.getByRole('group', { name: /resumen por comida/i })).toBeVisible();
+  });
+
+  // "Cena" incluye a los que reciben las dos: solo quedan afuera los que la ficha
+  // no le prevé cena.
+  test('el filtro de comida deja solo a quienes reciben cena', async ({ page }) => {
+    test.skip(true, MOTIVO);
+
+    await page.goto(`/viandas?lugar=SEDE&comida=CENA&${PLANTEL_SEEDEADO}`);
+    await expect(page.getByText('Recibe solo cena').first()).toBeVisible();
+    await expect(page.getByText('Recibe solo almuerzo')).toHaveCount(0);
+    await expect(page.getByText('No recibe vianda')).toHaveCount(0);
   });
 
   test('marcar un retiro lo deja registrado con lugar y hora', async ({ page }) => {

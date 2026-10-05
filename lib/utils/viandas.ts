@@ -50,6 +50,35 @@ export function comidasPrevistas(flags: FlagsElegibilidad): Record<TipoComida, b
   };
 }
 
+export const FILTROS_COMIDA = ['ALMUERZO', 'CENA', 'AMBAS'] as const;
+
+export type FiltroComida = (typeof FILTROS_COMIDA)[number];
+
+export function esFiltroComida(v: unknown): v is FiltroComida {
+  return typeof v === 'string' && (FILTROS_COMIDA as readonly string[]).includes(v);
+}
+
+/**
+ * Filtro de `/viandas` por lo que prevé la ficha. ALMUERZO y CENA incluyen a los
+ * que reciben las dos: el viandero que reparte almuerzos tiene que ver a todos
+ * los que comen al mediodía, no solo a los que comen únicamente ahí. `null` = todos.
+ */
+export function coincideFiltroComida(
+  flags: FlagsElegibilidad,
+  filtro: FiltroComida | null,
+): boolean {
+  switch (filtro) {
+    case null:
+      return true;
+    case 'ALMUERZO':
+      return flags.recibeAlmuerzo;
+    case 'CENA':
+      return flags.recibeCena;
+    case 'AMBAS':
+      return flags.recibeAlmuerzo && flags.recibeCena;
+  }
+}
+
 /**
  * El empleado que entrega necesita saber de un vistazo qué le toca a cada chico,
  * así que los cuatro casos tienen su propio tag (incluido el "no recibe", que en
