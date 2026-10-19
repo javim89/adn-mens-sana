@@ -33,6 +33,8 @@ export type DeportistaFormData = {
   vivePensionClub: boolean;
   vivePensionExterna: boolean;
   observaciones?: string;
+  // undefined = sin cambios, null = quitar la foto
+  fotoKey?: string | null;
 
   // Tab Deportivo
   disciplinaId?: string;

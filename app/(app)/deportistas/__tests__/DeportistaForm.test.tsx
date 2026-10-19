@@ -17,11 +17,18 @@ vi.mock('@/lib/api/deportistas', async (importOriginal) => {
     ...original,
     createDeportista: vi.fn(),
     updateDeportista: vi.fn(),
+    uploadFotoDeportista: vi.fn(),
+    descartarFotoSubida: vi.fn(),
   };
 });
 
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
+
 // Get mocked references after hoisting
 import * as deportistasApi from '@/lib/api/deportistas';
+import { toast } from 'sonner';
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -30,6 +37,23 @@ import * as deportistasApi from '@/lib/api/deportistas';
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+}
+
+function completarCamposRequeridos() {
+  fireEvent.change(screen.getByLabelText(/apellido \*/i), { target: { value: 'García' } });
+  fireEvent.change(screen.getByLabelText(/nombre \*/i), { target: { value: 'Juan' } });
+  fireEvent.change(screen.getByLabelText(/dni \*/i), { target: { value: '12345678' } });
+  fireEvent.change(screen.getByLabelText(/fecha de nacimiento/i), {
+    target: { value: '2000-01-01' },
+  });
+}
+
+function elegirFoto() {
+  const file = new File(['x'], 'foto.jpg', { type: 'image/jpeg' });
+  fireEvent.change(screen.getByLabelText('Seleccionar foto de perfil'), {
+    target: { files: [file] },
+  });
+  return file;
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +214,7 @@ describe('DeportistaForm — mode=edit', () => {
     actividadComplementaria: 'GIMNASIO',
     fechaIngreso: new Date('2020-01-01'),
     tieneRepresentante: false,
+    fotoKey: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     clubesAnteriores: [],
@@ -232,5 +257,299 @@ describe('DeportistaForm — mode=edit', () => {
       expect(deportistasApi.updateDeportista).toHaveBeenCalledWith('edit-id-123', expect.any(Object));
     });
     expect(mockRouterPush).toHaveBeenCalledWith('/deportistas/edit-id-123');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — foto de perfil
+// ---------------------------------------------------------------------------
+
+const fotoDeportista = {
+  id: 'edit-id-123',
+  apellido: 'González',
+  nombre: 'Pedro',
+  dni: '98765432',
+  fechaNacimiento: new Date('1995-05-15'),
+  provincia: null,
+  ciudad: null,
+  genero: null,
+  telefono: null,
+  email: null,
+  domicilioActual: null,
+  nacionalidad: null,
+  contactoEmergencia: null,
+  vivePensionClub: false,
+  vivePensionExterna: false,
+  observaciones: null,
+  disciplinaId: null,
+  disciplina: null,
+  categoriaId: null,
+  categoria: null,
+  posicion: null,
+  estado: 'ACTIVO',
+  actividadComplementaria: null,
+  fechaIngreso: null,
+  tieneRepresentante: false,
+  fotoKey: 'deportistas/vieja.jpg',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  clubesAnteriores: [],
+  historiaDeportiva: [],
+  datosEscolares: null,
+  datosSociales: null,
+  viviendaFamiliar: null,
+  datosFamiliares: null,
+  necesidadesApoyo: null,
+} as unknown as DeportistaWithRelations;
+
+describe('DeportistaForm — foto de perfil', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    URL.createObjectURL = vi.fn(() => 'blob:preview');
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  test('al guardar con archivo sube la foto y manda el fotoKey', async () => {
+    vi.mocked(deportistasApi.uploadFotoDeportista).mockResolvedValue('deportistas/abc.jpg');
+    vi.mocked(deportistasApi.createDeportista).mockResolvedValue({
+      data: { id: 'new-id-123', type: 'deportistas', attributes: {} as never },
+    });
+
+    render(<DeportistaForm mode="create" />, { wrapper });
+    completarCamposRequeridos();
+    const file = elegirFoto();
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(deportistasApi.createDeportista).toHaveBeenCalledWith(
+        expect.objectContaining({ fotoKey: 'deportistas/abc.jpg' }),
+      );
+    });
+    expect(deportistasApi.uploadFotoDeportista).toHaveBeenCalledWith(file);
+  });
+
+  test('sin cambios de foto no sube nada ni manda fotoKey', async () => {
+    vi.mocked(deportistasApi.createDeportista).mockResolvedValue({
+      data: { id: 'new-id-123', type: 'deportistas', attributes: {} as never },
+    });
+
+    render(<DeportistaForm mode="create" />, { wrapper });
+    completarCamposRequeridos();
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(deportistasApi.createDeportista).toHaveBeenCalledTimes(1);
+    });
+    expect(deportistasApi.uploadFotoDeportista).not.toHaveBeenCalled();
+    expect(vi.mocked(deportistasApi.createDeportista).mock.calls[0][0].fotoKey).toBeUndefined();
+  });
+
+  test('quitar la foto actual manda fotoKey null', async () => {
+    vi.mocked(deportistasApi.updateDeportista).mockResolvedValue({
+      data: { id: 'edit-id-123', type: 'deportistas', attributes: {} as never },
+    });
+
+    render(
+      <DeportistaForm
+        mode="edit"
+        initialData={fotoDeportista}
+        fotoUrl="https://s3.example/foto.jpg"
+      />,
+      { wrapper },
+    );
+    fireEvent.click(screen.getByRole('button', { name: /quitar/i }));
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(deportistasApi.updateDeportista).toHaveBeenCalledWith(
+        'edit-id-123',
+        expect.objectContaining({ fotoKey: null }),
+      );
+    });
+    expect(deportistasApi.uploadFotoDeportista).not.toHaveBeenCalled();
+  });
+
+  test('cambiar de pestaña conserva la foto pendiente', async () => {
+    vi.mocked(deportistasApi.uploadFotoDeportista).mockResolvedValue('deportistas/abc.jpg');
+    vi.mocked(deportistasApi.createDeportista).mockResolvedValue({
+      data: { id: 'new-id-123', type: 'deportistas', attributes: {} as never },
+    });
+
+    render(<DeportistaForm mode="create" />, { wrapper });
+    completarCamposRequeridos();
+    const file = elegirFoto();
+    fireEvent.click(screen.getByRole('tab', { name: 'Datos Deportivos' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Datos Personales' }));
+
+    expect(screen.getByRole('button', { name: /cambiar/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(deportistasApi.uploadFotoDeportista).toHaveBeenCalledWith(file);
+    });
+  });
+
+  test('descartar una foto nueva no borra la original (no sube ni manda fotoKey)', async () => {
+    vi.mocked(deportistasApi.updateDeportista).mockResolvedValue({
+      data: { id: 'edit-id-123', type: 'deportistas', attributes: {} as never },
+    });
+
+    render(
+      <DeportistaForm
+        mode="edit"
+        initialData={fotoDeportista}
+        fotoUrl="https://s3.example/foto.jpg"
+      />,
+      { wrapper },
+    );
+    elegirFoto();
+    fireEvent.click(screen.getByRole('button', { name: /descartar/i }));
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(deportistasApi.updateDeportista).toHaveBeenCalledTimes(1);
+    });
+    expect(deportistasApi.uploadFotoDeportista).not.toHaveBeenCalled();
+    expect(vi.mocked(deportistasApi.updateDeportista).mock.calls[0][1].fotoKey).toBeUndefined();
+  });
+
+  test('si falla el upload muestra un toast y no guarda', async () => {
+    vi.mocked(deportistasApi.uploadFotoDeportista).mockRejectedValue(
+      new Error('No se pudo subir la foto. Intentá de nuevo'),
+    );
+
+    render(<DeportistaForm mode="create" />, { wrapper });
+    completarCamposRequeridos();
+    elegirFoto();
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('No se pudo subir la foto. Intentá de nuevo');
+    });
+    expect(deportistasApi.createDeportista).not.toHaveBeenCalled();
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — limpieza de fotos huérfanas
+// ---------------------------------------------------------------------------
+
+describe('DeportistaForm — limpieza de la foto subida si falla el guardado', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    URL.createObjectURL = vi.fn(() => 'blob:preview');
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  function renderEdit() {
+    render(
+      <DeportistaForm
+        mode="edit"
+        initialData={fotoDeportista}
+        fotoUrl="https://s3.example/foto.jpg"
+      />,
+      { wrapper },
+    );
+  }
+
+  test('si falla el create descarta la foto recién subida', async () => {
+    vi.mocked(deportistasApi.uploadFotoDeportista).mockResolvedValue('deportistas/nueva.jpg');
+    vi.mocked(deportistasApi.createDeportista).mockRejectedValue(
+      new deportistasApi.ApiError('La foto ya está asignada a otro deportista', 409),
+    );
+
+    render(<DeportistaForm mode="create" />, { wrapper });
+    completarCamposRequeridos();
+    elegirFoto();
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(screen.getByText('La foto ya está asignada a otro deportista')).toBeInTheDocument();
+    });
+    expect(deportistasApi.descartarFotoSubida).toHaveBeenCalledTimes(1);
+    expect(deportistasApi.descartarFotoSubida).toHaveBeenCalledWith('deportistas/nueva.jpg');
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+
+  test('si falla el update con archivo nuevo descarta la foto recién subida, no la guardada', async () => {
+    vi.mocked(deportistasApi.uploadFotoDeportista).mockResolvedValue('deportistas/nueva.jpg');
+    vi.mocked(deportistasApi.updateDeportista).mockRejectedValue(
+      new deportistasApi.ApiError('La foto no se subió correctamente. Volvé a elegirla e intentá de nuevo', 422),
+    );
+
+    renderEdit();
+    elegirFoto();
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('La foto no se subió correctamente. Volvé a elegirla e intentá de nuevo'),
+      ).toBeInTheDocument();
+    });
+    expect(deportistasApi.descartarFotoSubida).toHaveBeenCalledTimes(1);
+    expect(deportistasApi.descartarFotoSubida).toHaveBeenCalledWith('deportistas/nueva.jpg');
+    expect(deportistasApi.descartarFotoSubida).not.toHaveBeenCalledWith('deportistas/vieja.jpg');
+  });
+
+  test('si falla el update sin cambios de foto no descarta nada', async () => {
+    vi.mocked(deportistasApi.updateDeportista).mockRejectedValue(
+      new deportistasApi.ApiError('Error al guardar el deportista', 500),
+    );
+
+    renderEdit();
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Error al guardar el deportista')).toBeInTheDocument();
+    });
+    expect(deportistasApi.descartarFotoSubida).not.toHaveBeenCalled();
+  });
+
+  test('si falla el update al quitar la foto no descarta nada', async () => {
+    vi.mocked(deportistasApi.updateDeportista).mockRejectedValue(
+      new deportistasApi.ApiError('Error al guardar el deportista', 500),
+    );
+
+    renderEdit();
+    fireEvent.click(screen.getByRole('button', { name: /quitar/i }));
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Error al guardar el deportista')).toBeInTheDocument();
+    });
+    expect(deportistasApi.descartarFotoSubida).not.toHaveBeenCalled();
+  });
+
+  test('si el create falla por red (fetch lanza) no descarta la foto: el servidor pudo haberla guardado', async () => {
+    vi.mocked(deportistasApi.uploadFotoDeportista).mockResolvedValue('deportistas/nueva.jpg');
+    vi.mocked(deportistasApi.createDeportista).mockRejectedValue(new TypeError('Failed to fetch'));
+
+    render(<DeportistaForm mode="create" />, { wrapper });
+    completarCamposRequeridos();
+    elegirFoto();
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to fetch')).toBeInTheDocument();
+    });
+    expect(deportistasApi.descartarFotoSubida).not.toHaveBeenCalled();
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+
+  test('si el guardado sale bien no descarta la foto subida', async () => {
+    vi.mocked(deportistasApi.uploadFotoDeportista).mockResolvedValue('deportistas/nueva.jpg');
+    vi.mocked(deportistasApi.updateDeportista).mockResolvedValue({
+      data: { id: 'edit-id-123', type: 'deportistas', attributes: {} as never },
+    });
+
+    renderEdit();
+    elegirFoto();
+    fireEvent.click(screen.getByText('Guardar'));
+
+    await waitFor(() => {
+      expect(mockRouterPush).toHaveBeenCalledWith('/deportistas/edit-id-123');
+    });
+    expect(deportistasApi.descartarFotoSubida).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { currentUser } from '@clerk/nextjs/server';
 import { getDeportistaById } from '@/lib/queries/deportistas';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
+import { getFotoUrl } from '@/lib/s3';
 import DeportistaForm from '../../_components/DeportistaForm';
 import type { AppRole } from '@/lib/roles';
 
@@ -16,10 +17,11 @@ export default async function EditarDeportistaPage({
     currentUser(),
     getDisciplinasConCategorias(),
   ]);
+  const fotoUrl = await getFotoUrl(deportista.fotoKey);
   const role = (user?.publicMetadata?.role as AppRole | undefined) ?? undefined;
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-2">
         <Link
           href={`/deportistas/${id}`}
@@ -34,7 +36,13 @@ export default async function EditarDeportistaPage({
       >
         Editar — {deportista.apellido}, {deportista.nombre}
       </h1>
-      <DeportistaForm mode="edit" initialData={deportista} userRole={role} disciplinas={disciplinas} />
+      <DeportistaForm
+        mode="edit"
+        initialData={deportista}
+        fotoUrl={fotoUrl}
+        userRole={role}
+        disciplinas={disciplinas}
+      />
     </div>
   );
 }

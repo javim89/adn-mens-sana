@@ -74,6 +74,8 @@ export type DeportistaDetailAttributes = {
   actividadComplementaria: ActividadComplementaria | null;
   fechaIngreso: string | null;
   tieneRepresentante: boolean;
+  fotoKey: string | null;
+  fotoUrl: string | null;
   clubesAnteriores: Array<{ id: string; nombre: string; periodo: string | null }>;
   historiaDeportiva: Array<{ id: string; descripcion: string; fecha: string }>;
   datosEscolares: {
@@ -152,6 +154,17 @@ export type FetchDeportistasParams = {
 
 const JSON_API_CONTENT_TYPE = 'application/vnd.api+json';
 
+/** El servidor respondió con un status de error (a diferencia de un fallo de red o abort). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 async function throwIfNotOk(res: Response): Promise<void> {
   if (!res.ok) {
     let message = `HTTP ${res.status}`;
@@ -165,7 +178,7 @@ async function throwIfNotOk(res: Response): Promise<void> {
     } catch {
       // ignore parse error
     }
-    throw new Error(message);
+    throw new ApiError(message, res.status);
   }
 }
 
@@ -298,4 +311,60 @@ export async function deleteDeportista(id: string): Promise<void> {
     headers: { Accept: JSON_API_CONTENT_TYPE },
   });
   await throwIfNotOk(res);
+}
+
+/**
+ * Sube la foto directo a S3: pide un PUT prefirmado y manda el archivo.
+ * Devuelve la key para guardarla como `fotoKey` en create/update.
+ */
+export async function uploadFotoDeportista(file: File): Promise<string> {
+  const presignRes = await fetch('/api/deportistas/foto/presign', {
+    method: 'POST',
+    headers: {
+      'Content-Type': JSON_API_CONTENT_TYPE,
+      Accept: JSON_API_CONTENT_TYPE,
+    },
+    body: JSON.stringify({
+      data: {
+        type: 'foto-upload',
+        attributes: { contentType: file.type, size: file.size },
+      },
+    }),
+  });
+  await throwIfNotOk(presignRes);
+  const { data } = (await presignRes.json()) as {
+    data: { type: 'foto-upload'; attributes: { uploadUrl: string; key: string } };
+  };
+
+  let uploadRes: Response;
+  try {
+    uploadRes = await fetch(data.attributes.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
+  } catch {
+    throw new Error('No se pudo subir la foto. Revisá tu conexión e intentá de nuevo');
+  }
+  if (!uploadRes.ok) {
+    throw new Error('No se pudo subir la foto. Intentá de nuevo');
+  }
+
+  return data.attributes.key;
+}
+
+/**
+ * DELETE /api/deportistas/foto?key=...
+ * Descarta una foto ya subida a S3 cuando el guardado del form falla.
+ * Best-effort: nunca lanza, para no tapar el error original del guardado.
+ */
+export async function descartarFotoSubida(key: string): Promise<void> {
+  try {
+    await fetch(`/api/deportistas/foto?key=${encodeURIComponent(key)}`, {
+      method: 'DELETE',
+      headers: { Accept: JSON_API_CONTENT_TYPE },
+    });
+  } catch {
+    // best-effort
+  }
 }

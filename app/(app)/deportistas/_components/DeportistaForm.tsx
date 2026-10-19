@@ -6,13 +6,20 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import DeportistaFormTabs, { type TabId } from './DeportistaFormTabs';
 import TabPersonal from './tabs/TabPersonal';
 import TabDeportivo from './tabs/TabDeportivo';
 import TabEscolar from './tabs/TabEscolar';
 import TabSocial from './tabs/TabSocial';
 import TabSalud from './tabs/TabSalud';
-import { createDeportista, updateDeportista } from '@/lib/api/deportistas';
+import {
+  ApiError,
+  createDeportista,
+  descartarFotoSubida,
+  updateDeportista,
+  uploadFotoDeportista,
+} from '@/lib/api/deportistas';
 import type { DeportistaFormData, DeportistaWithRelations } from '@/lib/types/deportistas';
 import type { AppRole } from '@/lib/roles';
 
@@ -168,17 +175,25 @@ function buildInitialData(d?: DeportistaWithRelations): DeportistaFormData {
 interface DeportistaFormProps {
   mode: 'create' | 'edit';
   initialData?: DeportistaWithRelations;
+  fotoUrl?: string | null;
   userRole?: AppRole;
   disciplinas?: Array<{ id: string; nombre: string; categorias: { id: string; nombre: string }[] }>;
 }
 
 const PERSONAL_FIELDS = ['apellido', 'nombre', 'dni', 'fechaNacimiento'];
 
-export default function DeportistaForm({ mode, initialData, userRole, disciplinas = [] }: DeportistaFormProps) {
+export default function DeportistaForm({
+  mode,
+  initialData,
+  fotoUrl = null,
+  userRole,
+  disciplinas = [],
+}: DeportistaFormProps) {
   const isSocial = userRole === 'social';
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('personal');
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [foto, setFoto] = useState<File | null | undefined>(undefined);
 
   // React Hook Form — only validates the required personal fields via Zod.
   // The rest of the deeply nested data is managed via watchedData / patchData.
@@ -217,15 +232,34 @@ export default function DeportistaForm({ mode, initialData, userRole, disciplina
 
   const onSubmit = handleSubmit(async (data) => {
     setGlobalError(null);
+
+    let fotoKey: string | null | undefined;
+    let fotoSubida: string | undefined;
+    if (foto) {
+      try {
+        fotoSubida = await uploadFotoDeportista(foto);
+        fotoKey = fotoSubida;
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'No se pudo subir la foto');
+        return;
+      }
+    } else if (foto === null) {
+      fotoKey = null;
+    }
+    const payload: DeportistaFormData = { ...data, fotoKey };
+
     try {
       if (mode === 'create') {
-        const result = await createDeportista(data);
+        const result = await createDeportista(payload);
         router.push('/deportistas/' + result.data.id);
       } else {
-        await updateDeportista(initialData!.id, data);
+        await updateDeportista(initialData!.id, payload);
         router.push('/deportistas/' + initialData!.id);
       }
     } catch (err) {
+      // Solo con una respuesta de error hay certeza de que no se guardó: tras un fallo de red el
+      // servidor puede haber commiteado el fotoKey y borrar el objeto lo dejaría colgado.
+      if (fotoSubida && err instanceof ApiError) void descartarFotoSubida(fotoSubida);
       setGlobalError(err instanceof Error ? err.message : 'Error al guardar');
     }
   });
@@ -253,7 +287,15 @@ export default function DeportistaForm({ mode, initialData, userRole, disciplina
 
         <div className="px-6 pb-6">
           {activeTab === 'personal' && (
-            <TabPersonal data={watchedData} errors={flatErrors} onChange={patch} disabled={isSocial} />
+            <TabPersonal
+              data={watchedData}
+              errors={flatErrors}
+              onChange={patch}
+              disabled={isSocial}
+              foto={foto}
+              fotoUrl={fotoUrl}
+              onFotoChange={setFoto}
+            />
           )}
           {activeTab === 'deportivo' && (
             <TabDeportivo data={watchedData} errors={flatErrors} onChange={patch} disabled={isSocial} disciplinas={disciplinas} />

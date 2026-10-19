@@ -1,6 +1,8 @@
 import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
+import { getFotoUrl, isValidFotoKey } from '@/lib/s3';
+import { FOTO_KEY_EN_USO, fotoKeyErrorBody, isFotoKeyUniqueViolation, validarFotoKeyNueva } from '@/lib/foto-deportista';
 import { getDeportistas } from '@/lib/queries/deportistas';
 import type { DeportistaListItem, DeportistaWithRelations } from '@/lib/types/deportistas';
 import type { JsonApiResource, JsonApiErrors } from '@/lib/types/jsonapi';
@@ -86,6 +88,11 @@ const deportistaAttributesSchema = z.object({
   actividadComplementaria: z.enum(ActividadComplementariaValues).optional(),
   fechaIngreso: z.string().optional(),
   tieneRepresentante: z.boolean().default(false),
+  fotoKey: z
+    .string()
+    .refine(isValidFotoKey, 'La foto subida no es válida')
+    .nullable()
+    .optional(),
   clubesAnteriores: z
     .array(z.object({ nombre: z.string(), periodo: z.string().optional() }))
     .default([]),
@@ -181,9 +188,9 @@ function serializeListItem(
   };
 }
 
-function serializeFullItem(
+async function serializeFullItem(
   item: DeportistaWithRelations,
-): JsonApiResource<DeportistaDetailAttributes> {
+): Promise<JsonApiResource<DeportistaDetailAttributes>> {
   return {
     type: 'deportistas',
     id: item.id,
@@ -212,6 +219,8 @@ function serializeFullItem(
       actividadComplementaria: item.actividadComplementaria ?? null,
       fechaIngreso: item.fechaIngreso ? item.fechaIngreso.toISOString() : null,
       tieneRepresentante: item.tieneRepresentante,
+      fotoKey: item.fotoKey ?? null,
+      fotoUrl: await getFotoUrl(item.fotoKey),
       clubesAnteriores: item.clubesAnteriores.map((c) => ({
         id: c.id,
         nombre: c.nombre,
@@ -456,6 +465,16 @@ export async function POST(request: Request) {
   const attrs = parsed.data.data.attributes;
 
   try {
+    if (attrs.fotoKey) {
+      const fotoError = await validarFotoKeyNueva(attrs.fotoKey);
+      if (fotoError) {
+        return new Response(JSON.stringify(fotoKeyErrorBody(fotoError)), {
+          status: 422,
+          headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
+        });
+      }
+    }
+
     const deportistaData = {
       apellido: attrs.apellido.trim(),
       nombre: attrs.nombre.trim(),
@@ -479,6 +498,7 @@ export async function POST(request: Request) {
       actividadComplementaria: attrs.actividadComplementaria || null,
       fechaIngreso: attrs.fechaIngreso ? new Date(attrs.fechaIngreso) : null,
       tieneRepresentante: attrs.tieneRepresentante ?? false,
+      fotoKey: attrs.fotoKey ?? null,
     };
 
     const deportista = await prisma.deportista.create({ data: deportistaData });
@@ -687,7 +707,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const responseBody = { data: serializeFullItem(full as DeportistaWithRelations) };
+    const responseBody = { data: await serializeFullItem(full as DeportistaWithRelations) };
 
     const origin = new URL(request.url).origin;
     return new Response(JSON.stringify(responseBody), {
@@ -698,6 +718,12 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    if (isFotoKeyUniqueViolation(error)) {
+      return new Response(JSON.stringify(fotoKeyErrorBody(FOTO_KEY_EN_USO)), {
+        status: 422,
+        headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
+      });
+    }
     console.error('POST /api/deportistas error:', error);
     const body: JsonApiErrors = {
       errors: [

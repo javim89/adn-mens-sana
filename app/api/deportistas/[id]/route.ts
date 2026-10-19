@@ -1,6 +1,13 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
+import { deleteFoto, getFotoUrl, isValidFotoKey } from '@/lib/s3';
+import {
+  FOTO_KEY_EN_USO,
+  fotoKeyErrorBody,
+  isFotoKeyUniqueViolation,
+  validarFotoKeyNueva,
+} from '@/lib/foto-deportista';
 import type { DeportistaWithRelations } from '@/lib/types/deportistas';
 import type { JsonApiErrors } from '@/lib/types/jsonapi';
 import type { DeportistaDetailAttributes } from '@/lib/api/deportistas';
@@ -71,6 +78,11 @@ const patchAttributesSchema = z.object({
   actividadComplementaria: z.enum(ActividadComplementariaValues).optional(),
   fechaIngreso: z.string().optional(),
   tieneRepresentante: z.boolean().optional(),
+  fotoKey: z
+    .string()
+    .refine(isValidFotoKey, 'La foto subida no es válida')
+    .nullable()
+    .optional(),
   clubesAnteriores: z
     .array(z.object({ nombre: z.string(), periodo: z.string().optional() }))
     .optional(),
@@ -147,9 +159,9 @@ const patchBodySchema = z.object({
 // Serializer
 // ---------------------------------------------------------------------------
 
-function serializeFullItem(
+async function serializeFullItem(
   item: DeportistaWithRelations,
-): JsonApiResource<DeportistaDetailAttributes> {
+): Promise<JsonApiResource<DeportistaDetailAttributes>> {
   return {
     type: 'deportistas',
     id: item.id,
@@ -178,6 +190,8 @@ function serializeFullItem(
       actividadComplementaria: item.actividadComplementaria ?? null,
       fechaIngreso: item.fechaIngreso ? item.fechaIngreso.toISOString() : null,
       tieneRepresentante: item.tieneRepresentante,
+      fotoKey: item.fotoKey ?? null,
+      fotoUrl: await getFotoUrl(item.fotoKey),
       clubesAnteriores: item.clubesAnteriores.map((c) => ({
         id: c.id,
         nombre: c.nombre,
@@ -329,7 +343,7 @@ export async function GET(
     });
   }
 
-  return new Response(JSON.stringify({ data: serializeFullItem(deportista) }), {
+  return new Response(JSON.stringify({ data: await serializeFullItem(deportista) }), {
     status: 200,
     headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
   });
@@ -425,6 +439,16 @@ export async function PATCH(
   const attrs = parsed.data.data.attributes;
 
   try {
+    if (!isSocial && attrs.fotoKey && attrs.fotoKey !== existing.fotoKey) {
+      const fotoError = await validarFotoKeyNueva(attrs.fotoKey, id);
+      if (fotoError) {
+        return new Response(JSON.stringify(fotoKeyErrorBody(fotoError)), {
+          status: 422,
+          headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
+        });
+      }
+    }
+
     if (!isSocial) {
       // Update main record (only provided fields)
       await prisma.deportista.update({
@@ -452,8 +476,13 @@ export async function PATCH(
           ...(attrs.actividadComplementaria !== undefined ? { actividadComplementaria: attrs.actividadComplementaria || null } : {}),
           ...(attrs.fechaIngreso !== undefined ? { fechaIngreso: attrs.fechaIngreso ? new Date(attrs.fechaIngreso) : null } : {}),
           ...(attrs.tieneRepresentante !== undefined ? { tieneRepresentante: attrs.tieneRepresentante } : {}),
+          ...(attrs.fotoKey !== undefined ? { fotoKey: attrs.fotoKey } : {}),
         },
       });
+
+      if (attrs.fotoKey !== undefined && existing.fotoKey && attrs.fotoKey !== existing.fotoKey) {
+        await deleteFoto(existing.fotoKey);
+      }
 
       // Handle clubs anteriores
       if (attrs.clubesAnteriores !== undefined) {
@@ -728,11 +757,17 @@ export async function PATCH(
 
     // Return the updated full record
     const updated = await findDeportista(id);
-    return new Response(JSON.stringify({ data: serializeFullItem(updated!) }), {
+    return new Response(JSON.stringify({ data: await serializeFullItem(updated!) }), {
       status: 200,
       headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
     });
   } catch (error) {
+    if (isFotoKeyUniqueViolation(error)) {
+      return new Response(JSON.stringify(fotoKeyErrorBody(FOTO_KEY_EN_USO)), {
+        status: 422,
+        headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
+      });
+    }
     console.error('PATCH /api/deportistas/[id] error:', error);
     return new Response(
       JSON.stringify({
@@ -775,5 +810,6 @@ export async function DELETE(
   }
 
   await prisma.deportista.delete({ where: { id } });
+  await deleteFoto(existing.fotoKey);
   return new Response(null, { status: 204 });
 }

@@ -8,6 +8,8 @@ import DeportistaDetailTabs from '../_components/DeportistaDetailTabs';
 import DeleteDeportistaModal from '../_components/DeleteDeportistaModal';
 import { ESTADO_LABELS } from '@/lib/utils/enum-labels';
 import { prisma } from '@/lib/db';
+import { getFotoUrl } from '@/lib/s3';
+import { Avatar } from '@/app/components/ui/avatar';
 import type { EstadoDeportista } from '@/lib/generated/prisma/enums';
 import type { TriageContribucion } from '@/lib/types/triage';
 
@@ -26,10 +28,10 @@ export default async function DeportistaDetailPage({
   const { id } = await params;
   const deportista = await getDeportistaById(id);
 
-  const { items: seguimientosRaw } = await getSeguimientos({
-    deportistaId: id,
-    pageSize: 500,
-  });
+  const [{ items: seguimientosRaw }, fotoUrl] = await Promise.all([
+    getSeguimientos({ deportistaId: id, pageSize: 500 }),
+    getFotoUrl(deportista.fotoKey),
+  ]);
   const seguimientos = seguimientosRaw.map((s) => ({
     id: s.id,
     fecha: s.fecha.toISOString().split('T')[0],
@@ -61,7 +63,7 @@ export default async function DeportistaDetailPage({
   const nombreCompleto = `${deportista.apellido}, ${deportista.nombre}`;
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Breadcrumb */}
       <div className="mb-2">
         <Link
@@ -73,22 +75,30 @@ export default async function DeportistaDetailPage({
       </div>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-6 gap-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1
-            className="text-3xl font-bold text-[#121A61]"
-            style={{ fontFamily: 'Oswald, sans-serif' }}
-          >
-            {nombreCompleto}
-          </h1>
-          <span
-            className={[
-              'text-xs font-medium px-2.5 py-1 rounded-full',
-              ESTADO_BADGE[deportista.estado] ?? 'bg-gray-100 text-[#6B7280]',
-            ].join(' ')}
-          >
-            {ESTADO_LABELS[deportista.estado as EstadoDeportista]}
-          </span>
+      <div className="flex flex-wrap items-start justify-between mb-6 gap-4">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          <Avatar
+            src={fotoUrl}
+            alt={nombreCompleto}
+            iniciales={`${deportista.nombre.charAt(0)}${deportista.apellido.charAt(0)}`}
+            className="size-16 text-xl sm:size-20 sm:text-2xl"
+          />
+          <div className="flex min-w-0 items-center gap-3 flex-wrap">
+            <h1
+              className="min-w-0 break-words text-3xl font-bold text-[#121A61]"
+              style={{ fontFamily: 'Oswald, sans-serif' }}
+            >
+              {nombreCompleto}
+            </h1>
+            <span
+              className={[
+                'text-xs font-medium px-2.5 py-1 rounded-full',
+                ESTADO_BADGE[deportista.estado] ?? 'bg-gray-100 text-[#6B7280]',
+              ].join(' ')}
+            >
+              {ESTADO_LABELS[deportista.estado as EstadoDeportista]}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">

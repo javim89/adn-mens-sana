@@ -1,6 +1,7 @@
 'use client';
 
 import EnumSelect from '../EnumSelect';
+import FotoPerfilInput from '../FotoPerfilInput';
 import { GENERO_LABELS } from '@/lib/utils/enum-labels';
 import type { DeportistaFormData } from '@/lib/types/deportistas';
 
@@ -9,6 +10,9 @@ interface TabPersonalProps {
   errors: Partial<Record<string, string>>;
   onChange: (patch: Partial<DeportistaFormData>) => void;
   disabled?: boolean;
+  foto: File | null | undefined;
+  fotoUrl: string | null;
+  onFotoChange: (value: File | null | undefined) => void;
 }
 
 function Field({
@@ -40,7 +44,15 @@ function Field({
 
 const disabledCls = 'opacity-50 cursor-not-allowed bg-gray-50';
 
-export default function TabPersonal({ data, errors, onChange, disabled = false }: TabPersonalProps) {
+export default function TabPersonal({
+  data,
+  errors,
+  onChange,
+  disabled = false,
+  foto,
+  fotoUrl,
+  onFotoChange,
+}: TabPersonalProps) {
   const inputCls = (extra = '') =>
     [
       'w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30',
@@ -50,8 +62,20 @@ export default function TabPersonal({ data, errors, onChange, disabled = false }
       .filter(Boolean)
       .join(' ');
 
+  const iniciales = `${data.nombre.trim().charAt(0)}${data.apellido.trim().charAt(0)}`;
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+      <div className="sm:col-span-2">
+        <FotoPerfilInput
+          value={foto}
+          currentUrl={fotoUrl}
+          iniciales={iniciales}
+          disabled={disabled}
+          onChange={onFotoChange}
+        />
+      </div>
+
       {/* Fila 1 */}
       <Field label="Apellido *" id="apellido" error={errors.apellido}>
         <input
