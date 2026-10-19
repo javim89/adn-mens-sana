@@ -1,10 +1,16 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { Camera, RotateCcw, Trash2, X } from 'lucide-react';
+import { Camera, Crop, Loader2, RotateCcw, Trash2, X } from 'lucide-react';
 import { Avatar } from '@/app/components/ui/avatar';
 import { Button } from '@/app/components/ui/button';
-import { FOTO_MAX_BYTES, FOTO_TIPOS, isFotoContentType } from '@/lib/foto-constants';
+import {
+  FOTO_MAX_BYTES,
+  FOTO_ORIGINAL_MAX_BYTES,
+  FOTO_TIPOS,
+  isFotoContentType,
+} from '@/lib/foto-constants';
+import FotoCropDialog from './FotoCropDialog';
 
 /**
  * `value`: File = foto nueva pendiente, null = quitar la actual, undefined = sin cambios.
@@ -20,6 +26,10 @@ interface FotoPerfilInputProps {
 
 const ACCEPT = Object.keys(FOTO_TIPOS).join(',');
 
+// Recorte → original, para que "Ajustar" reencuadre sobre la foto completa.
+// Vive fuera del componente porque las pestañas del form lo desmontan.
+const originales = new WeakMap<File, File>();
+
 export default function FotoPerfilInput({
   value,
   currentUrl,
@@ -31,8 +41,15 @@ export default function FotoPerfilInput({
   const errorId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const elegirRef = useRef<HTMLButtonElement>(null);
+  const ajustarRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [editor, setEditor] = useState<{
+    src: string;
+    original: File;
+    volverA: React.RefObject<HTMLButtonElement | null>;
+  } | null>(null);
+  const [cargandoOriginal, setCargandoOriginal] = useState(false);
 
   useEffect(() => {
     if (!value) {
@@ -44,6 +61,11 @@ export default function FotoPerfilInput({
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [value]);
+
+  useEffect(() => {
+    if (!editor) return;
+    return () => URL.revokeObjectURL(editor.src);
+  }, [editor]);
 
   const src = value instanceof File ? previewUrl : value === null ? null : currentUrl;
   const hasPendingFile = value instanceof File;
@@ -59,12 +81,61 @@ export default function FotoPerfilInput({
       setError('Formato no permitido. Usá JPG, PNG o WebP.');
       return;
     }
-    if (file.size > FOTO_MAX_BYTES) {
-      setError('La imagen supera los 5 MB.');
+    if (file.size > FOTO_ORIGINAL_MAX_BYTES) {
+      setError('La imagen supera los 20 MB.');
       return;
     }
     setError(null);
-    onChange(file);
+    abrirEditor(file, elegirRef);
+  }
+
+  function abrirEditor(original: File, volverA: React.RefObject<HTMLButtonElement | null>) {
+    setEditor({ src: URL.createObjectURL(original), original, volverA });
+  }
+
+  function cerrarEditor() {
+    setEditor(null);
+  }
+
+  // El Dialog no tiene DialogTrigger: sin esto el foco cae en <body> al cerrar.
+  function devolverFoco(event: Event) {
+    event.preventDefault();
+    editor?.volverA.current?.focus();
+  }
+
+  function handleApply(recorte: File) {
+    if (!editor) return;
+    if (recorte.size > FOTO_MAX_BYTES) {
+      setError('La imagen recortada supera los 5 MB.');
+      cerrarEditor();
+      return;
+    }
+    originales.set(recorte, editor.original);
+    setError(null);
+    onChange(recorte);
+    cerrarEditor();
+  }
+
+  // La foto guardada se baja como blob (sin caché: el <img> del avatar la pudo cachear sin headers CORS)
+  // para que el canvas no quede "tainted" al recortar.
+  async function handleAjustar() {
+    if (value instanceof File) {
+      abrirEditor(originales.get(value) ?? value, ajustarRef);
+      return;
+    }
+    if (!currentUrl) return;
+    setCargandoOriginal(true);
+    setError(null);
+    try {
+      const res = await fetch(currentUrl, { mode: 'cors', cache: 'no-store' });
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      abrirEditor(new File([blob], 'foto', { type: blob.type || 'image/jpeg' }), ajustarRef);
+    } catch {
+      setError('No se pudo cargar la foto actual para ajustarla.');
+    } finally {
+      setCargandoOriginal(false);
+    }
   }
 
   // Descartar un archivo pendiente vuelve al estado original; solo se borra la foto guardada si no hay nada pendiente.
@@ -122,6 +193,20 @@ export default function FotoPerfilInput({
           </Button>
           {hasFoto && (
             <Button
+              ref={ajustarRef}
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled || cargandoOriginal}
+              onClick={handleAjustar}
+              className="border-gray-200 text-[#121A61] hover:bg-[#3346CC]/5 hover:text-[#121A61]"
+            >
+              {cargandoOriginal ? <Loader2 className="animate-spin" /> : <Crop />}
+              Ajustar
+            </Button>
+          )}
+          {hasFoto && (
+            <Button
               type="button"
               variant="outline"
               size="sm"
@@ -148,13 +233,24 @@ export default function FotoPerfilInput({
           )}
         </div>
 
-        <p className="mt-2 text-xs text-[#6B7280]">JPG, PNG o WebP. Máx. 5 MB.</p>
+        <p className="mt-2 text-xs text-[#6B7280]">JPG, PNG o WebP. Máx. 20 MB.</p>
         {error && (
           <p id={errorId} role="alert" className="mt-1 text-xs text-red-600">
             {error}
           </p>
         )}
       </div>
+
+      {editor && (
+        <FotoCropDialog
+          key={editor.src}
+          open
+          src={editor.src}
+          onCancel={cerrarEditor}
+          onApply={handleApply}
+          onCloseAutoFocus={devolverFoco}
+        />
+      )}
     </div>
   );
 }

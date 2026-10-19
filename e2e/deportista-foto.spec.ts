@@ -7,7 +7,9 @@ import { test, expect, type Page } from '@playwright/test';
  * un storageState para e2e, la suite queda en skip.
  *
  * S3 se mockea con page.route: el PUT prefirmado responde 200 y el GET de la
- * imagen devuelve un PNG de 1x1, así no hace falta un bucket real.
+ * imagen devuelve un PNG de 1x1, así no hace falta un bucket real. Los
+ * Content-Type de los PUT quedan registrados para verificar que se sube el
+ * recorte (JPEG) y no el original.
  */
 
 const PNG_1x1 = Buffer.from(
@@ -16,13 +18,21 @@ const PNG_1x1 = Buffer.from(
 );
 
 async function mockS3(page: Page) {
+  const putContentTypes: string[] = [];
   await page.route(/\.amazonaws\.com\//, async (route) => {
     if (route.request().method() === 'PUT') {
+      putContentTypes.push((await route.request().headerValue('content-type')) ?? '');
       await route.fulfill({ status: 200 });
       return;
     }
-    await route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1x1 });
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/png',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: PNG_1x1,
+    });
   });
+  return { putContentTypes };
 }
 
 test.describe('Deportistas — foto de perfil (sin sesión)', () => {
@@ -50,8 +60,8 @@ test.describe('Deportistas — foto de perfil (sin sesión)', () => {
 test.describe('Deportistas — foto de perfil', () => {
   test.skip(true, 'Requires Clerk test user session (storageState not configured)');
 
-  test('crear con foto, verla en el detalle y quitarla en la edición', async ({ page }) => {
-    await mockS3(page);
+  test('crear con foto recortada, verla en el detalle y quitarla en la edición', async ({ page }) => {
+    const { putContentTypes } = await mockS3(page);
 
     await page.goto('/deportistas/nuevo');
     await page.getByLabel(/apellido \*/i).fill('FotoE2E');
@@ -64,11 +74,21 @@ test.describe('Deportistas — foto de perfil', () => {
       mimeType: 'image/png',
       buffer: PNG_1x1,
     });
+
+    const editor = page.getByRole('dialog', { name: 'Ajustar foto' });
+    await expect(editor).toBeVisible();
+    await editor.getByRole('button', { name: 'Acercar' }).click();
+    await editor.getByRole('button', { name: 'Rotar 90° a la derecha' }).click();
+    await editor.getByRole('button', { name: 'Aplicar' }).click();
+    await expect(editor).toBeHidden();
+
     await expect(page.getByRole('img', { name: 'Foto de perfil' })).toHaveAttribute('src', /^blob:/);
     await expect(page.getByRole('button', { name: 'Cambiar' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ajustar' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Guardar' }).click();
     await expect(page).toHaveURL(/\/deportistas\/[a-z0-9-]+$/);
+    expect(putContentTypes).toEqual(['image/jpeg']);
 
     const avatar = page.getByRole('img', { name: 'FotoE2E, Runner' });
     await expect(avatar).toHaveAttribute('src', /amazonaws\.com/);

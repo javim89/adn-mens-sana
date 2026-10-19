@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -21,6 +22,23 @@ vi.mock('@/lib/api/deportistas', async (importOriginal) => {
     descartarFotoSubida: vi.fn(),
   };
 });
+
+// El editor de recorte necesita layout (jsdom no tiene): el Cropper mock emite un área fija al montar
+// y el recorte devuelve siempre el mismo File.
+vi.mock('react-easy-crop', () => ({
+  default: function CropperMock({ onCropComplete }: { onCropComplete: (a: unknown, p: unknown) => void }) {
+    useEffect(() => {
+      onCropComplete({ x: 0, y: 0, width: 100, height: 100 }, { x: 0, y: 0, width: 50, height: 50 });
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- como el Cropper real, emite al montar
+    }, []);
+    return null;
+  },
+}));
+
+const recorte = vi.hoisted(() => new File(['r'], 'foto.jpg', { type: 'image/jpeg' }));
+vi.mock('@/lib/crop-image', () => ({
+  getCroppedImage: vi.fn().mockResolvedValue(recorte),
+}));
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -48,12 +66,15 @@ function completarCamposRequeridos() {
   });
 }
 
-function elegirFoto() {
-  const file = new File(['x'], 'foto.jpg', { type: 'image/jpeg' });
+/** Elige un archivo y lo aplica en el editor de recorte; devuelve el File recortado que sube el form. */
+async function elegirFoto() {
+  const file = new File(['x'], 'original.jpg', { type: 'image/jpeg' });
   fireEvent.change(screen.getByLabelText('Seleccionar foto de perfil'), {
     target: { files: [file] },
   });
-  return file;
+  fireEvent.click(await screen.findByRole('button', { name: 'Aplicar' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  return recorte;
 }
 
 // ---------------------------------------------------------------------------
@@ -317,7 +338,7 @@ describe('DeportistaForm — foto de perfil', () => {
 
     render(<DeportistaForm mode="create" />, { wrapper });
     completarCamposRequeridos();
-    const file = elegirFoto();
+    const file = await elegirFoto();
     fireEvent.click(screen.getByText('Guardar'));
 
     await waitFor(() => {
@@ -377,7 +398,7 @@ describe('DeportistaForm — foto de perfil', () => {
 
     render(<DeportistaForm mode="create" />, { wrapper });
     completarCamposRequeridos();
-    const file = elegirFoto();
+    const file = await elegirFoto();
     fireEvent.click(screen.getByRole('tab', { name: 'Datos Deportivos' }));
     fireEvent.click(screen.getByRole('tab', { name: 'Datos Personales' }));
 
@@ -402,7 +423,7 @@ describe('DeportistaForm — foto de perfil', () => {
       />,
       { wrapper },
     );
-    elegirFoto();
+    await elegirFoto();
     fireEvent.click(screen.getByRole('button', { name: /descartar/i }));
     fireEvent.click(screen.getByText('Guardar'));
 
@@ -420,7 +441,7 @@ describe('DeportistaForm — foto de perfil', () => {
 
     render(<DeportistaForm mode="create" />, { wrapper });
     completarCamposRequeridos();
-    elegirFoto();
+    await elegirFoto();
     fireEvent.click(screen.getByText('Guardar'));
 
     await waitFor(() => {
@@ -461,7 +482,7 @@ describe('DeportistaForm — limpieza de la foto subida si falla el guardado', (
 
     render(<DeportistaForm mode="create" />, { wrapper });
     completarCamposRequeridos();
-    elegirFoto();
+    await elegirFoto();
     fireEvent.click(screen.getByText('Guardar'));
 
     await waitFor(() => {
@@ -479,7 +500,7 @@ describe('DeportistaForm — limpieza de la foto subida si falla el guardado', (
     );
 
     renderEdit();
-    elegirFoto();
+    await elegirFoto();
     fireEvent.click(screen.getByText('Guardar'));
 
     await waitFor(() => {
@@ -527,7 +548,7 @@ describe('DeportistaForm — limpieza de la foto subida si falla el guardado', (
 
     render(<DeportistaForm mode="create" />, { wrapper });
     completarCamposRequeridos();
-    elegirFoto();
+    await elegirFoto();
     fireEvent.click(screen.getByText('Guardar'));
 
     await waitFor(() => {
@@ -544,7 +565,7 @@ describe('DeportistaForm — limpieza de la foto subida si falla el guardado', (
     });
 
     renderEdit();
-    elegirFoto();
+    await elegirFoto();
     fireEvent.click(screen.getByText('Guardar'));
 
     await waitFor(() => {
