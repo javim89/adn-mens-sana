@@ -1,0 +1,215 @@
+{
+  "projectId": "ed7d7637-549e-474b-9ea7-85cd81c0da9b",
+  "shape": "package",
+  "pkg": "adn-mens-sana-ui",
+  "globalName": "AdnMensSana",
+  "buildCmd": "node .design-sync/build.mjs",
+  "entry": ".ds-sync/pkg/index.ts",
+  "srcDir": "../../app/components/ui",
+  "tsconfig": "../../tsconfig.json",
+  "cssEntry": "styles.css",
+  "extraFonts": [
+    "fonts/fonts.css"
+  ],
+  "componentSrcMap": {
+    "Icons": null
+  },
+  "docsMap": {
+    "Avatar": "../../.design-sync/groups/Display.md",
+    "Badge": "../../.design-sync/groups/Display.md",
+    "Button": "../../.design-sync/groups/Actions.md",
+    "Card": "../../.design-sync/groups/Display.md",
+    "CardContent": "../../.design-sync/groups/Display.md",
+    "CardDescription": "../../.design-sync/groups/Display.md",
+    "CardFooter": "../../.design-sync/groups/Display.md",
+    "CardHeader": "../../.design-sync/groups/Display.md",
+    "CardTitle": "../../.design-sync/groups/Display.md",
+    "Command": "../../.design-sync/groups/Command.md",
+    "CommandDialog": "../../.design-sync/groups/Command.md",
+    "CommandEmpty": "../../.design-sync/groups/Command.md",
+    "CommandGroup": "../../.design-sync/groups/Command.md",
+    "CommandInput": "../../.design-sync/groups/Command.md",
+    "CommandItem": "../../.design-sync/groups/Command.md",
+    "CommandList": "../../.design-sync/groups/Command.md",
+    "CommandSeparator": "../../.design-sync/groups/Command.md",
+    "CommandShortcut": "../../.design-sync/groups/Command.md",
+    "CustomSelect": "../../.design-sync/groups/Forms.md",
+    "Dialog": "../../.design-sync/groups/Overlays.md",
+    "DialogClose": "../../.design-sync/groups/Overlays.md",
+    "DialogContent": "../../.design-sync/groups/Overlays.md",
+    "DialogDescription": "../../.design-sync/groups/Overlays.md",
+    "DialogFooter": "../../.design-sync/groups/Overlays.md",
+    "DialogHeader": "../../.design-sync/groups/Overlays.md",
+    "DialogOverlay": "../../.design-sync/groups/Overlays.md",
+    "DialogPortal": "../../.design-sync/groups/Overlays.md",
+    "DialogTitle": "../../.design-sync/groups/Overlays.md",
+    "DialogTrigger": "../../.design-sync/groups/Overlays.md",
+    "DropdownMenu": "../../.design-sync/groups/Overlays.md",
+    "DropdownMenuContent": "../../.design-sync/groups/Overlays.md",
+    "DropdownMenuGroup": "../../.design-sync/groups/Overlays.md",
+    "DropdownMenuItem": "../../.design-sync/groups/Overlays.md",
+    "DropdownMenuLabel": "../../.design-sync/groups/Overlays.md",
+    "DropdownMenuPortal": "../../.design-sync/groups/Overlays.md",
+    "DropdownMenuSeparator": "../../.design-sync/groups/Overlays.md",
+    "DropdownMenuTrigger": "../../.design-sync/groups/Overlays.md",
+    "Input": "../../.design-sync/groups/Forms.md",
+    "Label": "../../.design-sync/groups/Forms.md",
+    "Popover": "../../.design-sync/groups/Overlays.md",
+    "PopoverContent": "../../.design-sync/groups/Overlays.md",
+    "PopoverTrigger": "../../.design-sync/groups/Overlays.md",
+    "Select": "../../.design-sync/groups/Forms.md",
+    "SelectContent": "../../.design-sync/groups/Forms.md",
+    "SelectGroup": "../../.design-sync/groups/Forms.md",
+    "SelectItem": "../../.design-sync/groups/Forms.md",
+    "SelectLabel": "../../.design-sync/groups/Forms.md",
+    "SelectScrollDownButton": "../../.design-sync/groups/Forms.md",
+    "SelectScrollUpButton": "../../.design-sync/groups/Forms.md",
+    "SelectSeparator": "../../.design-sync/groups/Forms.md",
+    "SelectTrigger": "../../.design-sync/groups/Forms.md",
+    "SelectValue": "../../.design-sync/groups/Forms.md",
+    "Tabs": "../../.design-sync/groups/Navigation.md",
+    "TabsContent": "../../.design-sync/groups/Navigation.md",
+    "TabsList": "../../.design-sync/groups/Navigation.md",
+    "TabsTrigger": "../../.design-sync/groups/Navigation.md"
+  },
+  "overrides": {
+    "Dialog": {
+      "cardMode": "single",
+      "viewport": "760x480"
+    },
+    "DialogContent": {
+      "cardMode": "single",
+      "viewport": "760x480"
+    },
+    "DialogHeader": {
+      "cardMode": "single",
+      "viewport": "760x480"
+    },
+    "DialogFooter": {
+      "cardMode": "single",
+      "viewport": "760x480"
+    },
+    "DialogTitle": {
+      "cardMode": "single",
+      "viewport": "760x480"
+    },
+    "DialogDescription": {
+      "cardMode": "single",
+      "viewport": "760x480"
+    },
+    "DialogClose": {
+      "cardMode": "single",
+      "viewport": "760x480"
+    },
+    "DialogOverlay": {
+      "cardMode": "single",
+      "viewport": "760x480"
+    },
+    "DialogPortal": {
+      "cardMode": "single",
+      "viewport": "760x480"
+    },
+    "CommandDialog": {
+      "cardMode": "single",
+      "viewport": "760x480"
+    },
+    "Select": {
+      "cardMode": "single",
+      "primaryStory": "Open",
+      "viewport": "560x420"
+    },
+    "SelectContent": {
+      "cardMode": "single",
+      "primaryStory": "OpenSelect",
+      "viewport": "560x420"
+    },
+    "SelectGroup": {
+      "cardMode": "single",
+      "primaryStory": "OpenSelect",
+      "viewport": "560x420"
+    },
+    "SelectItem": {
+      "cardMode": "single",
+      "primaryStory": "OpenSelect",
+      "viewport": "560x420"
+    },
+    "SelectLabel": {
+      "cardMode": "single",
+      "primaryStory": "OpenSelect",
+      "viewport": "560x420"
+    },
+    "SelectSeparator": {
+      "cardMode": "single",
+      "primaryStory": "OpenSelect",
+      "viewport": "560x420"
+    },
+    "SelectScrollUpButton": {
+      "cardMode": "single",
+      "primaryStory": "LongSelect",
+      "viewport": "560x420"
+    },
+    "SelectScrollDownButton": {
+      "cardMode": "single",
+      "primaryStory": "LongSelect",
+      "viewport": "560x420"
+    },
+    "DropdownMenu": {
+      "cardMode": "single",
+      "primaryStory": "OpenMenu",
+      "viewport": "560x420"
+    },
+    "DropdownMenuContent": {
+      "cardMode": "single",
+      "primaryStory": "OpenMenu",
+      "viewport": "560x420"
+    },
+    "DropdownMenuGroup": {
+      "cardMode": "single",
+      "primaryStory": "OpenMenu",
+      "viewport": "560x420"
+    },
+    "DropdownMenuItem": {
+      "cardMode": "single",
+      "primaryStory": "OpenMenu",
+      "viewport": "560x420"
+    },
+    "DropdownMenuLabel": {
+      "cardMode": "single",
+      "primaryStory": "OpenMenu",
+      "viewport": "560x420"
+    },
+    "DropdownMenuPortal": {
+      "cardMode": "single",
+      "primaryStory": "OpenMenu",
+      "viewport": "560x420"
+    },
+    "DropdownMenuSeparator": {
+      "cardMode": "single",
+      "primaryStory": "OpenMenu",
+      "viewport": "560x420"
+    },
+    "Popover": {
+      "cardMode": "single",
+      "primaryStory": "OpenPopover",
+      "viewport": "560x420"
+    },
+    "PopoverContent": {
+      "cardMode": "single",
+      "primaryStory": "OpenPopover",
+      "viewport": "560x420"
+    },
+    "Tabs": {
+      "cardMode": "column"
+    },
+    "TabsContent": {
+      "cardMode": "column"
+    },
+    "TabsList": {
+      "cardMode": "column"
+    },
+    "TabsTrigger": {
+      "cardMode": "column"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

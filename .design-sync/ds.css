@@ -1,0 +1,23 @@
+/*
+ * CSS entry for the Claude Design sync (compiled by .design-sync/build.mjs).
+ * Reuses the app's real globals.css (tokens + Tailwind v4 theme) so the
+ * palette stays single-sourced, and adds what next/font injects at runtime
+ * in the app: the Inter/Oswald @font-face rules and the --font-* variables.
+ */
+@import "../app/globals.css";
+
+/* Utility vocabulary: every class used across the app + authored previews. */
+@source "../app";
+@source "../lib";
+@source "./previews";
+
+:root {
+  --font-inter: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-oswald: 'Oswald', sans-serif;
+}
+
+body {
+  background: #f3f4f6;
+  color: #1c1c1c;
+  font-family: var(--font-inter);
+}
