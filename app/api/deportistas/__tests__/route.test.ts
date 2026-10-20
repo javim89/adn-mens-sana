@@ -8,6 +8,15 @@ vi.mock('@clerk/nextjs/server', () => ({
   auth: vi.fn(),
 }));
 
+vi.mock('@/lib/s3', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/s3')>('@/lib/s3');
+  return {
+    isValidFotoKey: actual.isValidFotoKey,
+    getFotoUrl: vi.fn(async (key: string | null) => (key ? `https://signed.example/${key}` : null)),
+    fotoExiste: vi.fn(),
+  };
+});
+
 vi.mock('@/lib/queries/deportistas', () => ({
   getDeportistas: vi.fn(),
 }));
@@ -17,6 +26,7 @@ vi.mock('@/lib/db', () => ({
     deportista: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
     clubAnterior: { createMany: vi.fn() },
     datosEscolares: { create: vi.fn() },
@@ -31,6 +41,7 @@ import type { DeportistaListItem } from '@/lib/types/deportistas';
 import { auth } from '@clerk/nextjs/server';
 import { getDeportistas } from '@/lib/queries/deportistas';
 import { prisma } from '@/lib/db';
+import { fotoExiste, getFotoUrl } from '@/lib/s3';
 import { GET, POST } from '../route';
 
 // ---------------------------------------------------------------------------
@@ -400,5 +411,188 @@ describe('POST /api/deportistas', () => {
         }),
       }),
     );
+  });
+
+  const FOTO_KEY = 'deportistas/123e4567-e89b-12d3-a456-426614174000.jpg';
+
+  it('persists a valid fotoKey and exposes fotoKey + fotoUrl', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    vi.mocked(prisma.deportista.findFirst).mockResolvedValue(null);
+    vi.mocked(fotoExiste).mockResolvedValue(true);
+    vi.mocked(prisma.deportista.create).mockResolvedValue({ ...mockDeportistaFull, id: 'newcuid' } as never);
+    vi.mocked(prisma.deportista.findUnique).mockResolvedValue({ ...mockDeportistaFull, fotoKey: FOTO_KEY } as never);
+
+    const body = {
+      data: { ...validBody.data, attributes: { ...validBody.data.attributes, fotoKey: FOTO_KEY } },
+    };
+    const res = await POST(
+      makeRequest('http://localhost/api/deportistas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/vnd.api+json' },
+        body: JSON.stringify(body),
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    expect(prisma.deportista.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ fotoKey: FOTO_KEY }) }),
+    );
+    const resBody = await res.json();
+    expect(resBody.data.attributes.fotoKey).toBe(FOTO_KEY);
+    expect(resBody.data.attributes.fotoUrl).toBe(`https://signed.example/${FOTO_KEY}`);
+    expect(getFotoUrl).toHaveBeenCalledWith(FOTO_KEY);
+  });
+
+  it('stores fotoKey null and returns fotoUrl null when no foto is sent', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    vi.mocked(prisma.deportista.create).mockResolvedValue({ ...mockDeportistaFull, id: 'newcuid' } as never);
+    vi.mocked(prisma.deportista.findUnique).mockResolvedValue({ ...mockDeportistaFull, fotoKey: null } as never);
+
+    const res = await POST(
+      makeRequest('http://localhost/api/deportistas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/vnd.api+json' },
+        body: JSON.stringify(validBody),
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    expect(prisma.deportista.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ fotoKey: null }) }),
+    );
+    const resBody = await res.json();
+    expect(resBody.data.attributes.fotoKey).toBeNull();
+    expect(resBody.data.attributes.fotoUrl).toBeNull();
+  });
+
+  it.each([
+    'otros/123e4567-e89b-12d3-a456-426614174000.jpg',
+    'deportistas/../../secreto.jpg',
+    'deportistas/123e4567-e89b-12d3-a456-426614174000.pdf',
+  ])('returns 422 for an invalid fotoKey (%s)', async (fotoKey) => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+
+    const body = {
+      data: { ...validBody.data, attributes: { ...validBody.data.attributes, fotoKey } },
+    };
+    const res = await POST(
+      makeRequest('http://localhost/api/deportistas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/vnd.api+json' },
+        body: JSON.stringify(body),
+      }),
+    );
+
+    expect(res.status).toBe(422);
+    const resBody = await res.json();
+    expect(resBody.errors[0].source.pointer).toBe('/data/attributes/fotoKey');
+    expect(prisma.deportista.create).not.toHaveBeenCalled();
+  });
+
+  describe('fotoKey ownership and existence', () => {
+    function postWithFoto(fotoKey: string) {
+      const body = {
+        data: { ...validBody.data, attributes: { ...validBody.data.attributes, fotoKey } },
+      };
+      return POST(
+        makeRequest('http://localhost/api/deportistas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/vnd.api+json' },
+          body: JSON.stringify(body),
+        }),
+      );
+    }
+
+    beforeEach(() => {
+      vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    });
+
+    it('returns 422 when another deportista already has the fotoKey', async () => {
+      vi.mocked(prisma.deportista.findFirst).mockResolvedValue({ id: 'otro' } as never);
+
+      const res = await postWithFoto(FOTO_KEY);
+
+      expect(res.status).toBe(422);
+      const resBody = await res.json();
+      expect(resBody.errors[0]).toMatchObject({
+        status: '422',
+        source: { pointer: '/data/attributes/fotoKey' },
+        detail: 'La foto ya está asignada a otro deportista',
+      });
+      expect(prisma.deportista.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { fotoKey: FOTO_KEY } }),
+      );
+      expect(fotoExiste).not.toHaveBeenCalled();
+      expect(prisma.deportista.create).not.toHaveBeenCalled();
+    });
+
+    it('returns 422 when the fotoKey does not exist in S3', async () => {
+      vi.mocked(prisma.deportista.findFirst).mockResolvedValue(null);
+      vi.mocked(fotoExiste).mockResolvedValue(false);
+
+      const res = await postWithFoto(FOTO_KEY);
+
+      expect(res.status).toBe(422);
+      const resBody = await res.json();
+      expect(resBody.errors[0].source.pointer).toBe('/data/attributes/fotoKey');
+      expect(resBody.errors[0].detail).toMatch(/no se subió correctamente/);
+      expect(fotoExiste).toHaveBeenCalledWith(FOTO_KEY);
+      expect(prisma.deportista.create).not.toHaveBeenCalled();
+    });
+
+    it('maps a P2002 race on foto_key to 422', async () => {
+      vi.mocked(prisma.deportista.findFirst).mockResolvedValue(null);
+      vi.mocked(fotoExiste).mockResolvedValue(true);
+      vi.mocked(prisma.deportista.create).mockRejectedValue(
+        Object.assign(new Error('Unique constraint failed'), {
+          code: 'P2002',
+          meta: { modelName: 'Deportista', target: ['foto_key'] },
+        }),
+      );
+
+      const res = await postWithFoto(FOTO_KEY);
+
+      expect(res.status).toBe(422);
+      const resBody = await res.json();
+      expect(resBody.errors[0].source.pointer).toBe('/data/attributes/fotoKey');
+    });
+
+    it('does not map a P2002 on another column (dni) to the fotoKey error', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(prisma.deportista.create).mockRejectedValue(
+        Object.assign(new Error('Unique constraint failed'), {
+          code: 'P2002',
+          meta: { modelName: 'Deportista', target: ['dni'] },
+        }),
+      );
+
+      const res = await POST(
+        makeRequest('http://localhost/api/deportistas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/vnd.api+json' },
+          body: JSON.stringify(validBody),
+        }),
+      );
+
+      expect(res.status).toBe(500);
+      consoleSpy.mockRestore();
+    });
+
+    it('skips ownership and S3 checks when no fotoKey is sent', async () => {
+      vi.mocked(prisma.deportista.create).mockResolvedValue({ ...mockDeportistaFull, id: 'newcuid' } as never);
+      vi.mocked(prisma.deportista.findUnique).mockResolvedValue(mockDeportistaFull as never);
+
+      const res = await POST(
+        makeRequest('http://localhost/api/deportistas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/vnd.api+json' },
+          body: JSON.stringify(validBody),
+        }),
+      );
+
+      expect(res.status).toBe(201);
+      expect(prisma.deportista.findFirst).not.toHaveBeenCalled();
+      expect(fotoExiste).not.toHaveBeenCalled();
+    });
   });
 });

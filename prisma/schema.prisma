@@ -131,6 +131,7 @@ model Deportista {
   actividadComplementaria ActividadComplementaria? @map("actividad_complementaria")
   fechaIngreso            DateTime?                @map("fecha_ingreso")
   tieneRepresentante         Boolean                  @default(false) @map("tiene_representante")
+  fotoKey                 String?                  @unique @map("foto_key")
 
   // 1:N relations
   clubesAnteriores        ClubAnterior[]
