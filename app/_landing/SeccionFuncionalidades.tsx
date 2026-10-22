@@ -11,6 +11,11 @@ import Reveal from './Reveal';
  * Las funcionalidades del producto: encabezado y el acordeón con una demo de cada
  * módulo. `overflow-x-clip` corta el sangrado de la demo hacia la derecha sin crear un
  * contexto de scroll.
+ *
+ * Fondo gris claro neutro `#EFEEEB`: sin el tono amarillento del papel del hero y del
+ * CTA, y sin el azul del tinte de los módulos, así se distingue de los dos vecinos. Las
+ * demos (blancas, con borde y sombra navy) se leen como ventanas encima. Los grises de
+ * texto son `#4B5563`: el `#6B7280` no llega a AA sobre este gris.
  */
 export default function SeccionFuncionalidades() {
   return (
@@ -18,7 +23,7 @@ export default function SeccionFuncionalidades() {
       id="funcionalidades"
       aria-labelledby="funcionalidades-titulo"
       data-testid="seccion-funcionalidades"
-      className="scroll-mt-8 overflow-x-clip bg-white py-20 sm:py-28"
+      className="scroll-mt-8 overflow-x-clip bg-[#EFEEEB] py-20 sm:py-28"
     >
       <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6">
         <Reveal className="max-w-2xl">
@@ -29,7 +34,7 @@ export default function SeccionFuncionalidades() {
           >
             Del dato a la decisión
           </h2>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-[#6B7280] sm:text-lg">
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-[#4B5563] sm:text-lg">
             Lo que tu club ya carga todos los días, ordenado para que el cuerpo técnico y los
             profesionales actúen a tiempo.
           </p>

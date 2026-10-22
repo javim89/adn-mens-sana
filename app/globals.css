@@ -364,7 +364,7 @@ body {
 /* ---------------------------------------------------------------------------
    Landing pública (`app/_landing/`) — animaciones
    Entrada escalonada del hero, cards que entran desde su borde y flotan, gráficos
-   que crecen, reveal por scroll y degradé con drift.
+   que crecen, y reveal por scroll.
    Los tiempos por elemento van en custom properties (`--retraso`, `--duracion`,
    `--fase`, `--desde-x/y`) seteadas con clases arbitrarias de Tailwind.
    Con `prefers-reduced-motion: reduce` todo queda quieto y en su estado final.
@@ -427,18 +427,6 @@ body {
   }
 }
 
-@keyframes landing-deriva {
-  0% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(6%, 8%) scale(1.08);
-  }
-  100% {
-    transform: translate(-4%, 3%) scale(0.96);
-  }
-}
-
 .landing-entrada {
   animation: landing-entrada 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   animation-delay: var(--retraso, 0ms);
@@ -467,11 +455,6 @@ body {
 
 .landing-anillo {
   animation: landing-anillo 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) 1s both;
-}
-
-.landing-deriva {
-  animation: landing-deriva 26s ease-in-out infinite alternate;
-  animation-delay: var(--fase, 0s);
 }
 
 /* Reveal por scroll (`app/_landing/Reveal.tsx`). Solo `oculto` esconde: el HTML del
@@ -590,8 +573,7 @@ body {
   .landing-flotar,
   .landing-crecer-x > *,
   .landing-crecer-y [data-barra],
-  .landing-anillo,
-  .landing-deriva {
+  .landing-anillo {
     animation: none;
   }
 

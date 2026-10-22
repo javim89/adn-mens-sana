@@ -1,10 +1,10 @@
-import { Sparkles } from 'lucide-react';
 import { CtaContacto, CtaPrincipal } from './Ctas';
 import HeroCards from './HeroCards';
 
 /**
  * Titular centrado, pill de anuncio, bajada y CTAs, con las cards de producto
- * flotando alrededor. La entrada es escalonada (`landing-entrada` + `--retraso`).
+ * flotando alrededor. Va sobre el papel cálido del `<main>`: los grises de texto
+ * son `#4B5563` (el `#6B7280` no llega a AA sobre ese fondo). La entrada es escalonada (`landing-entrada` + `--retraso`).
  */
 export default function Hero({ conSesion }: { conSesion: boolean }) {
   return (
@@ -17,10 +17,10 @@ export default function Hero({ conSesion }: { conSesion: boolean }) {
         <a
           href="#funcionalidades"
           data-morph-pill
-          className="landing-entrada inline-flex max-w-full items-center gap-2 rounded-full border border-gray-200 bg-white/80 py-1 pl-1 pr-3 text-sm text-[#1C1C1C] shadow-sm backdrop-blur transition-colors hover:border-[#121A61]/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3346CC]"
+          className="landing-entrada inline-flex max-w-full items-center gap-2 rounded-full border border-[#121A61]/15 bg-white py-1 pl-1 pr-3 text-sm text-[#1C1C1C] transition-colors hover:border-[#121A61]/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3346CC]"
         >
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#121A61] px-2.5 py-0.5 text-xs font-semibold text-white">
-            <Sparkles className="size-3 text-[#C9A84C]" aria-hidden />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#121A61] px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-white">
+            <span aria-hidden className="size-1.5 rounded-full bg-[#C9A84C]" />
             Nuevo
           </span>
           <span className="truncate">Tableros de Insights</span>
@@ -34,7 +34,7 @@ export default function Hero({ conSesion }: { conSesion: boolean }) {
           Todo tu club, en una sola pantalla
         </h1>
 
-        <p className="landing-entrada mt-6 max-w-xl text-base leading-relaxed text-[#6B7280] [--retraso:240ms] sm:text-lg">
+        <p className="landing-entrada mt-6 max-w-xl text-base leading-relaxed text-[#4B5563] [--retraso:240ms] sm:text-lg">
           La ficha de cada deportista, sus seguimientos médicos, psicológicos y sociales, turnos,
           presentismo, viandas y triage. Para que tu cuerpo técnico y tus profesionales decidan
           con datos.

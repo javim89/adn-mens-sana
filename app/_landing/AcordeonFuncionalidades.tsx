@@ -175,7 +175,7 @@ export default function AcordeonFuncionalidades({
           <div
             key={f.id}
             data-funcionalidad-texto={f.id}
-            className={`mt-16 min-w-0 first:mt-0 lg:col-start-1 lg:mt-0 lg:self-start lg:border-b lg:border-gray-200 lg:order-none ${ORDEN_TEXTO[i]} ${FILA_LG[i]} ${i === 0 ? 'lg:border-t' : ''}`}
+            className={`mt-16 min-w-0 first:mt-0 lg:col-start-1 lg:mt-0 lg:self-start lg:border-b lg:border-[#121A61]/15 lg:order-none ${ORDEN_TEXTO[i]} ${FILA_LG[i]} ${i === 0 ? 'lg:border-t' : ''}`}
           >
             <h3 className="m-0">
               <button
@@ -188,7 +188,7 @@ export default function AcordeonFuncionalidades({
                 aria-controls={`funcionalidad-${f.id}-panel`}
                 onClick={() => abrir(i)}
                 onKeyDown={(e) => alTeclear(e, i)}
-                className="hidden w-full cursor-pointer items-center rounded-sm py-5 text-left text-[17px] font-medium leading-snug text-[#6B7280] transition-colors duration-200 hover:text-[#121A61] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#3346CC] aria-expanded:text-[#121A61] lg:flex"
+                className="hidden w-full cursor-pointer items-center rounded-sm py-5 text-left text-[17px] font-medium leading-snug text-[#4B5563] transition-colors duration-200 hover:text-[#121A61] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#3346CC] aria-expanded:text-[#121A61] lg:flex"
               >
                 {f.titulo}
               </button>
@@ -208,14 +208,14 @@ export default function AcordeonFuncionalidades({
               aria-labelledby={`funcionalidad-${f.id}-boton`}
               className={`pb-0 lg:-mt-2 lg:pb-5 ${esActiva ? 'landing-panel-entrada' : 'lg:hidden'}`}
             >
-              <p className="mt-3 max-w-prose text-base leading-relaxed text-[#6B7280] lg:mt-0 lg:text-[15px]">
+              <p className="mt-3 max-w-prose text-base leading-relaxed text-[#4B5563] lg:mt-0 lg:text-[15px]">
                 {f.descripcion}
               </p>
               {esActiva && conBarra && (
                 <div
                   key={`${activa}-${activacion}`}
                   data-testid={`progreso-${f.id}`}
-                  className="mt-5 h-0.5 w-full overflow-hidden rounded-full bg-gray-200"
+                  className="mt-5 h-0.5 w-full overflow-hidden rounded-full bg-[#121A61]/15"
                 >
                   <div className="landing-progreso-relleno h-full w-full origin-left bg-[#121A61]" />
                 </div>
@@ -232,7 +232,7 @@ export default function AcordeonFuncionalidades({
           aria-hidden="true"
           inert
           data-visible={modo === 'lista' || i === activa ? 'true' : 'false'}
-          className={`landing-demo relative mt-6 min-w-0 overflow-hidden rounded-2xl bg-[#F3F4F6] p-3 sm:p-4 lg:order-none lg:col-start-2 lg:row-span-6 lg:row-start-1 lg:mt-0 lg:aspect-[1280/832] lg:self-center lg:bg-white lg:p-0 lg:shadow-xl lg:shadow-[#121A61]/10 lg:ring-1 lg:ring-[#121A61]/10 ${ORDEN_DEMO[i]}`}
+          className={`landing-demo relative mt-6 min-w-0 overflow-hidden rounded-2xl bg-white/70 p-3 ring-1 ring-[#121A61]/10 sm:p-4 lg:order-none lg:col-start-2 lg:row-span-6 lg:row-start-1 lg:mt-0 lg:aspect-[1280/832] lg:self-center lg:bg-white lg:p-0 lg:shadow-xl lg:shadow-[#121A61]/15 lg:ring-[#121A61]/15 ${ORDEN_DEMO[i]}`}
         >
           <EscenarioDemo activo={modo === 'acordeon'}>{demos[f.id]}</EscenarioDemo>
         </div>

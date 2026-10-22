@@ -2,10 +2,13 @@ import Link from 'next/link';
 import { CONTACTO_HREF } from './contacto';
 import Reveal from './Reveal';
 
-/** Cierre para clubes interesados: el CTA es contacto; el login queda como link secundario. */
+/**
+ * Cierre para clubes interesados: el CTA es contacto; el login queda como link secundario.
+ * Vuelve al papel cálido del hero, entre el navy del producto y el del footer.
+ */
 export default function CtaFinal({ conSesion }: { conSesion: boolean }) {
   return (
-    <section aria-labelledby="cta-final-titulo" className="bg-[#F3F4F6] px-4 py-20 sm:px-6 sm:py-28">
+    <section aria-labelledby="cta-final-titulo" data-testid="cta-final" className="bg-[#F5F2EA] px-4 py-20 sm:px-6 sm:py-28">
       <Reveal className="mx-auto flex w-full max-w-2xl flex-col items-center text-center">
         <h2
           id="cta-final-titulo"
@@ -13,7 +16,7 @@ export default function CtaFinal({ conSesion }: { conSesion: boolean }) {
         >
           ¿Querés sumar ADN Mens Sana a tu club?
         </h2>
-        <p className="mt-4 text-base text-[#6B7280]">
+        <p className="mt-4 text-base text-[#4B5563]">
           Escribinos y coordinamos una presentación para tu cuerpo técnico y tus profesionales.
         </p>
         <a
@@ -22,7 +25,7 @@ export default function CtaFinal({ conSesion }: { conSesion: boolean }) {
         >
           Contactanos
         </a>
-        <p className="mt-5 text-sm text-[#6B7280]">
+        <p className="mt-5 text-sm text-[#4B5563]">
           {conSesion ? '¿Venías a trabajar? ' : '¿Tu club ya lo usa? '}
           <Link
             href={conSesion ? '/dashboard' : '/sign-in'}
