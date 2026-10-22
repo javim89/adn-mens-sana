@@ -16,7 +16,7 @@ import MiniCardsNivel from './MiniCardsNivel';
  * sobre `red-600` (4.8:1); sobre naranja-500 (2.8:1), verde-500 (2.3:1), amarillo y gris
  * no, así que esos llevan el tono 950 de su familia.
  */
-const NIVEL_ESTILO: Record<NivelTriage, { barra: string; texto: string; tinte: string }> = {
+export const NIVEL_ESTILO: Record<NivelTriage, { barra: string; texto: string; tinte: string }> = {
   ROJO: { barra: 'bg-red-600', texto: 'text-white', tinte: 'bg-red-50' },
   NARANJA: { barra: 'bg-orange-500', texto: 'text-orange-950', tinte: 'bg-orange-50' },
   AMARILLO: { barra: 'bg-yellow-400', texto: 'text-yellow-950', tinte: 'bg-yellow-50' },
@@ -24,7 +24,7 @@ const NIVEL_ESTILO: Record<NivelTriage, { barra: string; texto: string; tinte: s
 };
 
 /** Orden de lectura: del más grave al menos grave, y al final lo que falta calcular. */
-const NIVELES: NivelTriage[] = ['ROJO', 'NARANJA', 'AMARILLO', 'VERDE'];
+export const NIVELES: NivelTriage[] = ['ROJO', 'NARANJA', 'AMARILLO', 'VERDE'];
 
 /**
  * Distribución de triage sobre el plantel activo.
