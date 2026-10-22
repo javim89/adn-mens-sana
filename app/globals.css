@@ -360,3 +360,364 @@ body {
 .insights-grid.is-static .widget-drag-handle {
   cursor: default;
 }
+
+/* ---------------------------------------------------------------------------
+   Landing pública (`app/_landing/`) — animaciones
+   Entrada escalonada del hero, cards que entran desde su borde y flotan, gráficos
+   que crecen, y reveal por scroll.
+   Los tiempos por elemento van en custom properties (`--retraso`, `--duracion`,
+   `--fase`, `--desde-x/y`) seteadas con clases arbitrarias de Tailwind.
+   Con `prefers-reduced-motion: reduce` todo queda quieto y en su estado final.
+   --------------------------------------------------------------------------- */
+
+@keyframes landing-entrada {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Anima `translate` (no `transform`) para no pelear con `landing-flotar` de la capa interna. */
+@keyframes landing-desde-borde {
+  from {
+    opacity: 0;
+    translate: var(--desde-x, 0px) var(--desde-y, 40px);
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes landing-flotar {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@keyframes landing-crecer-x {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes landing-crecer-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes landing-anillo {
+  from {
+    stroke-dashoffset: var(--anillo-total);
+  }
+}
+
+.landing-entrada {
+  animation: landing-entrada 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--retraso, 0ms);
+}
+
+.landing-desde-borde {
+  animation: landing-desde-borde 1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--retraso, 0ms);
+}
+
+.landing-flotar {
+  animation: landing-flotar var(--duracion, 7s) ease-in-out infinite;
+  animation-delay: var(--fase, 0s);
+}
+
+/* La barra apilada se "dibuja" de izquierda a derecha. Con clip-path y no con scaleX
+   para que la etiqueta del segmento mayor no se deforme mientras crece. */
+.landing-crecer-x > * {
+  animation: landing-crecer-x 1.3s cubic-bezier(0.2, 0.7, 0.2, 1) 0.9s both;
+}
+
+.landing-crecer-y [data-barra] {
+  transform-origin: bottom;
+  animation: landing-crecer-y 1s cubic-bezier(0.2, 0.7, 0.2, 1) 1s both;
+}
+
+.landing-anillo {
+  animation: landing-anillo 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) 1s both;
+}
+
+/* Reveal por scroll (`app/_landing/Reveal.tsx`). Solo `oculto` esconde: el HTML del
+   servidor llega en `inicial`, visible. */
+[data-reveal] {
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+    translate 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+[data-reveal='oculto'] {
+  opacity: 0;
+  translate: 0 28px;
+}
+
+/* Sección de funcionalidades (`app/_landing/AcordeonFuncionalidades.tsx`). Todo en lg+
+   y con `data-modo='acordeon'`: en mobile (lista) no hay movimiento propio. */
+@keyframes landing-progreso {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes landing-panel-entrada {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes landing-popover-entrada {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+    scale: 0.98;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* 7s = DURACION_FUNCIONALIDAD_MS (funcionalidades.ts): el avance lo dispara el
+     animationend. Si cambia uno, hay que cambiar el otro. */
+  [data-modo='acordeon'] .landing-progreso-relleno {
+    transform-origin: left;
+    animation: landing-progreso 7s linear both;
+  }
+
+  [data-modo='acordeon'][data-pausado='true'] .landing-progreso-relleno {
+    animation-play-state: paused;
+  }
+
+  [data-modo='acordeon'] .landing-panel-entrada {
+    animation: landing-panel-entrada 250ms ease-out both;
+  }
+
+  /* Crossfade: la entrante aparece encima de la saliente, que sigue opaca debajo y se
+     esconde cuando termina la transición. */
+  [data-modo='acordeon'] .landing-demo {
+    transition: opacity 300ms ease-out;
+  }
+
+  [data-modo='acordeon'] .landing-demo[data-visible='true'] {
+    z-index: 1;
+  }
+
+  [data-modo='acordeon'] .landing-demo[data-visible='false'] {
+    opacity: 0;
+    visibility: hidden;
+    z-index: 0;
+    transition:
+      opacity 0s linear 300ms,
+      visibility 0s linear 300ms;
+  }
+
+  [data-modo='acordeon'] .landing-demo[data-visible='true'] .landing-popover {
+    animation: landing-popover-entrada 400ms cubic-bezier(0.2, 0.7, 0.2, 1) 150ms both;
+  }
+
+  /* El lienzo de cada demo (`EscenarioDemo`): 1280×832 de diseño, escalado al ancho de
+     la ventana. El JS lo calcula exacto; sin JS va un valor que entra en el ancho más
+     chico de cada breakpoint (ventana de ~656px a 1024 y ~832px desde 1280). */
+  .landing-lienzo {
+    --escala: 0.5;
+    transform: scale(var(--escala));
+    transform-origin: top left;
+  }
+
+  /* Antes de hidratar el HTML llega en `lista` con las 4 demos visibles: en lg solo se
+     ve Insights, la activa inicial, para que la primera pintura ya sea la del acordeón. */
+  [data-modo='lista'] .landing-demo:not([data-demo='insights']) {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+
+@media (min-width: 1280px) {
+  .landing-lienzo {
+    --escala: 0.64;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-entrada,
+  .landing-desde-borde,
+  .landing-flotar,
+  .landing-crecer-x > *,
+  .landing-crecer-y [data-barra],
+  .landing-anillo {
+    animation: none;
+  }
+
+  [data-reveal] {
+    transition: none;
+  }
+
+  [data-reveal='oculto'] {
+    opacity: 1;
+    translate: none;
+  }
+
+  .landing-progreso-relleno,
+  .landing-panel-entrada,
+  .landing-popover {
+    animation: none !important;
+  }
+
+  .landing-demo {
+    transition: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Landing — morph del hero al dashboard (`app/_landing/MorphHero.tsx`)
+   Solo con `data-morph="on"`, que pone el JS en xl con alto suficiente y sin
+   reduced-motion. Con `off` (el HTML del servidor, mobile, reduced-motion) no aplica
+   nada de esto: hero normal y la ventana estática abajo.
+   --------------------------------------------------------------------------- */
+
+/* Wrapper alto + escenario fijo: el scroll dentro del wrapper es el progreso.
+   100vh de escenario + 2.3 viewports de pin (`PIN_VH` en `morph.ts`): ~1 para armar
+   el dashboard, ~1 para scrollear adentro de la ventana hasta la segunda fila y una
+   pausa antes de que la página siga. */
+.morph-envoltura[data-morph='on'] {
+  height: 330vh;
+}
+
+.morph-envoltura[data-morph='on'] > .morph-escenario {
+  position: sticky;
+  top: 0;
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* El hero llena el escenario, pero no baja de 820px: en pantallas bajas las cards de
+   abajo quedan cortadas por el borde (como en la referencia) en vez de pisar los CTAs. */
+.morph-envoltura[data-morph='on'] [data-morph-hero] {
+  flex: 1 0 auto;
+  min-height: 820px;
+  padding-bottom: 0;
+}
+
+/* La ventana sale del flujo y la posiciona/escala el JS (transform desde 0,0). */
+.morph-envoltura[data-morph='on'] [data-morph-ventana-marco] {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+.morph-envoltura[data-morph='on'] [data-morph-ventana] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 670px;
+  zoom: 1;
+  opacity: 0;
+  transform-origin: 0 0;
+  will-change: transform, opacity, filter;
+}
+
+/* En el slot se ve la card que llega desde el hero, no la copia del slot. */
+.morph-envoltura[data-morph='on'] [data-morph-slot] > * {
+  visibility: hidden;
+}
+
+/* Etapa 2: las cards ya aterrizaron y el contenido de la ventana va a scrollear. Se
+   cambian por sus copias de los slots, que scrollean y se recortan con la ventana. */
+.morph-envoltura[data-morph-etapa2] [data-morph-slot] > * {
+  visibility: visible;
+}
+
+.morph-envoltura[data-morph-etapa2] [data-testid='hero-cards'] [data-morph-card] {
+  visibility: hidden;
+}
+
+.morph-envoltura[data-morph='on'] [data-morph-contenido] {
+  will-change: transform;
+}
+
+.morph-envoltura[data-morph='on'] [data-morph-degrade] {
+  display: block;
+}
+
+.morph-envoltura[data-morph='on'] [data-morph-degrade-arriba] {
+  display: block;
+  opacity: 0;
+}
+
+/* La segunda fila se anima con el scroll (MorphHero), no con el tiempo. */
+.morph-envoltura[data-morph='on'] [data-morph-extra] .landing-crecer-y [data-barra],
+.morph-envoltura[data-morph='on'] [data-morph-extra] .landing-crecer-x > * {
+  animation: none;
+}
+
+/* El cursor que solo existe en la etapa 2. */
+.morph-envoltura[data-morph='on'] .morph-cursor-etapa2 {
+  display: flex;
+  opacity: 0;
+}
+
+.morph-envoltura[data-morph='on'] [data-morph-extra] {
+  opacity: 0;
+}
+
+/* Las cards viajan por encima de la ventana y del titular que se va. */
+.morph-envoltura[data-morph='on'] [data-testid='hero-cards'] {
+  z-index: 20;
+}
+
+.morph-envoltura[data-morph='on'] [data-morph-card],
+.morph-envoltura[data-morph='on'] [data-morph-cursor] {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.morph-envoltura[data-morph='on'] [data-morph-texto] {
+  transform-origin: 50% 0;
+  will-change: transform, opacity, filter;
+}
+
+/* Con el morph en marcha el flotado idle se frena: si no, pelea con el transform del
+   scroll y la card no aterriza justo en su slot. */
+.morph-envoltura[data-morph-activo] .landing-flotar {
+  animation: none;
+}
+
+/* El fill `both` de la entrada pisaría la opacidad inline con la que el scroll apaga la pill. */
+.morph-envoltura[data-morph-activo] [data-morph-pill] {
+  animation: none;
+}

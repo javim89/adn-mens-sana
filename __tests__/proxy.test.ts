@@ -17,6 +17,13 @@ describe('isPublicRoute', () => {
     expect(isPublicRoute(req('/sign-up'))).toBe(true);
   });
 
+  it('exime la landing de `/`, solo la ruta exacta', () => {
+    expect(isPublicRoute(req('/'))).toBe(true);
+    // El "/" exacto no se extiende a las subrutas: siguen detrás del guard.
+    expect(isPublicRoute(req('/dashboard'))).toBe(false);
+    expect(isPublicRoute(req('/insights'))).toBe(false);
+  });
+
   it('mantiene el resto de las rutas protegidas', () => {
     expect(isPublicRoute(req('/dashboard'))).toBe(false);
     expect(isPublicRoute(req('/deportistas'))).toBe(false);

@@ -22,7 +22,7 @@ export interface NavItem {
   icon: IconKey;
 }
 
-const ALL_NAV_ITEMS: NavItem[] = [
+export const ALL_NAV_ITEMS: NavItem[] = [
   { href: '/dashboard',    label: 'Dashboard',     icon: 'LayoutDashboard' },
   { href: '/deportistas',  label: 'Deportistas',   icon: 'Users' },
   { href: '/turnos',       label: 'Turnos',        icon: 'CalendarDays' },
@@ -66,8 +66,9 @@ const NAV_BY_ROLE_BASE: Record<AppRole, NavItem[]> = {
   psicologo:     ALL_NAV_ITEMS.filter(i => ![...ADMIN_ONLY, '/presentismo', '/convocatorias'].includes(i.href)),
   cardiologo:    ALL_NAV_ITEMS.filter(i => ![...ADMIN_ONLY, '/presentismo', '/convocatorias'].includes(i.href)),
   social:        ALL_NAV_ITEMS.filter(i => ['/dashboard', '/deportistas', '/seguimientos', '/calendario'].includes(i.href)),
-  // Por inclusión. Incluye /dashboard porque `app/(app)/page.tsx` redirige ahí:
-  // sin ese item el rol quedaría sin ninguna pantalla alcanzable al entrar.
+  // Por inclusión. Incluye /dashboard porque el login redirige ahí
+  // (NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL) y la landing pública de `/`
+  // manda a "Ir al panel": sin ese item el rol quedaría sin pantalla al entrar.
   responsable_viandas: ALL_NAV_ITEMS.filter(i => ['/dashboard', '/viandas'].includes(i.href)),
 };
 

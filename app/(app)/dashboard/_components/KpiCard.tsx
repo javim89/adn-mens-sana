@@ -103,6 +103,7 @@ export default function KpiCard({
         )}
       </div>
       <p
+        data-kpi-valor
         className={`mt-3 text-6xl md:text-7xl font-semibold leading-none tabular-nums ${c.valor}`}
         style={OSWALD}
       >
