@@ -15,7 +15,7 @@ export default function Hero({ conSesion }: { conSesion: boolean }) {
     >
       <div data-morph-texto className="relative z-10 mx-auto flex max-w-3xl flex-col items-center text-center xl:max-w-[640px]">
         <a
-          href="#insights"
+          href="#funcionalidades"
           data-morph-pill
           className="landing-entrada inline-flex max-w-full items-center gap-2 rounded-full border border-gray-200 bg-white/80 py-1 pl-1 pr-3 text-sm text-[#1C1C1C] shadow-sm backdrop-blur transition-colors hover:border-[#121A61]/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3346CC]"
         >

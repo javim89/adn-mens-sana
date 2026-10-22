@@ -487,6 +487,103 @@ body {
   translate: 0 28px;
 }
 
+/* Sección de funcionalidades (`app/_landing/AcordeonFuncionalidades.tsx`). Todo en lg+
+   y con `data-modo='acordeon'`: en mobile (lista) no hay movimiento propio. */
+@keyframes landing-progreso {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes landing-panel-entrada {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes landing-popover-entrada {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+    scale: 0.98;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* 7s = DURACION_FUNCIONALIDAD_MS (funcionalidades.ts): el avance lo dispara el
+     animationend. Si cambia uno, hay que cambiar el otro. */
+  [data-modo='acordeon'] .landing-progreso-relleno {
+    transform-origin: left;
+    animation: landing-progreso 7s linear both;
+  }
+
+  [data-modo='acordeon'][data-pausado='true'] .landing-progreso-relleno {
+    animation-play-state: paused;
+  }
+
+  [data-modo='acordeon'] .landing-panel-entrada {
+    animation: landing-panel-entrada 250ms ease-out both;
+  }
+
+  /* Crossfade: la entrante aparece encima de la saliente, que sigue opaca debajo y se
+     esconde cuando termina la transición. */
+  [data-modo='acordeon'] .landing-demo {
+    transition: opacity 300ms ease-out;
+  }
+
+  [data-modo='acordeon'] .landing-demo[data-visible='true'] {
+    z-index: 1;
+  }
+
+  [data-modo='acordeon'] .landing-demo[data-visible='false'] {
+    opacity: 0;
+    visibility: hidden;
+    z-index: 0;
+    transition:
+      opacity 0s linear 300ms,
+      visibility 0s linear 300ms;
+  }
+
+  [data-modo='acordeon'] .landing-demo[data-visible='true'] .landing-popover {
+    animation: landing-popover-entrada 400ms cubic-bezier(0.2, 0.7, 0.2, 1) 150ms both;
+  }
+
+  /* El lienzo de cada demo (`EscenarioDemo`): 1280×832 de diseño, escalado al ancho de
+     la ventana. El JS lo calcula exacto; sin JS va un valor que entra en el ancho más
+     chico de cada breakpoint (ventana de ~656px a 1024 y ~832px desde 1280). */
+  .landing-lienzo {
+    --escala: 0.5;
+    transform: scale(var(--escala));
+    transform-origin: top left;
+  }
+
+  /* Antes de hidratar el HTML llega en `lista` con las 4 demos visibles: en lg solo se
+     ve Insights, la activa inicial, para que la primera pintura ya sea la del acordeón. */
+  [data-modo='lista'] .landing-demo:not([data-demo='insights']) {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+
+@media (min-width: 1280px) {
+  .landing-lienzo {
+    --escala: 0.64;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-entrada,
   .landing-desde-borde,
@@ -505,6 +602,16 @@ body {
   [data-reveal='oculto'] {
     opacity: 1;
     translate: none;
+  }
+
+  .landing-progreso-relleno,
+  .landing-panel-entrada,
+  .landing-popover {
+    animation: none !important;
+  }
+
+  .landing-demo {
+    transition: none !important;
   }
 }
 

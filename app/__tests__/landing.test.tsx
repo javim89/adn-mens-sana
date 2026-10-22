@@ -74,12 +74,39 @@ describe('Landing pública (/)', () => {
     cards.querySelectorAll('a').forEach((a) => expect(a.getAttribute('href')).toBe('#'));
   });
 
-  it('las visuales de las secciones también son decorativas', async () => {
+  it('muestra la sección de funcionalidades con las 4 features en orden', async () => {
     await renderHome(null);
-    const triage = screen.getByRole('region', { name: /detectá a tiempo/i });
-    const visual = triage.querySelector('.landing-visual');
-    expect(visual).toHaveAttribute('aria-hidden', 'true');
-    expect(visual).toHaveAttribute('inert');
+    const seccion = screen.getByRole('region', { name: /del dato a la decisión/i });
+    expect(seccion).toHaveAttribute('id', 'funcionalidades');
+    // El h3 tiene botón (lg+) y título estático (< lg); jsdom no aplica CSS y ve los dos.
+    const titulos = Array.from(seccion.querySelectorAll('h3 [data-titulo-movil]')).map((t) => t.textContent);
+    expect(titulos).toEqual(['Insights', 'Seguimientos', 'Convocatorias', 'Deportistas']);
+    expect(within(seccion).getAllByRole('heading', { level: 3 })).toHaveLength(4);
+  });
+
+  it('las tres secciones viejas ya no están', async () => {
+    await renderHome(null);
+    [
+      'Detectá a tiempo quién necesita apoyo',
+      'Todas las miradas sobre el mismo deportista',
+      'Tableros sobre los datos de tu club',
+    ].forEach((titulo) => expect(screen.queryByRole('heading', { name: titulo })).not.toBeInTheDocument());
+  });
+
+  it('las demos de funcionalidades son decorativas y no linkean a rutas protegidas', async () => {
+    await renderHome(null);
+    const demos = screen.getByTestId('seccion-funcionalidades').querySelectorAll('[data-demo]');
+    expect(demos).toHaveLength(4);
+    demos.forEach((demo) => {
+      expect(demo).toHaveAttribute('aria-hidden', 'true');
+      expect(demo).toHaveAttribute('inert');
+      demo.querySelectorAll('a').forEach((a) => expect(a.getAttribute('href')).toBe('#'));
+    });
+  });
+
+  it('el pill del hero lleva a la sección de funcionalidades', async () => {
+    await renderHome(null);
+    expect(screen.getByRole('link', { name: /tableros de insights/i })).toHaveAttribute('href', '#funcionalidades');
   });
 
   it('muestra los clubes que confían, con el escudo de Gimnasia como único club', async () => {
