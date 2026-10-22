@@ -1,4 +1,3 @@
-import CardAcento from './CardAcento';
 import CtaFinal from './CtaFinal';
 import Hero from './Hero';
 import LandingFooter from './LandingFooter';
@@ -37,7 +36,6 @@ export default function Landing({ conSesion }: { conSesion: boolean }) {
 
       <SeccionFuncionalidades />
 
-      <CardAcento />
       <CtaFinal conSesion={conSesion} />
       <LandingFooter />
     </main>
