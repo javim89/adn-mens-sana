@@ -156,7 +156,7 @@ export default function InvitarUsuarioModal({ open, onClose, onSuccess }: Invita
                 id="email"
                 type="email"
                 {...register('email')}
-                placeholder="juan@gimnasia.org.ar"
+                placeholder="juan@tuclub.com"
                 className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 text-[#1C1C1C]"
               />
               {errors.email && (

@@ -97,7 +97,7 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
-   Calendario (FullCalendar v6) — branding club Gimnasia y Esgrima La Plata
+   Calendario (FullCalendar v6) — branding BioTeam
    Paleta: azul marino #121A61 (primary) + dorado #C9A84C (acento moderado).
    Colores de día = semánticos (verde/amarillo/gris/rojo), tonos suaves.
    Todos los overrides van scopeados bajo `.fc` para no filtrar estilos globales.
@@ -685,12 +685,6 @@ body {
   animation: none;
 }
 
-/* El cursor que solo existe en la etapa 2. */
-.morph-envoltura[data-morph='on'] .morph-cursor-etapa2 {
-  display: flex;
-  opacity: 0;
-}
-
 .morph-envoltura[data-morph='on'] [data-morph-extra] {
   opacity: 0;
 }
@@ -700,8 +694,7 @@ body {
   z-index: 20;
 }
 
-.morph-envoltura[data-morph='on'] [data-morph-card],
-.morph-envoltura[data-morph='on'] [data-morph-cursor] {
+.morph-envoltura[data-morph='on'] [data-morph-card] {
   transform-origin: 0 0;
   will-change: transform;
 }

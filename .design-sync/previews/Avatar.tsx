@@ -1,4 +1,4 @@
-import { Avatar } from 'adn-mens-sana-ui';
+import { Avatar } from 'bioteam-ui';
 
 // Inline SVG stands in for a profile photo (previews render offline).
 const FOTO =

@@ -9,12 +9,10 @@ import {
   enProgreso,
   lerp,
   progresoScroll,
-  puntoEnVentana,
   salida,
   suave,
   tramo,
   transformCard,
-  transformEn,
   type Punto,
 } from './morph';
 
@@ -36,7 +34,7 @@ export const MEDIA_MORPH =
  * - **Pausa (0.91 → 1):** el dashboard armado, quieto.
  * - **Etapa 2 (1 → 2):** el contenido scrollea ADENTRO de la ventana, como en el
  *   `<main>` del `AppShell` real (el encabezado "Dashboard" se va con él), hasta mostrar la fila de Seguimientos, Viandas y Plantel, que se anima al
- *   llegar. El cursor de Viandas aparece sobre su card.
+ *   llegar.
  * - **Pausa (2 → 2.3)** y la página sigue.
  */
 const TRAMOS = {
@@ -46,7 +44,6 @@ const TRAMOS = {
   cards: enProgreso([0, 0.91]),
   extras: enProgreso([0.65, 0.91]),
   scrollInterno: enProgreso([1, 2]),
-  cursor: enProgreso([1.3, 1.9]),
   contadores: enProgreso([1.3, 1.95]),
   barras: enProgreso([1.35, 1.95]),
   degrade: enProgreso([1.8, 2]),
@@ -71,8 +68,6 @@ interface Medidas {
   /** Cuánto scrollea el contenido de la ventana en la etapa 2 (px de diseño). */
   scrollInterno: number;
   cards: { el: HTMLElement; origen: Punto; delta: Punto }[];
-  /** El cursor de la etapa 2: `base` es su posición de layout y `hasta`, dónde aparece. */
-  cursores: { el: HTMLElement; base: Punto; hasta: Punto }[];
   /** Los números de la fila 2 que cuentan hacia arriba. */
   contadores: { el: HTMLElement; final: number }[];
 }
@@ -93,7 +88,7 @@ function offsetRelativo(el: HTMLElement, ancestro: HTMLElement): Punto {
 function limpiar(raiz: HTMLElement) {
   raiz
     .querySelectorAll<HTMLElement>(
-      '[data-morph-card], [data-morph-cursor], [data-morph-texto], [data-morph-pill], [data-morph-ventana], [data-morph-extra], [data-morph-contenido], [data-morph-degrade], [data-morph-degrade-arriba], [data-barra], .landing-crecer-x > *',
+      '[data-morph-card], [data-morph-texto], [data-morph-pill], [data-morph-ventana], [data-morph-extra], [data-morph-contenido], [data-morph-degrade], [data-morph-degrade-arriba], [data-barra], .landing-crecer-x > *',
     )
     .forEach((el) => {
       el.style.transform = '';
@@ -174,12 +169,6 @@ export default function MorphHero({ children }: { children: React.ReactNode }) {
       for (const c of medidas.cards) {
         c.el.style.transform = transformCard(c.delta, v.escala, tCards);
       }
-      // El cursor de la etapa 2 aparece subiendo sobre su card.
-      const tCursor = tramo(p, ...TRAMOS.cursor, salida);
-      for (const c of medidas.cursores) {
-        c.el.style.opacity = String(tCursor);
-        c.el.style.transform = transformEn(c.base, { x: c.hasta.x, y: c.hasta.y + 40 * (1 - tCursor) }, v.escala);
-      }
 
       const tExtras = tramo(p, ...TRAMOS.extras, salida);
       raiz.querySelectorAll<HTMLElement>('[data-morph-extra]').forEach((el) => {
@@ -248,19 +237,6 @@ export default function MorphHero({ children }: { children: React.ReactNode }) {
       const scrollInterno =
         columnaEl && contenidoEl ? Math.max(0, contenidoEl.offsetHeight - columnaEl.clientHeight) : 0;
 
-      const cursores: Medidas['cursores'] = [];
-      raiz.querySelectorAll<HTMLElement>('[data-morph-cursor]').forEach((el) => {
-        const [ancla, x = '0', y = '0'] = (el.dataset.morphCursor ?? '').split(',');
-        const anclaEl = ancla ? ventanaEl.querySelector<HTMLElement>(`[data-morph-ancla="${ancla}"]`) : null;
-        if (!anclaEl) return;
-        const pos = enVentana(anclaEl);
-        cursores.push({
-          el,
-          base: offsetRelativo(el, escenario),
-          hasta: puntoEnVentana({ x: pos.x + Number(x), y: pos.y + Number(y) }, ventana, scrollInterno),
-        });
-      });
-
       const contadores: Medidas['contadores'] = [];
       ventanaEl.querySelectorAll<HTMLElement>('[data-morph-extra] [data-kpi-valor]').forEach((el) => {
         el.dataset.final ??= el.textContent ?? '';
@@ -276,7 +252,6 @@ export default function MorphHero({ children }: { children: React.ReactNode }) {
         ventana,
         scrollInterno,
         cards,
-        cursores,
         contadores,
       };
       // Al medir (carga, resize) se pinta el estado exacto, sin perseguir.

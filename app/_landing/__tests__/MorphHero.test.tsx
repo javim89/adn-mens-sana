@@ -75,7 +75,7 @@ describe('VentanaDashboard', () => {
     ventana.querySelectorAll('a').forEach((a) => expect(a.getAttribute('href')).toBe('#'));
   });
 
-  it('trae la segunda fila entera, con anclas para el cursor de la etapa 2', () => {
+  it('trae la segunda fila entera: Seguimientos, Viandas y Plantel', () => {
     render(<VentanaDashboard />);
     const ventana = screen.getByTestId('ventana-dashboard');
     const anclas = [...ventana.querySelectorAll('[data-morph-ancla]')].map((a) => a.getAttribute('data-morph-ancla'));
@@ -114,7 +114,7 @@ describe('Hero cards ↔ slots', () => {
     expect(cards).toHaveLength(4);
   });
 
-  it('sin buscador y con un solo cursor, el de Viandas, que apunta a su card de la etapa 2', async () => {
+  it('sin buscador ni cursor (el de Viandas se sacó)', async () => {
     const { default: HeroCards } = await import('../HeroCards');
     render(
       <>
@@ -123,9 +123,7 @@ describe('Hero cards ↔ slots', () => {
       </>,
     );
     expect(document.querySelector('input')).toBeNull();
-    const cursores = [...screen.getByTestId('hero-cards').querySelectorAll<HTMLElement>('[data-morph-cursor]')];
-    expect(cursores.map((c) => c.textContent)).toEqual(['VViandas']);
-    const [ancla] = cursores[0].dataset.morphCursor!.split(',');
-    expect(screen.getByTestId('ventana-dashboard').querySelector(`[data-morph-ancla="${ancla}"]`)).not.toBeNull();
+    expect(document.querySelector('[data-morph-cursor]')).toBeNull();
+    expect(screen.getByTestId('hero-cards')).not.toHaveTextContent('Viandas');
   });
 });

@@ -1,8 +1,8 @@
 {
   "projectId": "ed7d7637-549e-474b-9ea7-85cd81c0da9b",
   "shape": "package",
-  "pkg": "adn-mens-sana-ui",
-  "globalName": "AdnMensSana",
+  "pkg": "bioteam-ui",
+  "globalName": "BioTeam",
   "buildCmd": "node .design-sync/build.mjs",
   "entry": ".ds-sync/pkg/index.ts",
   "srcDir": "../../app/components/ui",

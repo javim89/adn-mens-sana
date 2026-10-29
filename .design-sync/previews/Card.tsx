@@ -1,4 +1,4 @@
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Button, Badge } from 'adn-mens-sana-ui';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Button, Badge } from 'bioteam-ui';
 
 export const Default = () => (
   <Card className="max-w-sm">

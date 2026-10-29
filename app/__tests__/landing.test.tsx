@@ -118,16 +118,23 @@ describe('Landing pública (/)', () => {
     expect(within(seccion).getByText('Club de Gimnasia y Esgrima La Plata')).toBeInTheDocument();
   });
 
-  it('la marca del producto es ADN Mens Sana, sin el escudo ni el nombre de Gimnasia', async () => {
+  it('la marca del producto es BioTeam, sin el escudo ni el nombre de Gimnasia', async () => {
     await renderHome(null);
     const nav = screen.getByRole('banner');
-    expect(within(nav).getByText('ADN Mens Sana')).toBeInTheDocument();
+    expect(within(nav).getByText('BioTeam')).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: 'BioTeam, inicio' })).toBeInTheDocument();
     expect(nav.textContent).not.toMatch(/gimnasia/i);
+    // El ícono de BioTeam es decorativo: no suma un img al árbol de accesibilidad.
     expect(within(nav).queryByRole('img')).not.toBeInTheDocument();
+    const iconoNav = nav.querySelector('img[data-logo-bioteam]');
+    expect(iconoNav).toHaveAttribute('data-logo-bioteam', 'normal');
+    expect(iconoNav).toHaveAttribute('alt', '');
+    expect(iconoNav?.getAttribute('src')).not.toContain('logo.png');
 
     const footer = screen.getByRole('contentinfo');
     expect(footer.textContent).not.toMatch(/gimnasia/i);
     expect(within(footer).queryByRole('img')).not.toBeInTheDocument();
+    expect(footer.querySelector('img[data-logo-bioteam]')).toHaveAttribute('data-logo-bioteam', 'inverso');
   });
 
   it('Gimnasia solo aparece en la franja de clubes', async () => {

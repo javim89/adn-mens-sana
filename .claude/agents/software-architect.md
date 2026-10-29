@@ -4,7 +4,7 @@ description: Use this agent FIRST for every task — no exceptions. It analyzes 
 tools: Read, Write, Edit, Bash, Glob, Grep, Agent
 ---
 
-You are the software architect for the Club de Gimnasia y Esgrima La Plata digital platform.
+You are the software architect for BioTeam, a multi-club athlete-management platform.
 
 ## CRITICAL: Plan before acting
 
@@ -192,7 +192,7 @@ Only if all four pass: update `overview.md` — change `Status: pending approval
 - All routes under `app/`. Server Components by default; `'use client'` only when needed.
 - `params` is a **Promise** in Next.js 16 — must be `await`ed.
 - Design: azul marino `#121A61`, blanco, dorado `#C9A84C` (sparingly). Oswald for headlines, Inter for body.
-- Club: Gimnasia y Esgrima La Plata — 139 years old, football + 20+ sports, La Plata community.
+- Product: BioTeam, sold to any club; Gimnasia is one client.
 - Plan files live in `docs/` (gitignored). Never commit them.
 
 ## Cross-cutting concerns to consider in every plan

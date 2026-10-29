@@ -8,13 +8,21 @@ describe('AuthLayout', () => {
     expect(screen.getByText('test child')).toBeInTheDocument();
   });
 
-  it('renders ADN-MENS-SANA heading', () => {
+  it('renders BioTeam heading', () => {
     render(<AuthLayout><div /></AuthLayout>);
-    expect(screen.getByText('ADN-MENS-SANA')).toBeInTheDocument();
+    expect(screen.getByText('BioTeam')).toBeInTheDocument();
   });
 
-  it('renders club subheading', () => {
-    render(<AuthLayout><div /></AuthLayout>);
-    expect(screen.getByText('Gimnasia y Esgrima de La Plata')).toBeInTheDocument();
+  it('renders the BioTeam icon (inverse variant, decorative) next to the wordmark', () => {
+    const { container } = render(<AuthLayout><div /></AuthLayout>);
+    const icono = container.querySelector('img[data-logo-bioteam]');
+    expect(icono).toHaveAttribute('data-logo-bioteam', 'inverso');
+    expect(icono).toHaveAttribute('alt', '');
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('does not render any club name', () => {
+    const { container } = render(<AuthLayout><div /></AuthLayout>);
+    expect(container.textContent).not.toMatch(/gimnasia y esgrima/i);
   });
 });

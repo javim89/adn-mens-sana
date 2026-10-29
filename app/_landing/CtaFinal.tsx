@@ -14,7 +14,7 @@ export default function CtaFinal({ conSesion }: { conSesion: boolean }) {
           id="cta-final-titulo"
           className="font-[family-name:var(--font-oswald)] text-4xl font-bold uppercase leading-tight text-[#121A61] sm:text-5xl"
         >
-          ¿Querés sumar ADN Mens Sana a tu club?
+          ¿Querés sumar BioTeam a tu club?
         </h2>
         <p className="mt-4 text-base text-[#4B5563]">
           Escribinos y coordinamos una presentación para tu cuerpo técnico y tus profesionales.

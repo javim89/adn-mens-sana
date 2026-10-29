@@ -1,11 +1,11 @@
-# ADN Mens Sana — conventions for building with this kit
+# BioTeam — conventions for building with this kit
 
-Internal app of Club de Gimnasia y Esgrima La Plata (sports, medical and psychological follow-up of players). UI copy is **Spanish (Argentina, voseo)**: "Guardar cambios", "Elegí una categoría", "Buscar deportista…".
+BioTeam, a multi-club athlete-management platform (sports, medical and psychological follow-up of players). UI copy is **Spanish (Argentina, voseo)**: "Guardar cambios", "Elegí una categoría", "Buscar deportista…".
 
 ## Setup
 
-- Components live on `window.AdnMensSana` (shadcn/ui on Radix + Tailwind v4). No provider or wrapper is needed: Radix overlays (Dialog, Select, Popover, DropdownMenu) portal to `document.body` themselves.
-- Icons: the whole lucide set is at `AdnMensSana.Icons` (`<Icons.Search />`, `<Icons.UserPlus />`). Inside `Button` and `CommandItem`, icons are auto-sized to 16px. Elsewhere, size them with `className="size-4"`.
+- Components live on `window.BioTeam` (shadcn/ui on Radix + Tailwind v4). No provider or wrapper is needed: Radix overlays (Dialog, Select, Popover, DropdownMenu) portal to `document.body` themselves.
+- Icons: the whole lucide set is at `BioTeam.Icons` (`<Icons.Search />`, `<Icons.UserPlus />`). Inside `Button` and `CommandItem`, icons are auto-sized to 16px. Elsewhere, size them with `className="size-4"`.
 - Fonts: **Inter** for body text (the default on `body`) and **Oswald** for display headings and big numbers: `font-[family-name:var(--font-oswald)]`.
 
 ## Styling: precompiled Tailwind, so use only classes that exist
@@ -31,7 +31,7 @@ CSS variables also work in inline styles: `var(--primary)` (#121A61), `var(--acc
 ## Example
 
 ```jsx
-const { Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, Button, Icons } = window.AdnMensSana;
+const { Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, Button, Icons } = window.BioTeam;
 
 <div className="min-h-screen bg-[#F3F4F6] p-6 space-y-6">
   <div className="flex items-center justify-between">

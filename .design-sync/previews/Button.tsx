@@ -1,4 +1,4 @@
-import { Button, Icons } from 'adn-mens-sana-ui';
+import { Button, Icons } from 'bioteam-ui';
 
 export const Variants = () => (
   <div className="flex flex-wrap items-center gap-3">

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { Menu } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
+import LogoBioTeam from '../../components/LogoBioTeam';
 import type { NavItem } from '../../../lib/roles';
 
 interface AppShellProps {
@@ -18,21 +18,12 @@ export default function AppShell({ navItems, children }: AppShellProps) {
     <>
       {/* Mobile top bar — hidden on md+ */}
       <header className="md:hidden flex items-center justify-between px-4 bg-[#121A61] text-white h-14 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden">
-            <Image
-              src="/logo.png"
-              alt="Escudo Gimnasia y Esgrima La Plata"
-              width={28}
-              height={28}
-              className="object-contain"
-              priority
-            />
-          </div>
-          <span className="font-semibold text-sm" style={{ fontFamily: 'Oswald, sans-serif' }}>
-            ADN Mens Sana
+        <span className="flex min-w-0 items-center gap-2">
+          <LogoBioTeam variante="inverso" className="h-7" eager />
+          <span className="font-[family-name:var(--font-oswald)] font-semibold text-sm uppercase tracking-wide">
+            BioTeam
           </span>
-        </div>
+        </span>
         <button
           onClick={() => setSidebarOpen(true)}
           aria-label="Abrir menú"

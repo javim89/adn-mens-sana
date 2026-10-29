@@ -143,11 +143,8 @@ test.describe('Landing — scroll que arma el dashboard', () => {
       }
       await expect(page.locator('[data-morph-ancla="seguimientos"] [data-kpi-valor]')).toHaveText('42');
       await expect(page.locator('[data-morph-ancla="plantel"] [data-kpi-valor]')).toHaveText('212');
-      // El único cursor (Viandas) quedó visible sobre su card.
-      const cursor = page.locator('[data-morph-cursor]');
-      await expect(cursor).toHaveCSS('opacity', '1');
-      const viandas = (await page.locator('[data-morph-ancla="viandas"]').boundingBox())!;
-      expect(adentro((await cursor.boundingBox())!, viandas)).toBe(true);
+      // Sin cursor sobre la card de Viandas.
+      await expect(page.locator('[data-morph-cursor]')).toHaveCount(0);
       // Las cards que volaron se cambiaron por sus copias, que scrollean con la ventana.
       await expect(page.locator('[data-morph-card="triage"]')).toBeHidden();
 

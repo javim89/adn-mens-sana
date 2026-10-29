@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import type { NavItem } from '../../lib/roles';
 import { ICON_MAP } from '../../lib/nav-icons';
+import LogoBioTeam from './LogoBioTeam';
 
 interface SidebarProps {
   navItems: NavItem[];
@@ -37,21 +37,12 @@ export default function Sidebar({ navItems, isOpen = false, onClose }: SidebarPr
           'md:static md:translate-x-0 md:self-stretch',
         ].join(' ')}
       >
-        {/* Logo + nombre */}
+        {/* Marca */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10">
-          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 overflow-hidden">
-            <Image
-              src="/logo.png"
-              alt="Escudo Gimnasia y Esgrima La Plata"
-              width={36}
-              height={36}
-              className="object-contain"
-              priority
-            />
-          </div>
-          <div>
-            <p className="font-semibold text-sm leading-tight" style={{ fontFamily: 'Oswald, sans-serif' }}>
-              ADN Mens Sana
+          <LogoBioTeam variante="inverso" className="h-9" eager />
+          <div className="min-w-0">
+            <p className="font-[family-name:var(--font-oswald)] font-semibold text-sm leading-tight uppercase tracking-wide">
+              BioTeam
             </p>
             <p className="text-xs text-white/50 mt-0.5">
               Historia Deportiva

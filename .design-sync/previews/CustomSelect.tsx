@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CustomSelect } from 'adn-mens-sana-ui';
+import { CustomSelect } from 'bioteam-ui';
 
 const CATEGORIAS = [
   { value: 'primera', label: 'Primera' },

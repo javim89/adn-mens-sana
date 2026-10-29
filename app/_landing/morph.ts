@@ -112,25 +112,5 @@ export function enProgreso(
   return [desde / pinVh, hasta / pinVh];
 }
 
-/**
- * Un punto del contenido de la ventana (px de diseño, sin escalar) llevado al
- * escenario, con el contenido scrolleado `scroll` px hacia arriba.
- */
-export function puntoEnVentana(
-  punto: Punto,
-  ventana: { escala: number; x: number; y: number },
-  scroll = 0,
-): Punto {
-  return {
-    x: ventana.x + punto.x * ventana.escala,
-    y: ventana.y + (punto.y - scroll) * ventana.escala,
-  };
-}
-
-/** El `transform` que lleva un elemento posicionado en `base` a `destino`, con escala. */
-export function transformEn(base: Punto, destino: Punto, escala: number): string {
-  return `translate3d(${destino.x - base.x}px, ${destino.y - base.y}px, 0) scale(${escala})`;
-}
-
 /** El número de un contador que sube de 0 a `final` con el progreso `t`. */
 export const contar = (final: number, t: number) => Math.round(final * clamp(t));

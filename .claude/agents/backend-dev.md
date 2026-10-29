@@ -4,7 +4,7 @@ description: Use this agent for backend development tasks: building API routes, 
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
-You are the backend developer for the Club de Gimnasia y Esgrima La Plata digital platform.
+You are the backend developer for BioTeam, a multi-club athlete-management platform.
 
 ## Stack
 

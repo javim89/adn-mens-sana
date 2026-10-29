@@ -138,11 +138,34 @@ describe('UsuariosTable', () => {
   });
 
   test('usuario activo muestra último ingreso formateado', () => {
-    asNonAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    // Fijar "hoy" para que el resultado no dependa de la fecha real de ejecución
+    // (lastSignInAt = 2026-06-08 → 2 días antes).
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-06-10T12:00:00Z'));
+    try {
+      asNonAdmin();
+      render(<UsuariosTable usuarios={[mockActivo]} />);
 
-    const cells = screen.getAllByText(/hace \d+ d[íi]as|hoy/i);
-    expect(cells.length).toBeGreaterThan(0);
+      const cells = screen.getAllByText(/hace 2 días/i);
+      expect(cells.length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('último ingreso de hace 30 días o más se muestra como fecha dd/mm/aaaa', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-29T12:00:00Z'));
+    try {
+      asNonAdmin();
+      render(<UsuariosTable usuarios={[mockActivo]} />);
+
+      const cells = screen.getAllByText(/^\d{2}\/\d{2}\/2026$/);
+      expect(cells.length).toBeGreaterThan(0);
+      expect(screen.queryByText(/hace \d+ d[íi]as|hoy/i)).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test('usuario pendiente muestra "—" en columna último ingreso', () => {
@@ -171,8 +194,20 @@ describe('UsuariosTable', () => {
     asAdmin();
     render(<UsuariosTable usuarios={[mockActivo]} />);
 
-    const selects = screen.getAllByRole('combobox');
-    expect(selects.length).toBeGreaterThan(0);
+    // El selector de rol es un CustomSelect (botón trigger con el rol actual),
+    // no un <select> nativo: se reemplazó a propósito en 7bbc737.
+    const triggers = screen.getAllByRole('button', { name: 'Admin' });
+    expect(triggers.length).toBeGreaterThan(0);
+
+    fireEvent.click(triggers[0]);
+    expect(screen.getByRole('button', { name: 'Entrenador' })).toBeInTheDocument();
+  });
+
+  test('no-admin no ve el selector de rol', () => {
+    asNonAdmin();
+    render(<UsuariosTable usuarios={[mockActivo]} />);
+
+    expect(screen.queryByRole('button', { name: 'Admin' })).not.toBeInTheDocument();
   });
 
   test('muestra mensaje vacío cuando no hay usuarios', () => {

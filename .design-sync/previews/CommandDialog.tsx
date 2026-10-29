@@ -1,4 +1,4 @@
-import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandShortcut, Icons } from 'adn-mens-sana-ui';
+import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandShortcut, Icons } from 'bioteam-ui';
 
 export const Open = () => (
   <CommandDialog open>

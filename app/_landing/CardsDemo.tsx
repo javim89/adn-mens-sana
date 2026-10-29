@@ -1,6 +1,4 @@
-import { MousePointer2 } from 'lucide-react';
 import { NIVEL_TRIAGE_LABELS } from '@/lib/utils/enum-labels';
-import { Avatar } from '@/app/components/ui/avatar';
 import KpiCard from '../(app)/dashboard/_components/KpiCard';
 import BarraApilada from '../(app)/dashboard/_components/BarraApilada';
 import MiniCardsNivel from '../(app)/dashboard/_components/MiniCardsNivel';
@@ -241,43 +239,5 @@ export function PlantelDemo() {
         />
       </div>
     </KpiCard>
-  );
-}
-
-/** Cursor con avatar y rol, como los cursores multiplayer de la referencia. */
-export function CursorDemo({
-  rol,
-  iniciales,
-  dorado = false,
-  morphDestino,
-  className,
-}: {
-  rol: string;
-  iniciales: string;
-  dorado?: boolean;
-  /**
-   * Dónde aparece en la etapa 2 del morph: "ancla,x,y", con el ancla un
-   * `data-morph-ancla` de la ventana (las cards de la segunda fila) y x,y en px de
-   * diseño de la ventana, relativos a ella.
-   */
-  morphDestino?: string;
-  className?: string;
-}) {
-  return (
-    <div
-      data-morph-cursor={morphDestino}
-      className={`pointer-events-none flex items-start ${className ?? ''}`}
-    >
-      <MousePointer2
-        className={`size-5 -rotate-6 ${dorado ? 'fill-[#C9A84C] text-[#C9A84C]' : 'fill-[#121A61] text-[#121A61]'}`}
-        aria-hidden
-      />
-      <span
-        className={`mt-4 flex items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-xs font-semibold shadow-md ${dorado ? 'bg-[#C9A84C] text-[#1C1C1C]' : 'bg-[#121A61] text-white'}`}
-      >
-        <Avatar alt={rol} iniciales={iniciales} className="size-6 text-[10px] ring-2 ring-white" />
-        {rol}
-      </span>
-    </div>
   );
 }

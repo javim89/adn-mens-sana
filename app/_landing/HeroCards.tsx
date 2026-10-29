@@ -1,5 +1,4 @@
 import {
-  CursorDemo,
   PresentismoKpiDemo,
   PresentismoPorDiaDemo,
   TriageDemo,
@@ -20,8 +19,7 @@ import {
  * animan la posición y en un mismo elemento una pisaría a la otra.
  *
  * `data-morph-card` es el id del slot de `VentanaDashboard` al que viaja cada card en
- * el morph del scroll (`MorphHero`). El único cursor solo existe en la etapa 2 del
- * morph: aparece sobre la card de Viandas (`morphDestino`).
+ * el morph del scroll (`MorphHero`).
  *
  * Todo el bloque es decorativo: `aria-hidden` + `inert` lo sacan del árbol de
  * accesibilidad y del foco.
@@ -64,14 +62,6 @@ export default function HeroCards() {
           <TurnosDemo cantidad={2} />
         </div>
       </div>
-
-      {/* Solo en la etapa 2 del morph: llega a la card de Viandas. Rol real: responsable_viandas. */}
-      <CursorDemo
-        rol="Viandas"
-        morphDestino="viandas,420,100"
-        iniciales="V"
-        className="morph-cursor-etapa2 absolute left-0 top-0 hidden"
-      />
     </div>
   );
 }
