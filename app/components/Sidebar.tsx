@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import type { NavItem } from '../../lib/roles';
 import { ICON_MAP } from '../../lib/nav-icons';
+import LogoBioTeam from './LogoBioTeam';
 
 interface SidebarProps {
   navItems: NavItem[];
@@ -37,13 +38,16 @@ export default function Sidebar({ navItems, isOpen = false, onClose }: SidebarPr
         ].join(' ')}
       >
         {/* Marca */}
-        <div className="px-4 py-4 border-b border-white/10">
-          <p className="font-[family-name:var(--font-oswald)] font-semibold text-sm leading-tight uppercase tracking-wide">
-            BioTeam
-          </p>
-          <p className="text-xs text-white/50 mt-0.5">
-            Historia Deportiva
-          </p>
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10">
+          <LogoBioTeam variante="inverso" className="h-9" eager />
+          <div className="min-w-0">
+            <p className="font-[family-name:var(--font-oswald)] font-semibold text-sm leading-tight uppercase tracking-wide">
+              BioTeam
+            </p>
+            <p className="text-xs text-white/50 mt-0.5">
+              Historia Deportiva
+            </p>
+          </div>
         </div>
 
         {/* Navegación */}

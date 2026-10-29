@@ -8,7 +8,9 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('next/image', () => ({
-  default: ({ alt }: { alt: string }) => <img alt={alt} />,
+  default: ({ alt, src, ...rest }: { alt: string; src: string; 'data-logo-bioteam'?: string }) => (
+    <img alt={alt} src={src} data-logo-bioteam={rest['data-logo-bioteam']} />
+  ),
 }));
 
 vi.mock('@clerk/nextjs', () => ({
@@ -25,6 +27,19 @@ describe('AppShell', () => {
 
     // "BioTeam" appears in both the mobile header and the sidebar
     expect(screen.getAllByText('BioTeam').length).toBeGreaterThan(0);
+  });
+
+  it('shows the inverse BioTeam icon in the mobile header and in the sidebar', () => {
+    const navItems = getNavItemsForRole('admin');
+    const { container } = render(<AppShell navItems={navItems}><div /></AppShell>);
+
+    const iconos = container.querySelectorAll('img[data-logo-bioteam]');
+    expect(iconos).toHaveLength(2);
+    iconos.forEach((icono) => {
+      expect(icono).toHaveAttribute('data-logo-bioteam', 'inverso');
+      expect(icono).toHaveAttribute('alt', '');
+      expect(icono.getAttribute('src')).toBe('/brand/bioteam-logo-inverso.svg');
+    });
   });
 
   it('does not render the Gimnasia crest', () => {

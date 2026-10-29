@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
+import LogoBioTeam from '../../components/LogoBioTeam';
 import type { NavItem } from '../../../lib/roles';
 
 interface AppShellProps {
@@ -17,8 +18,11 @@ export default function AppShell({ navItems, children }: AppShellProps) {
     <>
       {/* Mobile top bar — hidden on md+ */}
       <header className="md:hidden flex items-center justify-between px-4 bg-[#121A61] text-white h-14 shrink-0">
-        <span className="font-[family-name:var(--font-oswald)] font-semibold text-sm uppercase tracking-wide">
-          BioTeam
+        <span className="flex min-w-0 items-center gap-2">
+          <LogoBioTeam variante="inverso" className="h-7" eager />
+          <span className="font-[family-name:var(--font-oswald)] font-semibold text-sm uppercase tracking-wide">
+            BioTeam
+          </span>
         </span>
         <button
           onClick={() => setSidebarOpen(true)}

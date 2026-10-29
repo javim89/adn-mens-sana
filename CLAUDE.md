@@ -61,7 +61,9 @@ A task is **done** when:
 
 **BioTeam** es una plataforma multi-club para la gestión integral del deportista. Se vende a cualquier club: Gimnasia y Esgrima La Plata es un cliente (el primero), no la marca.
 
-- La marca es el texto `BioTeam` (wordmark en Oswald con `uppercase`, se ve "BIOTEAM"). No hay logo gráfico del producto.
+- La marca es el ícono de BioTeam (una "b" diagonal con un punto dorado) + el wordmark `BioTeam` (Oswald con `uppercase`, se ve "BIOTEAM").
+- El ícono tiene dos variantes en `public/brand/`: `bioteam-logo.svg` (b azul marino, para fondos claros) y `bioteam-logo-inverso.svg` (b blanca, para fondos azul marino/oscuros). Renderizarlo siempre con `app/components/LogoBioTeam.tsx` (`variante="normal" | "inverso"`); es decorativo (`alt=""`) porque va junto al wordmark. No es cuadrado: fijar solo el alto. Detalle en `DESIGN.md` > "Logo (ícono)".
+- Favicon y app icons (`app/favicon.ico`, `app/icon.svg`, `app/apple-icon.png`) son el ícono inverso sobre un tile azul marino.
 - No usar `/public/logo.png` como logo del producto: es el escudo de un club cliente y solo aparece en la franja de clubes de la landing (`app/_landing/clubes.ts`).
 - No escribir copy específico de un club (nombres, mails, escudos, fondos) en la marca ni en la app logueada.
 

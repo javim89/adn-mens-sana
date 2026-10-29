@@ -8,7 +8,20 @@ Guía de diseño de **BioTeam**, plataforma multi-club para la gestión integral
 
 BioTeam es un producto para clubes: lo usan cuerpos técnicos, áreas médicas y de apoyo para seguir a cada deportista en un solo lugar. No es la marca de ningún club; cada club cliente conserva la suya.
 
-- **Marca:** wordmark de texto `BioTeam` en Oswald, bold, `uppercase` (se ve "BIOTEAM"). No hay logo gráfico; no usar escudos de clubes como logo del producto.
+- **Marca:** ícono + wordmark. El ícono es una "b" minúscula estilizada en diagonal con un punto dorado (`#C9A84C`) en el centro; el wordmark es el texto `BioTeam` en Oswald, bold, `uppercase` (se ve "BIOTEAM"). No usar escudos de clubes como logo del producto.
+
+### Logo (ícono)
+
+| Variante | Archivo | Cuándo |
+|----------|---------|--------|
+| Normal | `public/brand/bioteam-logo.svg` (+ `.png`) | b azul marino `#121A61` + punto dorado. Fondos claros (blanco, papel de la landing). |
+| Inverso | `public/brand/bioteam-logo-inverso.svg` (+ `.png`) | b blanca + punto dorado. Fondos azul marino u oscuros (sidebar, header mobile, auth, footer). |
+
+- **En código:** siempre con `app/components/LogoBioTeam.tsx` (`variante="normal" | "inverso"`). El alto se fija con `className` (`h-7`, `h-9`, `h-12`); el ancho sale solo.
+- **Proporción:** no es cuadrado (viewBox 850 × 1111, ~0,77 ancho/alto). No estirarlo ni meterlo en un contenedor cuadrado sin `w-auto`.
+- **Lockup:** ícono a la izquierda del wordmark, centrados verticalmente, `gap-2` (wordmark solo) o `gap-3` (wordmark + bajada "Historia Deportiva"). El ícono va un poco más alto que la línea del texto.
+- **Accesibilidad:** el ícono es decorativo (`alt=""`, `aria-hidden`) porque siempre acompaña al wordmark, que da el nombre accesible. Si alguna vez va solo, necesita un `aria-label="BioTeam"` en el contenedor.
+- **App icons (`app/`):** `favicon.ico` (16/32/48), `icon.svg` y `apple-icon.png` (180) son un tile cuadrado azul marino con el ícono inverso centrado. Si cambia el logo, regenerarlos desde el SVG inverso con `sharp`.
 - **Tono:** profesional, cercano y claro. Copy en español rioplatense con voseo, sin referencias a un club en particular.
 - **Escudos de clubes:** solo aparecen donde se habla de los clubes clientes (la franja "Clubes que confían en nosotros" de la landing).
 
@@ -120,7 +133,7 @@ El diseño debe equilibrar dos tensiones:
 ### Navegación
 
 - Fondo azul marino oscuro
-- Wordmark de BioTeam a la izquierda
+- Ícono + wordmark de BioTeam a la izquierda (variante inversa sobre azul marino, normal sobre fondo claro)
 - Links en blanco, active state con subrayado o banda dorada inferior
 - Mobile: drawer/hamburger, mismo esquema de colores
 
@@ -141,6 +154,7 @@ El diseño debe equilibrar dos tensiones:
 ## Íconos y Assets
 
 - Usar la librería **Lucide React** para íconos de interfaz (compatible con React 19)
+- El logo de BioTeam vive en `/public/brand/` (ver "Logo (ícono)" arriba)
 - `/public/logo.png` es el escudo de un club cliente: no usarlo como logo del producto
 
 ---
