@@ -96,7 +96,7 @@ export default function CalendarioView({ categorias, dias, eventos }: Calendario
           Calendario
         </h1>
         <p className="text-sm text-[#6B7280] mt-1">
-          Fixture Torneo Juveniles 2026 — Gimnasia y Esgrima La Plata
+          Fixture Torneo Juveniles 2026
         </p>
       </div>
 

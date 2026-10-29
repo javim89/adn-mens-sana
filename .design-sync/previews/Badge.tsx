@@ -1,4 +1,4 @@
-import { Badge } from 'adn-mens-sana-ui';
+import { Badge } from 'bioteam-ui';
 
 export const Variants = () => (
   <div className="flex flex-wrap items-center gap-2">

@@ -5,8 +5,6 @@ import {
   contar,
   enProgreso,
   PIN_VH,
-  puntoEnVentana,
-  transformEn,
   deltaHaciaSlot,
   encajarVentana,
   progresoScroll,
@@ -91,16 +89,6 @@ describe('morph — helpers puros', () => {
     // Antes: pin de 1.3 viewports con las cards llegando en p = 0.7.
     expect(finEtapa1 * PIN_VH).toBeCloseTo(0.7 * 1.3, 2);
     expect(enProgreso([1, 2], 2)).toEqual([0.5, 1]);
-  });
-
-  it('puntoEnVentana escala el punto y le resta el scroll interno', () => {
-    const v = { escala: 0.5, x: 100, y: 50 };
-    expect(puntoEnVentana({ x: 40, y: 400 }, v)).toEqual({ x: 120, y: 250 });
-    expect(puntoEnVentana({ x: 40, y: 400 }, v, 300)).toEqual({ x: 120, y: 100 });
-  });
-
-  it('transformEn lleva de la base al destino con la escala dada', () => {
-    expect(transformEn({ x: 10, y: 10 }, { x: 60, y: -5 }, 0.8)).toBe('translate3d(50px, -15px, 0) scale(0.8)');
   });
 
   it('contar', () => {

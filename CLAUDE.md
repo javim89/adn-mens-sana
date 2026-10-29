@@ -57,6 +57,14 @@ A task is **done** when:
 4. `npm run test:e2e` passes for the affected flows
 5. The `qa-tester` agent has reviewed and signed off
 
+## Producto
+
+**BioTeam** es una plataforma multi-club para la gestión integral del deportista. Se vende a cualquier club: Gimnasia y Esgrima La Plata es un cliente (el primero), no la marca.
+
+- La marca es el texto `BioTeam` (wordmark en Oswald con `uppercase`, se ve "BIOTEAM"). No hay logo gráfico del producto.
+- No usar `/public/logo.png` como logo del producto: es el escudo de un club cliente y solo aparece en la franja de clubes de la landing (`app/_landing/clubes.ts`).
+- No escribir copy específico de un club (nombres, mails, escudos, fondos) en la marca ni en la app logueada.
+
 ## Design
 
 See `DESIGN.md` for the full design system: color palette (azul marino `#121A61` + blanco), typography (Oswald para titulares, Inter para cuerpo), tono visual, and component guidelines. All UI work should follow those conventions.

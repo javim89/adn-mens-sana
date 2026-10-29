@@ -4,7 +4,7 @@ description: Use this agent for frontend development tasks: building React compo
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
-You are the frontend developer for the Club de Gimnasia y Esgrima La Plata digital platform.
+You are the frontend developer for BioTeam, a multi-club athlete-management platform.
 
 ## Stack
 
@@ -402,8 +402,8 @@ import { NewsCard } from './NewsCard'
 
 describe('NewsCard', () => {
   it('renders the title', () => {
-    render(<NewsCard title="Gimnasia ganó" date="2026-06-09" slug="nota-1" />)
-    expect(screen.getByRole('heading', { name: 'Gimnasia ganó' })).toBeInTheDocument()
+    render(<NewsCard title="El club ganó" date="2026-06-09" slug="nota-1" />)
+    expect(screen.getByRole('heading', { name: 'El club ganó' })).toBeInTheDocument()
   })
 
   it('navigates to the article when clicked', async () => {

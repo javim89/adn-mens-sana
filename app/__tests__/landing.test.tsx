@@ -118,10 +118,10 @@ describe('Landing pública (/)', () => {
     expect(within(seccion).getByText('Club de Gimnasia y Esgrima La Plata')).toBeInTheDocument();
   });
 
-  it('la marca del producto es ADN Mens Sana, sin el escudo ni el nombre de Gimnasia', async () => {
+  it('la marca del producto es BioTeam, sin el escudo ni el nombre de Gimnasia', async () => {
     await renderHome(null);
     const nav = screen.getByRole('banner');
-    expect(within(nav).getByText('ADN Mens Sana')).toBeInTheDocument();
+    expect(within(nav).getByText('BioTeam')).toBeInTheDocument();
     expect(nav.textContent).not.toMatch(/gimnasia/i);
     expect(within(nav).queryByRole('img')).not.toBeInTheDocument();
 

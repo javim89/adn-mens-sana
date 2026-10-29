@@ -10,7 +10,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
   Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue,
   Tabs, TabsContent, TabsList, TabsTrigger,
-} from 'adn-mens-sana-ui';
+} from 'bioteam-ui';
 
 export const ConfirmDialog = () => (
   <Dialog open>

@@ -1,24 +1,24 @@
 # DESIGN.md
 
-Guía de diseño para el proyecto digital del Club de Gimnasia y Esgrima La Plata.
+Guía de diseño de **BioTeam**, plataforma multi-club para la gestión integral del deportista.
 
 ---
 
-## Identidad del Club
+## Identidad de BioTeam
 
-**Fundación:** 3 de junio de 1887 — el club de fútbol más antiguo que aún participa en el fútbol argentino de primera división.
-**Apodos:** El Lobo, Los Triperos
-**Lema:** "Primeros en América"
-**Estadio:** Juan Carmelo Zerillo (El Bosque), inaugurado en 1924, capacidad ~24.500 espectadores
-**Raíces:** El apodo "Triperos" viene de los trabajadores de los frigoríficos de Berisso que apoyaban al club desde sus inicios. El grito de aliento es "¡Tripa corazón!". El apodo "Lobo" surgió en los años '60, inspirado en su ubicación dentro del Bosque platense (referencia al lobo del cuento "Caperucita Roja").
+BioTeam es un producto para clubes: lo usan cuerpos técnicos, áreas médicas y de apoyo para seguir a cada deportista en un solo lugar. No es la marca de ningún club; cada club cliente conserva la suya.
 
-El club no es solo un equipo de fútbol: opera secciones de más de 20 deportes, instituciones educativas (jardín, primaria y secundaria), y programas de deporte inclusivo (TIADE).
+- **Marca:** wordmark de texto `BioTeam` en Oswald, bold, `uppercase` (se ve "BIOTEAM"). No hay logo gráfico; no usar escudos de clubes como logo del producto.
+- **Tono:** profesional, cercano y claro. Copy en español rioplatense con voseo, sin referencias a un club en particular.
+- **Escudos de clubes:** solo aparecen donde se habla de los clubes clientes (la franja "Clubes que confían en nosotros" de la landing).
+
+> **Origen:** el primer cliente fue el Club de Gimnasia y Esgrima La Plata; de ahí viene la paleta navy/blanco/dorado, que se mantiene como identidad de BioTeam.
 
 ---
 
 ## Paleta de Colores
 
-Los colores institucionales son el **blanco y azul marino** (albiazul), establecidos en 1910 con la camiseta blanca y la banda horizontal azul sobre el pecho.
+Los colores de BioTeam son el **blanco y azul marino**, con el dorado como acento.
 
 ### Colores Primarios
 
@@ -43,9 +43,9 @@ Los colores institucionales son el **blanco y azul marino** (albiazul), establec
 
 | Nombre    | HEX       | RGB             | Uso                                               |
 |-----------|-----------|-----------------|---------------------------------------------------|
-| Dorado    | `#C9A84C` | 201, 168, 76    | Detalles del escudo, badges, highlights especiales|
+| Dorado    | `#C9A84C` | 201, 168, 76    | Badges, highlights especiales                     |
 
-El dorado surge de los elementos heráldicos del escudo (laureles, casco), y puede usarse con moderación para jerarquizar contenido premium o histórico.
+El dorado se usa con moderación para jerarquizar contenido destacado.
 
 ---
 
@@ -56,7 +56,7 @@ El dorado surge de los elementos heráldicos del escudo (laureles, casco), y pue
 **Display / Titulares institucionales**
 - `Oswald` — condensada, bold, carácter deportivo e histórico
 - Peso: 600–700
-- Uso: nombre del club, secciones hero, grandes titulares
+- Uso: wordmark de BioTeam, secciones hero, grandes titulares
 
 **Encabezados de sección**
 - `Barlow` o `DM Sans` — sans-serif moderna y legible
@@ -88,18 +88,18 @@ El dorado surge de los elementos heráldicos del escudo (laureles, casco), y pue
 ## Tono Visual
 
 ### Personalidad
-El diseño debe equilibrar dos tensiones propias del club:
+El diseño debe equilibrar dos tensiones:
 
-1. **Historia y orgullo** — 139 años, el más antiguo, "Primeros en América". El diseño no debe ser genérico; debe sentirse con peso y tradición.
-2. **Comunidad y cercanía** — Triperos, trabajadores, familias de La Plata. No es un club elitista; es popular, apasionado y de barrio.
+1. **Solidez profesional** — es una herramienta de trabajo para cuerpos técnicos y áreas médicas. Tiene que transmitir orden, confianza y precisión.
+2. **Cercanía deportiva** — habla de deportistas y clubes, no de planillas. Con carácter deportivo, sin volverse genérico.
 
 ### Directrices visuales
 
-- **Fotografía**: priorizar fotos de alta emoción — gente en las tribunas, el bosque al fondo, jugadores en acción, familias en el polideportivo. No fotos de stock.
+- **Fotografía**: priorizar fotos reales de deportistas y entrenamientos, sin identificar a un club en particular. No fotos de stock genéricas.
 - **Contraste alto**: usar fondos azul marino oscuro con texto blanco para secciones de impacto. Alternar con fondos blancos o gris claro para respirar.
-- **Geometría**: la camiseta tradicional define la estética — líneas horizontales, bandas, estructuras limpias. Evitar ornamentos excesivos.
-- **Escudo**: el escudo oficial (diseñado en 1928 por Raúl Felices) siempre en su forma original — nunca distorsionado, nunca sobre fondos que lo pierdan.
-- **Espaciado generoso**: el club tiene historia para mostrar; dar espacio a cada pieza de contenido.
+- **Geometría**: líneas horizontales, bandas, estructuras limpias. Evitar ornamentos excesivos.
+- **Escudos de clubes clientes**: siempre en su forma original — nunca distorsionados, nunca sobre fondos que los pierdan.
+- **Espaciado generoso**: dar espacio a cada pieza de contenido.
 
 ---
 
@@ -109,18 +109,18 @@ El diseño debe equilibrar dos tensiones propias del club:
 
 - **CTA primario**: fondo `#121A61`, texto blanco, borde-radius redondeado (`rounded-full` o `rounded-lg`), hover hacia `#1E2A8A`
 - **CTA secundario**: borde azul marino, fondo transparente, hover con fondo azul claro muy sutil
-- **CTA acento**: fondo dorado `#C9A84C`, texto oscuro — solo para acciones muy puntuales (ej. "Hacete Socio")
+- **CTA acento**: fondo dorado `#C9A84C`, texto oscuro — solo para acciones muy puntuales (ej. "Pedí una demo")
 
 ### Tarjetas
 
 - Fondo blanco con sombra sutil (`shadow-sm`) o borde `border-gray-100`
-- Header de tarjeta con banda azul marino (referencia visual a la camiseta)
+- Header de tarjeta con banda azul marino
 - Hover con elevación leve (`shadow-md`, `translate-y-[-2px]`)
 
 ### Navegación
 
 - Fondo azul marino oscuro
-- Logo del club a la izquierda
+- Wordmark de BioTeam a la izquierda
 - Links en blanco, active state con subrayado o banda dorada inferior
 - Mobile: drawer/hamburger, mismo esquema de colores
 
@@ -134,15 +134,14 @@ El diseño debe equilibrar dos tensiones propias del club:
 ### Insignias y Etiquetas
 
 - Deporte o sección: pastilla con fondo azul claro `#3346CC`, texto blanco, texto pequeño uppercase
-- "Primeros en América": badge dorado especial para contextos institucionales
+- Badge dorado: solo para contextos destacados
 
 ---
 
 ## Íconos y Assets
 
 - Usar la librería **Lucide React** para íconos de interfaz (compatible con React 19)
-- El escudo oficial del club debe estar disponible como SVG en `/public/shield.svg`
-- La camiseta histórica (blanca con banda azul horizontal) es un motivo gráfico válido para usar como elemento decorativo en secciones especiales
+- `/public/logo.png` es el escudo de un club cliente: no usarlo como logo del producto
 
 ---
 
@@ -156,23 +155,16 @@ El diseño debe equilibrar dos tensiones propias del club:
 | ≥ 1024px   | `lg:`            | Desktop             |
 | ≥ 1280px   | `xl:`            | Wide desktop        |
 
-Mobile-first por defecto. La mayor parte del tráfico de fans de fútbol argentino llega desde dispositivos móviles.
+Mobile-first por defecto. Buena parte del uso (entrenadores en cancha, profesionales en consultorio) llega desde el celular.
 
 ---
 
 ## Dark Mode
 
-El club ya tiene una base de dark mode implícita en su paleta: el azul marino oscuro como color primario funciona perfectamente como fondo. Si se implementa dark mode:
+La paleta ya tiene una base de dark mode implícita: el azul marino oscuro como color primario funciona perfectamente como fondo. Si se implementa dark mode:
 
 - Background oscuro: `#0A0F3D` (azul más profundo que el `#121A61`)
 - Texto principal: `#F9FAFB`
 - Superficies de tarjeta: `#121A61`
-- Mantener el blanco puro para los elementos que simulan la camiseta
+- Mantener el blanco puro para los elementos de marca
 
----
-
-## Referencias
-
-- [Sitio oficial del club](https://www.gimnasia.org.ar/)
-- [Wikipedia — Club de Gimnasia y Esgrima La Plata](https://en.wikipedia.org/wiki/Club_de_Gimnasia_y_Esgrima_La_Plata)
-- [Brand Color Codes](https://www.brandcolorcode.com/gimnasia-y-esgrima-lp)

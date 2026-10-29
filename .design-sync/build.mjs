@@ -19,7 +19,7 @@ mkdirSync(PKG, { recursive: true });
 
 const files = readdirSync(UI).filter((f) => f.endsWith('.tsx')).sort();
 writeFileSync(join(PKG, 'package.json'), JSON.stringify({
-  name: 'adn-mens-sana-ui',
+  name: 'bioteam-ui',
   version: JSON.parse(readFileSync('package.json', 'utf8')).version,
   module: 'index.ts',
   types: 'types/.ds-sync/pkg/index.d.ts',

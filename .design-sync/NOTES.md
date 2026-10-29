@@ -1,4 +1,4 @@
-# design-sync notes — ADN Mens Sana
+# design-sync notes — BioTeam
 
 ## How this repo syncs (it's an app, not a package)
 

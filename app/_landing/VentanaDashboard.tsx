@@ -27,8 +27,7 @@ import MarcoVentanaDemo from './MarcoVentanaDemo';
  * morph su contenido se oculta (la card que se ve es la que viaja desde el hero); sin
  * morph se ve el contenido propio del slot. Los `data-morph-extra` (la segunda fila)
  * solo existen acá: aparecen al final de la etapa 1 y se ven enteros en la etapa 2,
- * cuando `data-morph-contenido` scrollea dentro de `data-morph-columna` (los
- * `data-morph-ancla` son el destino del cursor de la etapa 2).
+ * cuando `data-morph-contenido` scrollea dentro de `data-morph-columna`.
  *
  * Con el morph la ventana tiene alto fijo (670px, `globals.css`); sin morph, su alto
  * natural, con las dos filas enteras.

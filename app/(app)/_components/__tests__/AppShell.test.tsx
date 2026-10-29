@@ -23,8 +23,15 @@ describe('AppShell', () => {
     const navItems = getNavItemsForRole('admin');
     render(<AppShell navItems={navItems}><div>content</div></AppShell>);
 
-    // "ADN Mens Sana" appears in both the mobile header and the sidebar
-    expect(screen.getAllByText('ADN Mens Sana').length).toBeGreaterThan(0);
+    // "BioTeam" appears in both the mobile header and the sidebar
+    expect(screen.getAllByText('BioTeam').length).toBeGreaterThan(0);
+  });
+
+  it('does not render the Gimnasia crest', () => {
+    const navItems = getNavItemsForRole('admin');
+    render(<AppShell navItems={navItems}><div>content</div></AppShell>);
+
+    expect(screen.queryByRole('img', { name: /escudo gimnasia/i })).not.toBeInTheDocument();
   });
 
   it('renders the hamburger button', () => {

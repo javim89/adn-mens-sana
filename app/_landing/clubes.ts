@@ -1,5 +1,5 @@
 /**
- * Los clubes que usan ADN Mens Sana, para la franja "Clubes que confían en nosotros".
+ * Los clubes que usan BioTeam, para la franja "Clubes que confían en nosotros".
  *
  * Solo clubes reales que usan el producto: no se agregan escudos de ejemplo. Con uno
  * la franja se centra; si la lista crece, puede pasar a un marquee.

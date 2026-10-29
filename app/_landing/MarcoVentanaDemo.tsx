@@ -44,8 +44,8 @@ export default function MarcoVentanaDemo({
         <div className="flex min-h-0 flex-1">
           <div className="flex w-[220px] shrink-0 flex-col bg-[#121A61] text-white">
             <div className="border-b border-white/10 px-5 py-4">
-              <p className="text-sm font-semibold leading-tight" style={OSWALD}>
-                ADN Mens Sana
+              <p className="text-sm font-semibold uppercase leading-tight tracking-wide" style={OSWALD}>
+                BioTeam
               </p>
               <p className="mt-0.5 text-xs text-white/50">Historia Deportiva</p>
             </div>
@@ -90,7 +90,7 @@ export default function MarcoVentanaDemo({
       <div className="flex min-h-0 flex-1">
         <div className="hidden w-[220px] shrink-0 flex-col bg-[#121A61] text-white lg:flex">
           <div className="border-b border-white/10 px-5 py-4">
-            <p className="font-[family-name:var(--font-oswald)] text-sm font-semibold leading-tight">ADN Mens Sana</p>
+            <p className="font-[family-name:var(--font-oswald)] text-sm font-semibold uppercase leading-tight tracking-wide">BioTeam</p>
             <p className="mt-0.5 text-xs text-white/50">Historia Deportiva</p>
           </div>
           <ul className="flex-1 space-y-1 px-3 py-6">

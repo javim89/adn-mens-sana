@@ -8,7 +8,7 @@ export default function LandingNav({ conSesion }: { conSesion: boolean }) {
     <header data-morph-nav className="relative z-20 mx-auto flex w-full max-w-[1200px] items-center justify-between gap-4 px-4 py-5 sm:px-6 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-[#121A61]/10 sm:after:inset-x-6">
       <Link
         href="/"
-        aria-label="ADN Mens Sana, inicio"
+        aria-label="BioTeam, inicio"
         className="min-w-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#3346CC]"
       >
         <Wordmark />

@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import Landing from './_landing/Landing';
 
 export const metadata: Metadata = {
-  title: 'ADN Mens Sana — Todo tu club, en una sola pantalla',
+  title: 'BioTeam — Todo tu club, en una sola pantalla',
   description:
     'El seguimiento integral de los deportistas de tu club: ficha, seguimientos médicos, psicológicos y sociales, turnos, presentismo, viandas y triage.',
 };

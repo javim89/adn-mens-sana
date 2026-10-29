@@ -1,3 +1,7 @@
+# BioTeam
+
+Plataforma multi-club para la gestión integral del deportista.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

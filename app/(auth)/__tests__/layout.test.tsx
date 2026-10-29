@@ -8,13 +8,13 @@ describe('AuthLayout', () => {
     expect(screen.getByText('test child')).toBeInTheDocument();
   });
 
-  it('renders ADN-MENS-SANA heading', () => {
+  it('renders BioTeam heading', () => {
     render(<AuthLayout><div /></AuthLayout>);
-    expect(screen.getByText('ADN-MENS-SANA')).toBeInTheDocument();
+    expect(screen.getByText('BioTeam')).toBeInTheDocument();
   });
 
-  it('renders club subheading', () => {
-    render(<AuthLayout><div /></AuthLayout>);
-    expect(screen.getByText('Gimnasia y Esgrima de La Plata')).toBeInTheDocument();
+  it('does not render any club name', () => {
+    const { container } = render(<AuthLayout><div /></AuthLayout>);
+    expect(container.textContent).not.toMatch(/gimnasia y esgrima/i);
   });
 });

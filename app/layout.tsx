@@ -16,8 +16,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'ADN Mens Sana',
-  description: 'Historia Deportiva — Club de Gimnasia y Esgrima La Plata',
+  title: 'BioTeam',
+  description: 'BioTeam — gestión integral del deportista para clubes',
 };
 
 export default function RootLayout({

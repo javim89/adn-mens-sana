@@ -1,4 +1,4 @@
-import { Label, Input } from 'adn-mens-sana-ui';
+import { Label, Input } from 'bioteam-ui';
 
 export const WithInput = () => (
   <div className="grid w-72 gap-2">
