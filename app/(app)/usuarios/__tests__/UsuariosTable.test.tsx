@@ -54,8 +54,21 @@ const mockPendiente: Usuario = {
   email: 's.blanco@gimnasia.org.ar',
   rol: 'entrenador',
   createdAt: new Date('2026-06-01'),
+  expira: new Date('2026-07-01'),
   lugarRetiro: null,
   status: 'pendiente',
+};
+
+const mockVencida: Usuario = {
+  id: 'inv_v',
+  firstName: 'Vera',
+  lastName: 'Paz',
+  email: 'v.paz@club.org',
+  rol: 'medico',
+  createdAt: new Date('2026-01-01'),
+  expira: new Date('2026-01-31'),
+  lugarRetiro: null,
+  status: 'vencida',
 };
 
 /** Rol y userId del logueado: llegan por props desde la page (salen de su membresía). */
@@ -91,6 +104,42 @@ describe('UsuariosTable', () => {
     expect(screen.getAllByText('Sergio Blanco')[0]).toBeInTheDocument();
     expect(screen.getAllByText('s.blanco@gimnasia.org.ar')[0]).toBeInTheDocument();
     expect(screen.getAllByText('Pendiente')[0]).toBeInTheDocument();
+  });
+
+  test('una invitación vencida se muestra con badge "Vencida" y sin selector de rol', () => {
+    asAdmin();
+    render(<UsuariosTable {...sesion} usuarios={[mockVencida]} />);
+
+    expect(screen.getAllByText('Vera Paz')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Vencida')[0]).toBeInTheDocument();
+    expect(screen.queryByText('Pendiente')).not.toBeInTheDocument();
+    expect(screen.queryByText('Rol:')).not.toBeInTheDocument();
+  });
+
+  test('admin puede reenviar una invitación vencida', async () => {
+    asAdmin();
+    render(<UsuariosTable {...sesion} usuarios={[mockVencida]} />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
+    fireEvent.click(screen.getByRole('button', { name: /reenviar/i }));
+
+    await waitFor(() => {
+      expect(reenviarInvitacion).toHaveBeenCalledWith('inv_v');
+    });
+  });
+
+  test('eliminar una invitación vencida la revoca con su estado', async () => {
+    asAdmin();
+    render(<UsuariosTable {...sesion} usuarios={[mockVencida]} />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
+    fireEvent.click(screen.getByRole('button', { name: /eliminar/i }));
+    expect(screen.getByText('Eliminar invitación')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: /^eliminar$/i }).at(-1)!);
+
+    await waitFor(() => {
+      expect(eliminarUsuario).toHaveBeenCalledWith('inv_v', 'vencida');
+    });
   });
 
   test('admin ve botón de reenviar invitación en usuarios pendientes', () => {

@@ -17,7 +17,10 @@ export type UsuarioActivo = {
   status: 'activo' | 'inactivo'
 }
 
-/** Una invitación al club todavía sin aceptar. `id` es el de la fila de `invitaciones`. */
+/**
+ * Una invitación al club todavía sin aceptar. `id` es el de la fila de `invitaciones`.
+ * `vencida` ya no se puede aceptar, pero se lista para que el admin la reenvíe.
+ */
 export type UsuarioPendiente = {
   id: string
   firstName: string
@@ -26,9 +29,15 @@ export type UsuarioPendiente = {
   rol: string
   lugarRetiro: string | null
   createdAt: Date
-  status: 'pendiente'
+  expira: Date
+  status: 'pendiente' | 'vencida'
 }
 
 export type Usuario = UsuarioActivo | UsuarioPendiente
 
 export type EstadoUsuario = Usuario['status']
+
+/** El usuario es una invitación (pendiente o vencida), no un miembro. */
+export function esInvitacion(usuario: Pick<Usuario, 'status'>): usuario is UsuarioPendiente {
+  return usuario.status === 'pendiente' || usuario.status === 'vencida'
+}

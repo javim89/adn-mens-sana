@@ -180,6 +180,7 @@ describe('getUsuarios', () => {
         rol: 'responsable_viandas',
         lugarRetiro: 'SEDE',
         createdAt: new Date('2026-06-02'),
+        expira: new Date(Date.now() + 86_400_000),
       },
     ]);
 
@@ -194,10 +195,31 @@ describe('getUsuarios', () => {
     expect(usuarios[2]).toMatchObject({ firstName: 'Sergio', rol: 'responsable_viandas', lugarRetiro: 'SEDE' });
   });
 
-  test('pide solo invitaciones vigentes (no aceptadas, no revocadas, no vencidas)', async () => {
+  test('pide las invitaciones no aceptadas ni revocadas, también las vencidas', async () => {
     await getUsuarios();
     const { where } = mockDb.invitacion.findMany.mock.calls[0][0];
-    expect(where).toMatchObject({ aceptadaAt: null, revocadaAt: null, expira: { gt: expect.any(Date) } });
+    expect(where).toEqual({ aceptadaAt: null, revocadaAt: null });
+  });
+
+  test('una invitación vencida se lista como "vencida" con su fecha de vencimiento', async () => {
+    const expira = new Date(Date.now() - 86_400_000);
+    mockDb.invitacion.findMany.mockResolvedValue([
+      { id: 'inv_v', email: 'v@club.com', nombre: 'Vera', apellido: 'Paz', rol: 'medico', lugarRetiro: null, createdAt: new Date('2026-01-01'), expira },
+    ]);
+
+    const usuarios = await getUsuarios();
+    expect(usuarios).toEqual([expect.objectContaining({ id: 'inv_v', status: 'vencida', expira })]);
+  });
+
+  test('con una vencida y una nueva al mismo mail, lista solo la más reciente', async () => {
+    // findMany viene ordenado por createdAt desc.
+    mockDb.invitacion.findMany.mockResolvedValue([
+      { id: 'inv_nueva', email: 'x@club.com', nombre: 'X', apellido: 'Y', rol: 'medico', lugarRetiro: null, createdAt: new Date('2026-06-01'), expira: new Date(Date.now() + 86_400_000) },
+      { id: 'inv_vieja', email: 'X@club.com', nombre: 'X', apellido: 'Y', rol: 'medico', lugarRetiro: null, createdAt: new Date('2026-01-01'), expira: new Date('2026-01-31') },
+    ]);
+
+    const usuarios = await getUsuarios();
+    expect(usuarios.map((u) => [u.id, u.status])).toEqual([['inv_nueva', 'pendiente']]);
   });
 
   test('no lista la invitación de alguien que ya es miembro', async () => {
@@ -511,6 +533,17 @@ describe('eliminarUsuario', () => {
     const res = await eliminarUsuario('user_ultimo_admin', 'activo');
 
     expect(res.ok).toBe(false);
+    expect(mockDb.membresia.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test('una invitación vencida también se revoca (no borra membresías)', async () => {
+    const res = await eliminarUsuario('inv_v', 'vencida');
+
+    expect(res).toEqual({ ok: true });
+    expect(mockDb.invitacion.updateMany).toHaveBeenCalledWith({
+      where: { id: 'inv_v', aceptadaAt: null, revocadaAt: null },
+      data: { revocadaAt: expect.any(Date) },
+    });
     expect(mockDb.membresia.deleteMany).not.toHaveBeenCalled();
   });
 

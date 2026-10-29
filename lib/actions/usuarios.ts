@@ -11,7 +11,7 @@
  */
 
 import { clerkClient } from '@clerk/nextjs/server';
-import type { Usuario, UsuarioActivo, UsuarioPendiente, EstadoUsuario } from '@/lib/types/usuarios';
+import { esInvitacion, type Usuario, type UsuarioActivo, type UsuarioPendiente, type EstadoUsuario } from '@/lib/types/usuarios';
 import { ROLES_PERMITIDOS, type AppRole } from '@/lib/roles';
 import { LUGARES_RETIRO, esLugarRetiro } from '@/lib/utils/viandas';
 import { contextoAccion, type ContextoClub } from '@/lib/tenant/contexto';
@@ -118,8 +118,9 @@ export async function getUsuarios(): Promise<Usuario[]> {
   const db = await getDb();
   const [miembros, invitaciones] = await Promise.all([
     getMiembrosDelClub({ incluirInactivos: true, clubId: check.contexto.clubId }),
+    // Las vencidas también: el admin tiene que verlas para reenviarlas.
     db.invitacion.findMany({
-      where: wherePendiente(),
+      where: { aceptadaAt: null, revocadaAt: null },
       orderBy: { createdAt: 'desc' },
     }),
   ]);
@@ -141,9 +142,16 @@ export async function getUsuarios(): Promise<Usuario[]> {
   );
 
   // Una invitación a alguien que ya es miembro (aceptó por otro camino) no se lista.
-  const miembrosPorMail = new Set(activos.map((a) => a.email.toLowerCase()));
+  // De varias al mismo mail (una vencida y otra nueva) queda la más reciente.
+  const ahora = new Date();
+  const mailsVistos = new Set(activos.map((a) => a.email.toLowerCase()));
   const pendientes: UsuarioPendiente[] = invitaciones
-    .filter((inv) => !miembrosPorMail.has(inv.email.toLowerCase()))
+    .filter((inv) => {
+      const email = inv.email.toLowerCase();
+      if (mailsVistos.has(email)) return false;
+      mailsVistos.add(email);
+      return true;
+    })
     .map((inv) => ({
       id: inv.id,
       firstName: inv.nombre,
@@ -152,7 +160,8 @@ export async function getUsuarios(): Promise<Usuario[]> {
       rol: inv.rol,
       lugarRetiro: inv.lugarRetiro,
       createdAt: inv.createdAt,
-      status: 'pendiente' as const,
+      expira: inv.expira,
+      status: inv.expira > ahora ? ('pendiente' as const) : ('vencida' as const),
     }));
 
   return [...activos, ...pendientes];
@@ -317,7 +326,7 @@ export async function eliminarUsuario(id: string, status: EstadoUsuario): Promis
   const check = await assertAdmin();
   if (!check.ok) return { ok: false, error: check.error };
 
-  const esMiembro = status !== 'pendiente';
+  const esMiembro = !esInvitacion({ status });
   if (esMiembro && check.contexto.userId === id) {
     return { ok: false, error: 'No podés eliminar tu propia cuenta' };
   }

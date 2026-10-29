@@ -9,7 +9,7 @@ import { reenviarInvitacion, cambiarRol, asignarLugarRetiro, deshabilitarUsuario
 import { ROLES_PERMITIDOS, ROL_LABELS } from '@/lib/roles';
 import { LUGARES_RETIRO } from '@/lib/utils/viandas';
 import { LUGAR_RETIRO_LABELS } from '@/lib/utils/enum-labels';
-import type { Usuario } from '@/lib/types/usuarios';
+import { esInvitacion, type Usuario } from '@/lib/types/usuarios';
 import ConfirmarAccionModal from './ConfirmarAccionModal';
 
 
@@ -159,7 +159,7 @@ function UsuarioAcciones({ usuario, isAdmin, currentUserId, openConfirm }: Usuar
 
   if (!isAdmin) return null;
 
-  const showReenviar = usuario.status === 'pendiente';
+  const showReenviar = esInvitacion(usuario);
   const showDeshabilitar = usuario.status === 'activo' && usuario.id !== currentUserId;
   const showReactivar = usuario.status === 'inactivo';
 
@@ -287,6 +287,16 @@ function EstadoBadge({ usuario }: { usuario: Usuario }) {
       </span>
     );
   }
+  if (usuario.status === 'vencida') {
+    return (
+      <span
+        className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-[#6B7280]"
+        title="La invitación venció: reenviala para que pueda entrar"
+      >
+        Vencida
+      </span>
+    );
+  }
   return (
     <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
       Pendiente
@@ -347,7 +357,7 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
           toast.success('Usuario deshabilitado');
         } else if (action === 'reactivar') {
           toast.success('Usuario reactivado');
-        } else if (usuario.status !== 'pendiente') {
+        } else if (!esInvitacion(usuario)) {
           toast.success('Usuario eliminado del club');
         } else {
           toast.success('Invitación revocada');
@@ -380,7 +390,7 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
         danger: false,
       };
     }
-    if (usuario?.status === 'pendiente') {
+    if (usuario && esInvitacion(usuario)) {
       return {
         title: 'Eliminar invitación',
         description: `¿Seguro que querés eliminar la invitación de ${nombre}? Esta acción no se puede deshacer.`,
@@ -437,14 +447,14 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
                     )}
                     <EstadoBadge usuario={usuario} />
                   </div>
-                  {isAdmin && usuario.status !== 'pendiente' && (
+                  {isAdmin && !esInvitacion(usuario) && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-[#6B7280]">Rol:</span>
                       <RolSelector userId={usuario.id} currentRol={usuario.rol} />
                     </div>
                   )}
                   {isAdmin &&
-                    usuario.status !== 'pendiente' &&
+                    !esInvitacion(usuario) &&
                     usuario.rol === 'responsable_viandas' && (
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-[#6B7280]">Lugar:</span>
@@ -456,7 +466,7 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
                     )}
                   <p className="text-xs text-[#6B7280]">
                     Último ingreso:{' '}
-                    {usuario.status !== 'pendiente' ? formatLastSignIn(usuario.lastSignInAt) : '—'}
+                    {!esInvitacion(usuario) ? formatLastSignIn(usuario.lastSignInAt) : '—'}
                   </p>
                 </li>
               );
@@ -509,7 +519,7 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
                         </div>
                       </td>
                       <td className="hidden xl:table-cell px-4 py-3.5 text-sm text-[#6B7280]">
-                        {usuario.status !== 'pendiente'
+                        {!esInvitacion(usuario)
                           ? formatLastSignIn(usuario.lastSignInAt)
                           : '—'}
                       </td>
@@ -518,7 +528,7 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
                       </td>
                       {isAdmin && (
                         <td className="hidden xl:table-cell px-4 py-3.5">
-                          {usuario.status !== 'pendiente' ? (
+                          {!esInvitacion(usuario) ? (
                             <div className="flex flex-col gap-1.5">
                               <RolSelector userId={usuario.id} currentRol={usuario.rol} />
                               {usuario.rol === 'responsable_viandas' && (
