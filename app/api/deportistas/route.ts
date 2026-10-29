@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { contextoApi } from '@/lib/tenant/contexto';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { getFotoUrl, isValidFotoKey } from '@/lib/s3';
@@ -328,16 +328,8 @@ function buildPageUrl(base: URL, pageNumber: number, pageSize: number): string {
 // ---------------------------------------------------------------------------
 
 export async function GET(request: Request) {
-  const { userId } = await auth();
-  if (!userId) {
-    const body: JsonApiErrors = {
-      errors: [{ status: '401', code: 'UNAUTHENTICATED', title: 'No autorizado' }],
-    };
-    return new Response(JSON.stringify(body), {
-      status: 401,
-      headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
-    });
-  }
+  const acceso = await contextoApi();
+  if (!acceso.ok) return acceso.response;
 
   const url = new URL(request.url);
   const rawParams = Object.fromEntries(url.searchParams.entries());
@@ -405,16 +397,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
-  if (!userId) {
-    const body: JsonApiErrors = {
-      errors: [{ status: '401', code: 'UNAUTHENTICATED', title: 'No autorizado' }],
-    };
-    return new Response(JSON.stringify(body), {
-      status: 401,
-      headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
-    });
-  }
+  const acceso = await contextoApi();
+  if (!acceso.ok) return acceso.response;
 
   const contentType = request.headers.get('Content-Type') ?? '';
   if (!contentType.includes('application/vnd.api+json')) {

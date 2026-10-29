@@ -1,17 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockAuth, mockCurrentUser, mockRunQuery, mockRunRawSql, mockGetUserList } =
+const { mockRunQuery, mockRunRawSql, mockGetUserList } =
   vi.hoisted(() => ({
-    mockAuth: vi.fn().mockResolvedValue({ userId: 'user_admin_1' }),
-    mockCurrentUser: vi.fn().mockResolvedValue({ publicMetadata: { role: 'admin' } }),
     mockRunQuery: vi.fn(),
     mockRunRawSql: vi.fn(),
     mockGetUserList: vi.fn(),
   }));
 
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 vi.mock('@clerk/nextjs/server', () => ({
-  auth: mockAuth,
-  currentUser: mockCurrentUser,
   clerkClient: async () => ({ users: { getUserList: mockGetUserList } }),
 }));
 vi.mock('@/lib/insights/run', () => ({
@@ -21,6 +20,7 @@ vi.mock('@/lib/insights/run', () => ({
 
 import { POST } from '../route';
 import type { QuerySpec } from '@/lib/insights/types';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
 
 const specValido: QuerySpec = {
   mode: 'builder',
@@ -52,8 +52,7 @@ function post(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAuth.mockResolvedValue({ userId: 'user_admin_1' });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+  setContexto(mockContexto('admin', { userId: 'user_admin_1' }));
   mockRunQuery.mockResolvedValue(resultado);
   mockRunRawSql.mockResolvedValue(resultado);
   mockGetUserList.mockResolvedValue({ data: [] });
@@ -61,7 +60,7 @@ beforeEach(() => {
 
 describe('POST /api/insights/query — autorización', () => {
   it('401 sin sesión', async () => {
-    mockAuth.mockResolvedValue({ userId: null });
+    setContexto(null);
 
     const res = await post({ spec: specValido });
 
@@ -70,7 +69,7 @@ describe('POST /api/insights/query — autorización', () => {
   });
 
   it('403 con un rol que no es admin', async () => {
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'entrenador' } });
+    setContexto(mockContexto('entrenador'));
 
     const res = await post({ spec: specValido });
 
@@ -81,12 +80,13 @@ describe('POST /api/insights/query — autorización', () => {
     expect(mockRunQuery).not.toHaveBeenCalled();
   });
 
-  it('403 con un usuario sin rol asignado', async () => {
-    mockCurrentUser.mockResolvedValue({ publicMetadata: {} });
+  it('403 con un rol de salud (el rol sale de la membresía del club activo)', async () => {
+    setContexto(mockContexto('medico'));
 
     const res = await post({ spec: specValido });
 
     expect(res.status).toBe(403);
+    expect(mockRunRawSql).not.toHaveBeenCalled();
   });
 });
 

@@ -1,8 +1,8 @@
 'use server';
 
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
+import { contextoAccion } from '@/lib/tenant/contexto';
 import type { DeportistaFormData } from '@/lib/types/deportistas';
 
 // ---------------------------------------------------------------------------
@@ -13,8 +13,8 @@ export async function createDeportista(
   data: DeportistaFormData,
 ): Promise<{ success: true; id: string } | { success: false; error: string }> {
   try {
-    const { userId } = await auth();
-    if (!userId) throw new Error('No autorizado');
+    const acceso = await contextoAccion();
+    if (!acceso.ok) throw new Error(acceso.error);
 
     // Validate required fields
     if (!data.apellido?.trim()) return { success: false, error: 'El apellido es requerido' };
@@ -243,12 +243,10 @@ export async function updateDeportista(
   data: DeportistaFormData,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const { userId } = await auth();
-    if (!userId) throw new Error('No autorizado');
+    const acceso = await contextoAccion();
+    if (!acceso.ok) throw new Error(acceso.error);
 
-    const clerkUser = await currentUser();
-    const userRole = String(clerkUser?.publicMetadata?.role ?? '');
-    const isSocial = userRole === 'social';
+    const isSocial = acceso.contexto.rol === 'social';
 
     // Verify existence
     const existing = await prisma.deportista.findUnique({ where: { id } });
@@ -607,8 +605,8 @@ export async function deleteDeportista(
   id: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const { userId } = await auth();
-    if (!userId) throw new Error('No autorizado');
+    const acceso = await contextoAccion();
+    if (!acceso.ok) throw new Error(acceso.error);
 
     await prisma.deportista.delete({ where: { id } });
 

@@ -1,10 +1,12 @@
 import { Suspense } from 'react';
 import { getUsuarios } from '@/lib/actions/usuarios';
+import { requireContexto } from '@/lib/tenant/contexto';
 import UsuariosPageClient from './UsuariosPageClient';
 
 async function UsuariosContent() {
+  const { rol, userId } = await requireContexto(['admin']);
   const usuarios = await getUsuarios();
-  return <UsuariosPageClient usuarios={usuarios} />;
+  return <UsuariosPageClient usuarios={usuarios} rol={rol} currentUserId={userId} />;
 }
 
 function UsuariosSkeleton() {

@@ -1,8 +1,8 @@
 'use server';
 
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
+import { contextoAccion } from '@/lib/tenant/contexto';
 
 type ActionResult = { success: true } | { success: false; error: string };
 
@@ -27,12 +27,8 @@ export async function crearTransicionDivision(input: {
   fecha: string; // YYYY-MM-DD
 }): Promise<ActionResult> {
   try {
-    const { userId } = await auth();
-    if (!userId) return { success: false, error: 'No autorizado' };
-
-    const clerkUser = await currentUser();
-    const role = String(clerkUser?.publicMetadata?.role ?? '');
-    if (role !== 'admin') return { success: false, error: 'No autorizado' };
+    const acceso = await contextoAccion(['admin']);
+    if (!acceso.ok) return { success: false, error: 'No autorizado' };
 
     const fecha = parseDate(input.fecha);
     if (!fecha) return { success: false, error: 'La fecha es inválida' };
@@ -102,12 +98,8 @@ export async function updatePasoPorDivision(input: {
   hasta: string | null; // YYYY-MM-DD o null
 }): Promise<ActionResult> {
   try {
-    const { userId } = await auth();
-    if (!userId) return { success: false, error: 'No autorizado' };
-
-    const clerkUser = await currentUser();
-    const role = String(clerkUser?.publicMetadata?.role ?? '');
-    if (role !== 'admin') return { success: false, error: 'No autorizado' };
+    const acceso = await contextoAccion(['admin']);
+    if (!acceso.ok) return { success: false, error: 'No autorizado' };
 
     const desde = parseDate(input.desde);
     if (!desde) return { success: false, error: 'La fecha de inicio es inválida' };
@@ -151,12 +143,8 @@ export async function updatePasoPorDivision(input: {
 
 export async function deletePasoPorDivision(id: string): Promise<ActionResult> {
   try {
-    const { userId } = await auth();
-    if (!userId) return { success: false, error: 'No autorizado' };
-
-    const clerkUser = await currentUser();
-    const role = String(clerkUser?.publicMetadata?.role ?? '');
-    if (role !== 'admin') return { success: false, error: 'No autorizado' };
+    const acceso = await contextoAccion(['admin']);
+    if (!acceso.ok) return { success: false, error: 'No autorizado' };
 
     const existing = await prisma.pasoPorDivision.findUnique({
       where: { id },

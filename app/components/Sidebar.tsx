@@ -7,13 +7,21 @@ import type { NavItem } from '../../lib/roles';
 import { ICON_MAP } from '../../lib/nav-icons';
 import LogoBioTeam from './LogoBioTeam';
 
+/** Club activo que llega desde el layout. */
+export interface ClubActivo {
+  id: string;
+  nombre: string;
+}
+
 interface SidebarProps {
   navItems: NavItem[];
+  /** Club activo. Disponible para el selector y el branding por club; la marca sigue siendo BioTeam. */
+  club?: ClubActivo;
   isOpen?: boolean;
   onClose?: () => void;
 }
 
-export default function Sidebar({ navItems, isOpen = false, onClose }: SidebarProps) {
+export default function Sidebar({ navItems, club, isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -28,6 +36,7 @@ export default function Sidebar({ navItems, isOpen = false, onClose }: SidebarPr
       )}
 
       <aside
+        data-club-id={club?.id}
         className={[
           'w-64 flex flex-col bg-[#121A61] text-white shrink-0',
           // Mobile: fixed drawer

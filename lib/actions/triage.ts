@@ -1,15 +1,15 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { recomputeOne } from '@/lib/triage/recompute';
+import { contextoAccion } from '@/lib/tenant/contexto';
 
 export async function recomputeTriageAction(
   deportistaId: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const { userId } = await auth();
-    if (!userId) throw new Error('No autorizado');
+    const acceso = await contextoAccion();
+    if (!acceso.ok) throw new Error(acceso.error);
 
     if (!deportistaId?.trim()) {
       return { success: false, error: 'El deportista es requerido' };

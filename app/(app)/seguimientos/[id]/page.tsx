@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { CalendarDays } from 'lucide-react';
 import { notFound } from 'next/navigation';
-import { auth, currentUser, clerkClient } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
+import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
 import { getSeguimientoById } from '@/lib/queries/seguimientos';
 import DeleteSeguimientoModal from '../_components/DeleteSeguimientoModal';
 
@@ -102,23 +103,17 @@ function NumericField({ label, value, suffix }: { label: string; value: number |
 
 export default async function SeguimientoDetallePage({ params }: Props) {
   const { id } = await params;
+  const { userId, rol } = await requireContexto();
   const seguimiento = await getSeguimientoById(id);
   if (!seguimiento) notFound();
 
-  const { userId } = await auth();
-  const user = await currentUser();
-  const isAdmin = String(user?.publicMetadata?.role ?? '') === 'admin';
+  const isAdmin = rol === 'admin';
   const isOwner = seguimiento.profesionalId === userId;
   const canModify = isAdmin || isOwner;
 
-  let profesionalNombre = seguimiento.profesionalId;
-  try {
-    const client = await clerkClient();
-    const prof = await client.users.getUser(seguimiento.profesionalId);
-    profesionalNombre = `${prof.firstName ?? ''} ${prof.lastName ?? ''}`.trim();
-  } catch {
-    // Clerk user not found, use id as fallback
-  }
+  const profesionalNombre =
+    (await getNombresDeUsuarios([seguimiento.profesionalId]))[seguimiento.profesionalId] ??
+    seguimiento.profesionalId;
 
   const prioridad = String(seguimiento.prioridad);
   const tipo = seguimiento.tipoSeguimiento ?? 'GENERICO';

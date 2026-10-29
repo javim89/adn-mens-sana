@@ -1,5 +1,5 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
+import { requireContexto } from '@/lib/tenant/contexto';
+import type { AppRole } from '@/lib/roles';
 import { getConvocatorias } from '@/lib/queries/convocatorias';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { toDateString } from '@/lib/queries/calendario';
@@ -10,7 +10,7 @@ import ConvocatoriasTable, {
 export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 25;
-const ROLES_PERMITIDOS = ['admin', 'entrenador'];
+const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador'];
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) return value[0];
@@ -23,13 +23,7 @@ export default async function ConvocatoriasPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const { userId } = await auth();
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-
-  if (!ROLES_PERMITIDOS.includes(role)) {
-    redirect('/dashboard');
-  }
+  const { userId, rol: role } = await requireContexto(ROLES_PERMITIDOS);
 
   const isAdmin = role === 'admin';
 
@@ -44,7 +38,7 @@ export default async function ConvocatoriasPage({
     pageSize: PAGE_SIZE,
     disciplinaId,
     categoriaId,
-    callerId: userId!,
+    callerId: userId,
     isAdmin,
   });
 

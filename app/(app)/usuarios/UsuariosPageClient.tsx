@@ -3,20 +3,21 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
-import { useUser } from '@clerk/nextjs';
 import UsuariosTable from './UsuariosTable';
 import InvitarUsuarioModal from './InvitarUsuarioModal';
 import type { Usuario } from '@/lib/types/usuarios';
 
 interface UsuariosPageClientProps {
   usuarios: Usuario[];
+  /** Rol del usuario logueado en el club activo. */
+  rol: string;
+  currentUserId: string;
 }
 
-export default function UsuariosPageClient({ usuarios }: UsuariosPageClientProps) {
+export default function UsuariosPageClient({ usuarios, rol, currentUserId }: UsuariosPageClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { user, isLoaded } = useUser();
   const router = useRouter();
-  const isAdmin = isLoaded && user?.publicMetadata?.role === 'admin';
+  const isAdmin = rol === 'admin';
 
   return (
     <div className="p-4 md:p-8">
@@ -38,7 +39,7 @@ export default function UsuariosPageClient({ usuarios }: UsuariosPageClientProps
       </div>
       <p className="text-[#6B7280] mb-6">Gestión de accesos al sistema</p>
 
-      <UsuariosTable usuarios={usuarios} />
+      <UsuariosTable usuarios={usuarios} rol={rol} currentUserId={currentUserId} />
 
       <InvitarUsuarioModal
         open={isModalOpen}

@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { notFound } from 'next/navigation';
+import { requireContexto } from '@/lib/tenant/contexto';
+import type { AppRole } from '@/lib/roles';
 import { getConvocatoriaById } from '@/lib/queries/convocatorias';
 import DeleteConvocatoriaModal from '../_components/DeleteConvocatoriaModal';
 
@@ -8,7 +9,7 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const ROLES_PERMITIDOS = ['admin', 'entrenador'];
+const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador'];
 
 const ESTADO_LABELS: Record<string, string> = {
   PROGRAMADO: 'Programado',
@@ -44,13 +45,7 @@ function DetailCard({ title, children }: { title: string; children: React.ReactN
 export default async function ConvocatoriaDetallePage({ params }: Props) {
   const { id } = await params;
 
-  const { userId } = await auth();
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-
-  if (!ROLES_PERMITIDOS.includes(role)) {
-    redirect('/dashboard');
-  }
+  const { userId, rol: role } = await requireContexto(ROLES_PERMITIDOS);
 
   const convocatoria = await getConvocatoriaById(id);
   if (!convocatoria) notFound();

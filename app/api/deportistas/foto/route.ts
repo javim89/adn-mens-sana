@@ -1,4 +1,4 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { contextoApi } from '@/lib/tenant/contexto';
 import { deleteFoto, isValidFotoKey } from '@/lib/s3';
 import { isFotoKeyEnUso } from '@/lib/foto-deportista';
 import type { JsonApiErrors } from '@/lib/types/jsonapi';
@@ -18,15 +18,10 @@ function errorResponse(status: number, body: JsonApiErrors): Response {
  * después del upload). Nunca borra una key que algún deportista tenga asignada.
  */
 export async function DELETE(request: Request) {
-  const { userId } = await auth();
-  if (!userId) {
-    return errorResponse(401, {
-      errors: [{ status: '401', code: 'UNAUTHENTICATED', title: 'No autorizado' }],
-    });
-  }
+  const acceso = await contextoApi();
+  if (!acceso.ok) return acceso.response;
 
-  const clerkUser = await currentUser();
-  if (String(clerkUser?.publicMetadata?.role ?? '') === 'social') {
+  if (acceso.contexto.rol === 'social') {
     return errorResponse(403, {
       errors: [{ status: '403', code: 'FORBIDDEN', title: 'No tenés permiso para borrar fotos' }],
     });

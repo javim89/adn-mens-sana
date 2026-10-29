@@ -36,7 +36,7 @@
  * es otro tema".
  */
 import { Suspense } from 'react';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { LayoutDashboard } from 'lucide-react';
 import {
   fechaDbDesdeClave,
@@ -44,7 +44,6 @@ import {
   semanaActual,
   semanaAnterior,
 } from '@/lib/utils/fecha';
-import { esLugarRetiro } from '@/lib/utils/viandas';
 import { cardsVisibles } from './_lib/visibilidad';
 import { rangoSemana } from './_lib/formato';
 import {
@@ -65,9 +64,7 @@ import SeccionEventos from './_components/SeccionEventos';
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  const { userId } = await auth();
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
+  const { userId, rol: role, lugarRetiro } = await requireContexto();
   const isAdmin = role === 'admin';
 
   const cards = cardsVisibles(role);
@@ -76,10 +73,8 @@ export default async function DashboardPage() {
   const previa = semanaAnterior();
   const hoyDb = fechaDbDesdeClave(hoyEnArgentina());
 
-  // El lugar del responsable de viandas sale de Clerk, igual que en `/viandas`.
-  const metaLugar = (user?.publicMetadata as Record<string, unknown> | undefined)
-    ?.lugarRetiro;
-  const lugarResponsable = esLugarRetiro(metaLugar) ? metaLugar : null;
+  // El lugar del responsable de viandas sale de su membresía, igual que en `/viandas`.
+  const lugarResponsable = lugarRetiro;
 
   return (
     <div className="p-4 md:p-8">
@@ -157,7 +152,7 @@ export default async function DashboardPage() {
                 <SeccionTurnos
                   semana={semana}
                   hoyDb={hoyDb}
-                  profesionalId={isAdmin ? undefined : (userId ?? undefined)}
+                  profesionalId={isAdmin ? undefined : userId}
                 />
               </Suspense>
             </BloqueDashboard>
@@ -174,7 +169,7 @@ export default async function DashboardPage() {
                 <SeccionPresentismo
                   semana={semana}
                   semanaPrevia={previa}
-                  entrenadorId={isAdmin ? undefined : (userId ?? undefined)}
+                  entrenadorId={isAdmin ? undefined : userId}
                 />
               </Suspense>
             </BloqueDashboard>

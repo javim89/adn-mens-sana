@@ -1,12 +1,8 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // All mocks must be hoisted before vi.mock calls
-const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma, mockClerkClient } = vi.hoisted(
+const { mockRevalidatePath, mockPrisma, mockClerkClient } = vi.hoisted(
   () => {
-    const mockAuth = vi.fn().mockResolvedValue({ userId: 'user_entrenador_1' });
-    const mockCurrentUser = vi.fn().mockResolvedValue({
-      publicMetadata: { role: 'entrenador' },
-    });
     const mockRevalidatePath = vi.fn();
     const mockClerkClient = vi.fn().mockResolvedValue({
       users: {
@@ -29,13 +25,14 @@ const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma, mockClerkClie
         deleteMany: vi.fn().mockResolvedValue({}),
       },
     };
-    return { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma, mockClerkClient };
+    return { mockRevalidatePath, mockPrisma, mockClerkClient };
   },
 );
 
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 vi.mock('@clerk/nextjs/server', () => ({
-  auth: mockAuth,
-  currentUser: mockCurrentUser,
   clerkClient: mockClerkClient,
 }));
 vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
@@ -43,6 +40,7 @@ vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
 import { createEntrenamiento, updateEntrenamiento, deleteEntrenamiento } from '../presentismo';
 import type { EntrenamientoFormData } from '@/lib/types/presentismo';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
 
 const validData: EntrenamientoFormData = {
   fecha: '2026-08-01',
@@ -57,13 +55,11 @@ const validData: EntrenamientoFormData = {
 };
 
 function setCallerAsEntrenador(userId = 'user_entrenador_1') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'entrenador' } });
+  setContexto(mockContexto('entrenador', { userId }));
 }
 
 function setCallerAsAdmin(userId = 'user_admin_1') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+  setContexto(mockContexto('admin', { userId }));
 }
 
 // ─── createEntrenamiento ──────────────────────────────────────────────────────
@@ -76,7 +72,7 @@ describe('createEntrenamiento', () => {
   });
 
   test('1. rechaza si no autenticado (userId = null)', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: null });
+    setContexto(null);
     const result = await createEntrenamiento(validData);
     expect(result).toEqual({ success: false, error: 'No autorizado' });
     expect(mockPrisma.entrenamiento.create).not.toHaveBeenCalled();

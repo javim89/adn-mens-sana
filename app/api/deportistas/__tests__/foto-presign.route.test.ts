@@ -4,21 +4,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
-  currentUser: vi.fn(),
-}));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 
 vi.mock('@/lib/s3', () => ({
   createUploadUrl: vi.fn(),
 }));
 
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { createUploadUrl } from '@/lib/s3';
 import { POST } from '../foto/presign/route';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
+import type { AppRole } from '@/lib/roles';
 
-type AuthResult = ReturnType<typeof auth> extends Promise<infer T> ? T : never;
-type CurrentUserResult = ReturnType<typeof currentUser> extends Promise<infer T> ? T : never;
 
 function makeRequest(body: unknown, contentType = 'application/vnd.api+json') {
   return new Request('http://localhost/api/deportistas/foto/presign', {
@@ -33,18 +31,18 @@ function presignBody(attributes: Record<string, unknown>) {
 }
 
 function asRole(role: string) {
-  vi.mocked(currentUser).mockResolvedValue({ publicMetadata: { role } } as unknown as CurrentUserResult);
+  setContexto(mockContexto(role as AppRole, { userId: 'user1' }));
 }
 
 describe('POST /api/deportistas/foto/presign', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as AuthResult);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     asRole('admin');
   });
 
   it('returns 401 when not authenticated', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as AuthResult);
+    setContexto(null);
 
     const res = await POST(makeRequest(presignBody({ contentType: 'image/png', size: 100 })));
 

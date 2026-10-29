@@ -4,10 +4,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
-  currentUser: vi.fn().mockResolvedValue({ publicMetadata: { role: 'admin' } }),
-}));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 
 vi.mock('@/lib/s3', async () => {
   const actual = await vi.importActual<typeof import('@/lib/s3')>('@/lib/s3');
@@ -49,10 +48,10 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/db';
 import { deleteFoto, fotoExiste } from '@/lib/s3';
 import { GET, PATCH, DELETE } from '../[id]/route';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
 
 const OLD_KEY = 'deportistas/11111111-1111-1111-1111-111111111111.jpg';
 const NEW_KEY = 'deportistas/22222222-2222-2222-2222-222222222222.png';
@@ -112,7 +111,7 @@ describe('GET /api/deportistas/[id]', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(null);
 
     const res = await GET(makeRequest('http://localhost/api/deportistas/cuid1'), makeParams('cuid1'));
 
@@ -122,7 +121,7 @@ describe('GET /api/deportistas/[id]', () => {
   });
 
   it('returns 404 for unknown id', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique).mockResolvedValue(null);
 
     const res = await GET(makeRequest('http://localhost/api/deportistas/nonexistent'), makeParams('nonexistent'));
@@ -133,7 +132,7 @@ describe('GET /api/deportistas/[id]', () => {
   });
 
   it('returns 200 with JSON:API single shape', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique).mockResolvedValue(mockDeportistaFull as never);
 
     const res = await GET(makeRequest('http://localhost/api/deportistas/cuid1'), makeParams('cuid1'));
@@ -150,7 +149,7 @@ describe('GET /api/deportistas/[id]', () => {
   });
 
   it('exposes fotoKey and a signed fotoUrl', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique).mockResolvedValue({ ...mockDeportistaFull, fotoKey: OLD_KEY } as never);
 
     const res = await GET(makeRequest('http://localhost/api/deportistas/cuid1'), makeParams('cuid1'));
@@ -161,7 +160,7 @@ describe('GET /api/deportistas/[id]', () => {
   });
 
   it('returns fotoKey and fotoUrl null when there is no foto', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique).mockResolvedValue({ ...mockDeportistaFull, fotoKey: null } as never);
 
     const res = await GET(makeRequest('http://localhost/api/deportistas/cuid1'), makeParams('cuid1'));
@@ -190,7 +189,7 @@ describe('PATCH /api/deportistas/[id]', () => {
   };
 
   it('returns 401 when not authenticated', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(null);
 
     const res = await PATCH(
       makeRequest('http://localhost/api/deportistas/cuid1', {
@@ -205,7 +204,7 @@ describe('PATCH /api/deportistas/[id]', () => {
   });
 
   it('returns 404 for unknown id', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique).mockResolvedValue(null);
 
     const body = {
@@ -225,7 +224,7 @@ describe('PATCH /api/deportistas/[id]', () => {
   });
 
   it('returns 200 with updated data', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique)
       .mockResolvedValueOnce({ id: 'cuid1' } as never) // existence check
       .mockResolvedValueOnce({ ...mockDeportistaFull, apellido: 'Garcia' } as never); // final fetch
@@ -248,7 +247,7 @@ describe('PATCH /api/deportistas/[id]', () => {
   });
 
   it('updates categoriaId', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique)
       .mockResolvedValueOnce({ id: 'cuid1' } as never)
       .mockResolvedValueOnce(mockDeportistaFull as never);
@@ -276,7 +275,7 @@ describe('PATCH /api/deportistas/[id]', () => {
   });
 
   it('updates disciplinaId', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique)
       .mockResolvedValueOnce({ id: 'cuid1' } as never)
       .mockResolvedValueOnce({
@@ -310,7 +309,7 @@ describe('PATCH /api/deportistas/[id]', () => {
   });
 
   it('clears categoriaId to null when empty string sent', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique)
       .mockResolvedValueOnce({ id: 'cuid1' } as never)
       .mockResolvedValueOnce({ ...mockDeportistaFull, categoriaId: null, categoria: null } as never);
@@ -340,7 +339,7 @@ describe('PATCH /api/deportistas/[id]', () => {
   });
 
   it('returns 409 when body id does not match URL id', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
 
     const body = {
       data: { type: 'deportistas', id: 'different-id', attributes: { apellido: 'Test' } },
@@ -372,7 +371,7 @@ describe('PATCH /api/deportistas/[id]', () => {
     }
 
     beforeEach(() => {
-      vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+      setContexto(mockContexto('admin', { userId: 'user1' }));
       vi.mocked(prisma.deportista.update).mockResolvedValue({} as never);
       vi.mocked(prisma.deportista.findFirst).mockResolvedValue(null);
       vi.mocked(fotoExiste).mockResolvedValue(true);
@@ -521,7 +520,7 @@ describe('PATCH /api/deportistas/[id]', () => {
     });
 
     it('ignores fotoKey for the social role', async () => {
-      vi.mocked(currentUser).mockResolvedValueOnce({ publicMetadata: { role: 'social' } } as never);
+      setContexto(mockContexto('social', { userId: 'user1' }));
       vi.mocked(prisma.deportista.findUnique)
         .mockResolvedValueOnce({ id: 'cuid1', fotoKey: OLD_KEY } as never)
         .mockResolvedValueOnce({ ...mockDeportistaFull, fotoKey: OLD_KEY } as never);
@@ -543,7 +542,7 @@ describe('DELETE /api/deportistas/[id]', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(null);
 
     const res = await DELETE(makeRequest('http://localhost/api/deportistas/cuid1'), makeParams('cuid1'));
 
@@ -551,7 +550,7 @@ describe('DELETE /api/deportistas/[id]', () => {
   });
 
   it('returns 404 for unknown id', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique).mockResolvedValue(null);
 
     const res = await DELETE(makeRequest('http://localhost/api/deportistas/nonexistent'), makeParams('nonexistent'));
@@ -560,7 +559,7 @@ describe('DELETE /api/deportistas/[id]', () => {
   });
 
   it('returns 204 when deletion succeeds', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique).mockResolvedValue({ id: 'cuid1' } as never);
     vi.mocked(prisma.deportista.delete).mockResolvedValue({} as never);
 
@@ -571,7 +570,7 @@ describe('DELETE /api/deportistas/[id]', () => {
   });
 
   it('deletes the foto from S3 after deleting the record', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique).mockResolvedValue({ id: 'cuid1', fotoKey: OLD_KEY } as never);
     vi.mocked(prisma.deportista.delete).mockResolvedValue({} as never);
 
@@ -585,7 +584,7 @@ describe('DELETE /api/deportistas/[id]', () => {
   });
 
   it('does not call S3 when a 404 is returned', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findUnique).mockResolvedValue(null);
 
     await DELETE(makeRequest('http://localhost/api/deportistas/nonexistent'), makeParams('nonexistent'));

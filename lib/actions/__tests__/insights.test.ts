@@ -1,10 +1,6 @@
 import { describe, test, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
-  const mockAuth = vi.fn().mockResolvedValue({ userId: 'user_admin_1' });
-  const mockCurrentUser = vi.fn().mockResolvedValue({
-    publicMetadata: { role: 'admin' },
-  });
+const { mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
   const mockRevalidatePath = vi.fn();
 
   const mockPrisma = {
@@ -45,10 +41,12 @@ const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted
     ),
   };
 
-  return { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma };
+  return { mockRevalidatePath, mockPrisma };
 });
 
-vi.mock('@clerk/nextjs/server', () => ({ auth: mockAuth, currentUser: mockCurrentUser }));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
@@ -70,9 +68,11 @@ import { querySpecSchema } from '@/lib/insights/schemas';
 import { compile } from '@/lib/insights/compile';
 import { VIZ_BY_ID, checkCompatibility, type VizId } from '@/lib/insights/visualizations';
 import { widgetsPanoramaGeneral, widgetsViandas } from '@/scripts/seed-insights.mjs';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
+import type { AppRole } from '@/lib/roles';
 
-function asRole(role: string | null) {
-  mockCurrentUser.mockResolvedValue(role ? { publicMetadata: { role } } : null);
+function asRole(role: AppRole | null) {
+  setContexto(role ? mockContexto(role, { userId: 'user_admin_1' }) : null);
 }
 
 const specValido = {
@@ -84,7 +84,6 @@ const specValido = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAuth.mockResolvedValue({ userId: 'user_admin_1' });
   asRole('admin');
   mockPrisma.insightsDashboard.findUnique.mockResolvedValue(null);
   mockPrisma.insightsDashboard.findFirst.mockResolvedValue(null);
@@ -130,7 +129,7 @@ describe('guard de admin', () => {
   });
 
   test.each(acciones)('%s rechaza a un usuario sin sesión', async (_nombre, run) => {
-    mockAuth.mockResolvedValue({ userId: null });
+    setContexto(null);
     const result = await run();
     expect(result.success).toBe(false);
   });

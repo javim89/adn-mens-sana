@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Mail, Loader2, ChevronDown, TriangleAlert } from 'lucide-react';
 import { CustomSelect } from '@/app/components/ui/custom-select';
 import { toast } from 'sonner';
-import { useUser } from '@clerk/nextjs';
 import { reenviarInvitacion, cambiarRol, asignarLugarRetiro, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
 import { ROLES_PERMITIDOS, ROL_LABELS } from '@/lib/roles';
 import { LUGARES_RETIRO } from '@/lib/utils/viandas';
@@ -116,7 +115,7 @@ function LugarRetiroSelector({
 interface UsuarioAccionesProps {
   usuario: Usuario;
   isAdmin: boolean;
-  currentUserId: string | undefined;
+  currentUserId: string;
   openConfirm: (action: 'deshabilitar' | 'reactivar' | 'eliminar', usuario: Usuario) => void;
 }
 
@@ -161,9 +160,8 @@ function UsuarioAcciones({ usuario, isAdmin, currentUserId, openConfirm }: Usuar
   if (!isAdmin) return null;
 
   const showReenviar = usuario.status === 'pendiente';
-  const showDeshabilitar =
-    usuario.status === 'activo' && !usuario.disabled && usuario.id !== currentUserId;
-  const showReactivar = usuario.status === 'activo' && usuario.disabled;
+  const showDeshabilitar = usuario.status === 'activo' && usuario.id !== currentUserId;
+  const showReactivar = usuario.status === 'inactivo';
 
   function handleResend() {
     setOpen(false);
@@ -275,10 +273,10 @@ function RolSelector({ userId, currentRol }: { userId: string; currentRol: strin
 }
 
 function EstadoBadge({ usuario }: { usuario: Usuario }) {
-  if (usuario.status === 'activo' && usuario.disabled) {
+  if (usuario.status === 'inactivo') {
     return (
       <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-700">
-        Deshabilitado
+        Inactivo
       </span>
     );
   }
@@ -298,6 +296,9 @@ function EstadoBadge({ usuario }: { usuario: Usuario }) {
 
 interface UsuariosTableProps {
   usuarios: Usuario[];
+  /** Rol del usuario logueado en el club activo (sale de su `Membresia`). */
+  rol: string;
+  currentUserId: string;
 }
 
 type ConfirmModalState = {
@@ -306,10 +307,8 @@ type ConfirmModalState = {
   usuario: Usuario | null;
 };
 
-export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
-  const { user, isLoaded } = useUser();
-  const isAdmin = isLoaded && user?.publicMetadata?.role === 'admin';
-  const currentUserId = user?.id;
+export default function UsuariosTable({ usuarios, rol, currentUserId }: UsuariosTableProps) {
+  const isAdmin = rol === 'admin';
 
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -348,8 +347,8 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
           toast.success('Usuario deshabilitado');
         } else if (action === 'reactivar') {
           toast.success('Usuario reactivado');
-        } else if (usuario.status === 'activo') {
-          toast.success('Usuario eliminado');
+        } else if (usuario.status !== 'pendiente') {
+          toast.success('Usuario eliminado del club');
         } else {
           toast.success('Invitación revocada');
         }
@@ -368,7 +367,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
     if (action === 'deshabilitar') {
       return {
         title: 'Deshabilitar usuario',
-        description: `¿Seguro que querés deshabilitar a ${nombre}? No podrá iniciar sesión hasta que sea reactivado.`,
+        description: `¿Seguro que querés deshabilitar a ${nombre}? No podrá entrar a este club hasta que sea reactivado.`,
         confirmLabel: 'Deshabilitar',
         danger: true,
       };
@@ -376,7 +375,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
     if (action === 'reactivar') {
       return {
         title: 'Reactivar usuario',
-        description: `¿Seguro que querés reactivar a ${nombre}? Recuperará acceso para iniciar sesión.`,
+        description: `¿Seguro que querés reactivar a ${nombre}? Recuperará el acceso a este club.`,
         confirmLabel: 'Reactivar',
         danger: false,
       };
@@ -391,7 +390,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
     }
     return {
       title: 'Eliminar usuario',
-      description: `¿Seguro que querés eliminar a ${nombre}? Esta acción no se puede deshacer.`,
+      description: `¿Seguro que querés quitar a ${nombre} del club? Su cuenta sigue existiendo, pero tendrá que ser invitado de nuevo para volver.`,
       confirmLabel: 'Eliminar',
       danger: true,
     };
@@ -411,7 +410,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
             </li>
           ) : (
             usuarios.map((usuario) => {
-              const isDisabled = usuario.status === 'activo' && usuario.disabled;
+              const isDisabled = usuario.status === 'inactivo';
               return (
                 <li
                   key={usuario.id}
@@ -426,7 +425,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                     </div>
                     <UsuarioAcciones
                       usuario={usuario}
-                      isAdmin={!!isAdmin}
+                      isAdmin={isAdmin}
                       currentUserId={currentUserId}
                       openConfirm={openConfirm}
                     />
@@ -438,14 +437,14 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                     )}
                     <EstadoBadge usuario={usuario} />
                   </div>
-                  {isAdmin && usuario.status === 'activo' && (
+                  {isAdmin && usuario.status !== 'pendiente' && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-[#6B7280]">Rol:</span>
                       <RolSelector userId={usuario.id} currentRol={usuario.rol} />
                     </div>
                   )}
                   {isAdmin &&
-                    usuario.status === 'activo' &&
+                    usuario.status !== 'pendiente' &&
                     usuario.rol === 'responsable_viandas' && (
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-[#6B7280]">Lugar:</span>
@@ -457,7 +456,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                     )}
                   <p className="text-xs text-[#6B7280]">
                     Último ingreso:{' '}
-                    {usuario.status === 'activo' ? formatLastSignIn(usuario.lastSignInAt) : '—'}
+                    {usuario.status !== 'pendiente' ? formatLastSignIn(usuario.lastSignInAt) : '—'}
                   </p>
                 </li>
               );
@@ -491,7 +490,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                 </tr>
               ) : (
                 usuarios.map((usuario) => {
-                  const isDisabled = usuario.status === 'activo' && usuario.disabled;
+                  const isDisabled = usuario.status === 'inactivo';
                   return (
                     <tr
                       key={usuario.id}
@@ -510,7 +509,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                         </div>
                       </td>
                       <td className="hidden xl:table-cell px-4 py-3.5 text-sm text-[#6B7280]">
-                        {usuario.status === 'activo'
+                        {usuario.status !== 'pendiente'
                           ? formatLastSignIn(usuario.lastSignInAt)
                           : '—'}
                       </td>
@@ -519,7 +518,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                       </td>
                       {isAdmin && (
                         <td className="hidden xl:table-cell px-4 py-3.5">
-                          {usuario.status === 'activo' ? (
+                          {usuario.status !== 'pendiente' ? (
                             <div className="flex flex-col gap-1.5">
                               <RolSelector userId={usuario.id} currentRol={usuario.rol} />
                               {usuario.rol === 'responsable_viandas' && (
@@ -537,7 +536,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                       <td className="px-4 py-3.5">
                         <UsuarioAcciones
                           usuario={usuario}
-                          isAdmin={!!isAdmin}
+                          isAdmin={isAdmin}
                           currentUserId={currentUserId}
                           openConfirm={openConfirm}
                         />

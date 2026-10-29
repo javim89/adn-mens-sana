@@ -1,22 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
-}));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 
 vi.mock('@/lib/queries/disciplinas', () => ({
   getDisciplinasConCategorias: vi.fn(),
 }));
 
-import { auth } from '@clerk/nextjs/server';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { GET } from '../route';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
 
 describe('GET /api/disciplinas', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(null);
 
     const res = await GET();
 
@@ -27,7 +27,7 @@ describe('GET /api/disciplinas', () => {
   });
 
   it('returns 200 with JSON:API collection incluyendo categorías anidadas', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(getDisciplinasConCategorias).mockResolvedValue([
       {
         id: 'disc-futbol',

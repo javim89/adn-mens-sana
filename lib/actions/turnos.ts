@@ -1,42 +1,27 @@
 'use server';
 
-import { auth, currentUser, clerkClient } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
+import type { AppRole } from '@/lib/roles';
+import { getContextoClub } from '@/lib/tenant/contexto';
+import { getMiembrosDelClub } from '@/lib/tenant/miembros';
 import type { TurnoFormData, Profesional } from '@/lib/types/turnos';
 
-const HEALTH_ROLES = ['medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'];
+const HEALTH_ROLES: AppRole[] = ['medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'];
 
+/** Usuario y rol en el club activo. Sin club accesible, `userId` es null. */
 async function getCallerInfo() {
-  const { userId } = await auth();
-  if (!userId) return { userId: null, role: null };
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-  return { userId, role };
+  const contexto = await getContextoClub();
+  if (!contexto) return { userId: null, role: null };
+  return { userId: contexto.userId, role: contexto.rol };
 }
 
 export async function getProfesionales(): Promise<Profesional[]> {
   const { role } = await getCallerInfo();
   if (role !== 'admin') return [];
 
-  const client = await clerkClient();
-  const response = await client.users.getUserList({ limit: 100 });
-
-  return response.data
-    .filter((u) => {
-      const r = String((u.publicMetadata as Record<string, unknown>)?.role ?? '');
-      return HEALTH_ROLES.includes(r);
-    })
-    .map((u) => {
-      const meta = (u.publicMetadata ?? {}) as Record<string, unknown>;
-      return {
-        id: u.id,
-        nombre: u.firstName || String(meta.firstName ?? ''),
-        apellido: u.lastName || String(meta.lastName ?? ''),
-        rol: String(meta.role ?? ''),
-      };
-    })
-    .sort((a, b) => `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`));
+  const miembros = await getMiembrosDelClub({ roles: HEALTH_ROLES });
+  return miembros.map((m) => ({ id: m.userId, nombre: m.nombre, apellido: m.apellido, rol: m.rol }));
 }
 
 export async function createTurno(

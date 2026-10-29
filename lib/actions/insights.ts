@@ -12,7 +12,7 @@
  * un widget es una bomba de tiempo que revienta recién al renderizar.
  */
 
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { getContextoClub } from '@/lib/tenant/contexto';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
 import {
@@ -88,13 +88,12 @@ export type DashboardDetail = {
 // ---------------------------------------------------------------------------
 
 async function assertAdmin(): Promise<Fail | { success: true; userId: string }> {
-  const { userId } = await auth();
-  if (!userId) return { success: false, error: 'No autorizado' };
-  const user = await currentUser();
-  if (user?.publicMetadata?.role !== 'admin') {
+  const contexto = await getContextoClub();
+  if (!contexto) return { success: false, error: 'No autorizado' };
+  if (contexto.rol !== 'admin') {
     return { success: false, error: 'Acceso denegado: se requiere rol admin' };
   }
-  return { success: true, userId };
+  return { success: true, userId: contexto.userId };
 }
 
 function fail(error: unknown, fallback: string): Fail {

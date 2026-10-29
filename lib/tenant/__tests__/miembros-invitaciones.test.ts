@@ -21,7 +21,7 @@ vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
 vi.mock('@clerk/nextjs/server', () => ({ clerkClient: async () => mockClerk }));
 vi.mock('../contexto', () => ({ getContextoClub: mockGetContextoClub }));
 
-const { getMiembrosDelClub } = await import('../miembros');
+const { getMiembrosDelClub, getNombresDeUsuarios } = await import('../miembros');
 const { aceptarInvitacionesPendientes, hashToken, nuevoTokenInvitacion } = await import('../invitaciones');
 const { SinContextoError } = await import('../errores');
 const { mockContexto } = await import('@/test-utils/tenant');
@@ -102,6 +102,40 @@ describe('getMiembrosDelClub', () => {
   it('sin contexto ni clubId tira SinContextoError', async () => {
     mockGetContextoClub.mockResolvedValue(null);
     await expect(getMiembrosDelClub()).rejects.toThrow(SinContextoError);
+  });
+});
+
+describe('getNombresDeUsuarios', () => {
+  it('resuelve con los miembros del club (incluye inactivos) y no pregunta de más a Clerk', async () => {
+    mockPrisma.membresia.findMany.mockResolvedValue([
+      { userId: 'u1', rol: 'medico', lugarRetiro: null, activo: false },
+    ]);
+    mockClerk.users.getUserList.mockResolvedValue({ data: [usuarioClerk('u1')] });
+
+    const nombres = await getNombresDeUsuarios(['u1', 'u1']);
+
+    expect(mockPrisma.membresia.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { clubId: 'club_test' } }),
+    );
+    expect(nombres).toEqual({ u1: 'Nombre u1 Apellido u1' });
+    expect(mockClerk.users.getUser).not.toHaveBeenCalled();
+  });
+
+  it('un ex miembro con registros en el club se resuelve por id; uno inexistente queda como id', async () => {
+    mockPrisma.membresia.findMany.mockResolvedValue([]);
+    mockClerk.users.getUser.mockImplementation(async (id: string) => {
+      if (id === 'ex') return usuarioClerk('ex', { firstName: '', lastName: '' });
+      throw new Error('not found');
+    });
+
+    const nombres = await getNombresDeUsuarios(['ex', 'borrado']);
+
+    expect(nombres).toEqual({ ex: 'ex@club.com', borrado: 'borrado' });
+  });
+
+  it('sin ids no consulta nada', async () => {
+    await expect(getNombresDeUsuarios([])).resolves.toEqual({});
+    expect(mockPrisma.membresia.findMany).not.toHaveBeenCalled();
   });
 });
 

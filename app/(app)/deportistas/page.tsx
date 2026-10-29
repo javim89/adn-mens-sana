@@ -1,9 +1,8 @@
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import DeportistasTable from './_components/DeportistasTable';
 
 export default async function DeportistasPage() {
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
+  const { rol: role } = await requireContexto();
 
   return (
     <div className="p-4 md:p-8">

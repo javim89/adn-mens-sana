@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
-import { currentUser } from '@clerk/nextjs/server';
+import { notFound } from 'next/navigation';
+import { requireContexto } from '@/lib/tenant/contexto';
+import type { AppRole } from '@/lib/roles';
 import { getConvocatoriaById } from '@/lib/queries/convocatorias';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import ConvocatoriaForm, {
@@ -11,17 +12,12 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const ROLES_PERMITIDOS = ['admin', 'entrenador'];
+const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador'];
 
 export default async function EditarConvocatoriaPage({ params }: Props) {
   const { id } = await params;
 
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-
-  if (!ROLES_PERMITIDOS.includes(role)) {
-    redirect('/dashboard');
-  }
+  await requireContexto(ROLES_PERMITIDOS);
 
   const convocatoria = await getConvocatoriaById(id);
   if (!convocatoria) notFound();

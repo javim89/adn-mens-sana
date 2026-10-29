@@ -1,8 +1,8 @@
 'use server';
 
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
+import { getContextoClub } from '@/lib/tenant/contexto';
 import { getPlantelViandas } from '@/lib/queries/viandas';
 import { fechaDbDesdeClave, hoyEnArgentina, horaEnArgentina } from '@/lib/utils/fecha';
 import { esLugarRetiro, esTipoComida } from '@/lib/utils/viandas';
@@ -28,22 +28,21 @@ type ResultadoBorrado =
   | { success: true; fecha: string }
   | { success: false; fecha: string; error: string };
 
+/** Usuario, rol y lugar de retiro en el club activo (salen de su `Membresia`). */
 async function getCallerInfo() {
-  const { userId } = await auth();
-  if (!userId) return { userId: null, role: null, lugarRetiro: null };
-  const user = await currentUser();
-  const meta = (user?.publicMetadata ?? {}) as Record<string, unknown>;
+  const contexto = await getContextoClub();
+  if (!contexto) return { userId: null, role: '', lugarRetiro: null };
   return {
-    userId,
-    role: String(meta.role ?? ''),
-    lugarRetiro: esLugarRetiro(meta.lugarRetiro) ? meta.lugarRetiro : null,
+    userId: contexto.userId,
+    role: contexto.rol as string,
+    lugarRetiro: contexto.lugarRetiro,
   };
 }
 
 /**
  * Resuelve quién marca y DÓNDE.
  *
- * Para el responsable el lugar sale de su `publicMetadata` y `lugarSolicitado` se
+ * Para el responsable el lugar sale de su `Membresia` y `lugarSolicitado` se
  * IGNORA: si el cliente pudiera elegirlo, la trazabilidad por lugar —que es la
  * razón de ser del módulo— no valdría nada. El admin sí lo elige, porque puede
  * cubrir cualquiera de los tres puestos.

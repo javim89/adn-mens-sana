@@ -1,5 +1,6 @@
-import { redirect } from 'next/navigation';
-import { currentUser, clerkClient } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
+import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
+import type { AppRole } from '@/lib/roles';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { getPlantelViandas } from '@/lib/queries/viandas';
 import { hoyEnArgentina, resolverFechaActiva } from '@/lib/utils/fecha';
@@ -11,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 // Mismo patrón que convocatorias/presentismo: el guard vive en la page porque
 // `proxy.ts` solo exige sesión, no rol. Las actions lo revalidan por su cuenta.
-const ROLES_VIANDAS = ['admin', 'responsable_viandas'];
+const ROLES_VIANDAS: AppRole[] = ['admin', 'responsable_viandas'];
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) return value[0];
@@ -24,13 +25,10 @@ export default async function ViandasPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-  if (!ROLES_VIANDAS.includes(role)) redirect('/dashboard');
+  const { rol, lugarRetiro } = await requireContexto(ROLES_VIANDAS);
 
-  const isAdmin = role === 'admin';
-  const metaLugar = (user?.publicMetadata as Record<string, unknown> | undefined)?.lugarRetiro;
-  const lugarResponsable = esLugarRetiro(metaLugar) ? metaLugar : null;
+  const isAdmin = rol === 'admin';
+  const lugarResponsable = lugarRetiro;
 
   // El admin elige el lugar por la URL; el responsable lo tiene fijado en su
   // perfil y no puede cambiarlo. El servidor vuelve a decidirlo al marcar, así
@@ -64,26 +62,8 @@ export default async function ViandasPage({
 
   // Nombres de quienes entregaron, para que el subtexto de cada celda marcada
   // diga quién fue y no un id de Clerk.
-  const entregadores: Record<string, string> = {};
-  const ids = [
-    ...new Set(
-      plantel.flatMap((d) => Object.values(d.entregas).map((e) => e!.entregadoPor)),
-    ),
-  ];
-  if (ids.length > 0) {
-    const client = await clerkClient();
-    const users = await Promise.all(
-      ids.map((id) => client.users.getUser(id).catch(() => null)),
-    );
-    for (const u of users) {
-      if (!u) continue;
-      const meta = (u.publicMetadata ?? {}) as Record<string, unknown>;
-      const nombre = u.firstName || String(meta.firstName ?? '');
-      const apellido = u.lastName || String(meta.lastName ?? '');
-      entregadores[u.id] =
-        `${nombre} ${apellido}`.trim() || u.emailAddresses?.[0]?.emailAddress || u.id;
-    }
-  }
+  const ids = plantel.flatMap((d) => Object.values(d.entregas).map((e) => e!.entregadoPor));
+  const entregadores = ids.length > 0 ? await getNombresDeUsuarios(ids) : {};
 
   const disciplinas = await getDisciplinasConCategorias();
 

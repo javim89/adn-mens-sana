@@ -5,13 +5,16 @@ import { Menu } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
 import LogoBioTeam from '../../components/LogoBioTeam';
 import type { NavItem } from '../../../lib/roles';
+import type { ClubActivo } from '../../components/Sidebar';
 
 interface AppShellProps {
   navItems: NavItem[];
+  /** Club activo de la sesión. Por ahora solo se pasa al Sidebar (el branding por club es la fase 2). */
+  club?: ClubActivo;
   children: React.ReactNode;
 }
 
-export default function AppShell({ navItems, children }: AppShellProps) {
+export default function AppShell({ navItems, club, children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -36,6 +39,7 @@ export default function AppShell({ navItems, children }: AppShellProps) {
       <div className="flex flex-1 min-h-0 min-w-0">
         <Sidebar
           navItems={navItems}
+          club={club}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />

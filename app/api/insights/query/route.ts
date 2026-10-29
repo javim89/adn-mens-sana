@@ -9,7 +9,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { getContextoClub } from '@/lib/tenant/contexto';
 import { runQuery, runRawSql } from '@/lib/insights/run';
 import { resolveUserLabels } from '@/lib/insights/user-labels';
 import { formatZodError, queryRequestSchema } from '@/lib/insights/schemas';
@@ -53,11 +53,10 @@ function fitPayload(rows: Row[]): { rows: Row[]; truncated: boolean } {
 }
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
-  if (!userId) return errorResponse(401, 'No autorizado');
+  const contexto = await getContextoClub();
+  if (!contexto) return errorResponse(401, 'No autorizado');
 
-  const user = await currentUser();
-  if (user?.publicMetadata?.role !== 'admin') {
+  if (contexto.rol !== 'admin') {
     return errorResponse(403, 'Acceso denegado: se requiere rol admin');
   }
 

@@ -1,10 +1,9 @@
 import Link from 'next/link';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getDeportistaById } from '@/lib/queries/deportistas';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { getFotoUrl } from '@/lib/s3';
 import DeportistaForm from '../../_components/DeportistaForm';
-import type { AppRole } from '@/lib/roles';
 
 export default async function EditarDeportistaPage({
   params,
@@ -12,13 +11,12 @@ export default async function EditarDeportistaPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [deportista, user, disciplinas] = await Promise.all([
+  const { rol: role } = await requireContexto();
+  const [deportista, disciplinas] = await Promise.all([
     getDeportistaById(id),
-    currentUser(),
     getDisciplinasConCategorias(),
   ]);
   const fotoUrl = await getFotoUrl(deportista.fotoKey);
-  const role = (user?.publicMetadata?.role as AppRole | undefined) ?? undefined;
 
   return (
     <div className="p-4 md:p-8">

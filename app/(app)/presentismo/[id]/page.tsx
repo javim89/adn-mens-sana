@@ -1,6 +1,8 @@
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
-import { auth, currentUser, clerkClient } from '@clerk/nextjs/server';
+import { notFound } from 'next/navigation';
+import { requireContexto } from '@/lib/tenant/contexto';
+import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
+import type { AppRole } from '@/lib/roles';
 import { getEntrenamientoById } from '@/lib/queries/presentismo';
 import { TIPO_SESION_LABELS } from '@/lib/utils/asistencia';
 import type { EstadoAsistencia } from '@/lib/types/presentismo';
@@ -11,7 +13,7 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const ROLES_PERMITIDOS = ['admin', 'entrenador'];
+const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador'];
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat('es-AR', {
@@ -35,13 +37,7 @@ function DetailCard({ title, children }: { title: string; children: React.ReactN
 export default async function EntrenamientoDetallePage({ params }: Props) {
   const { id } = await params;
 
-  const { userId } = await auth();
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-
-  if (!ROLES_PERMITIDOS.includes(role)) {
-    redirect('/dashboard');
-  }
+  const { userId, rol: role } = await requireContexto(ROLES_PERMITIDOS);
 
   const entrenamiento = await getEntrenamientoById(id);
   if (!entrenamiento) notFound();
@@ -49,15 +45,9 @@ export default async function EntrenamientoDetallePage({ params }: Props) {
   const isAdmin = role === 'admin';
   const canModify = isAdmin || entrenamiento.registradoPor === userId;
 
-  let entrenadorNombre = entrenamiento.entrenadorId;
-  try {
-    const client = await clerkClient();
-    const prof = await client.users.getUser(entrenamiento.entrenadorId);
-    entrenadorNombre =
-      `${prof.firstName ?? ''} ${prof.lastName ?? ''}`.trim() || entrenamiento.entrenadorId;
-  } catch {
-    // Clerk user not found, use id as fallback
-  }
+  const entrenadorNombre =
+    (await getNombresDeUsuarios([entrenamiento.entrenadorId]))[entrenamiento.entrenadorId] ??
+    entrenamiento.entrenadorId;
 
   const counts = { PRESENTE: 0, AUSENTE: 0, LLEGO_TARDE: 0, SE_RETIRO_ANTES: 0 };
   for (const a of entrenamiento.asistencias) {

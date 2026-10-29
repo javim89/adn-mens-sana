@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 
-// Mock @clerk/nextjs/server — must be hoisted before the layout import
-vi.mock('@clerk/nextjs/server', () => ({
-  currentUser: vi.fn(),
-}))
+// El rol sale de la membresía del club activo (contexto), no de Clerk.
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+)
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
@@ -31,20 +31,21 @@ vi.mock('@tanstack/react-query', () => ({
   QueryClientProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-import { currentUser } from '@clerk/nextjs/server'
 import AppLayout from '../layout'
+import { mockContexto, setContexto, CLUB_TEST } from '@/test-utils/tenant'
+import type { AppRole } from '@/lib/roles'
 
-const mockCurrentUser = currentUser as ReturnType<typeof vi.fn>
+function comoRol(rol: AppRole) {
+  setContexto(mockContexto(rol))
+}
 
-describe('AppLayout role resolution from publicMetadata', () => {
+describe('AppLayout: nav según el rol de la membresía', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('admin (publicMetadata.role = admin) sees 4 nav items', async () => {
-    mockCurrentUser.mockResolvedValue({
-      publicMetadata: { role: 'admin' },
-    })
+  it('admin sees 4 nav items', async () => {
+    comoRol('admin')
 
     const result = await AppLayout({ children: <div /> })
     render(result)
@@ -59,9 +60,7 @@ describe('AppLayout role resolution from publicMetadata', () => {
   // atrapa un ICON_MAP incompleto en Sidebar: el icono viaja como string y un
   // IconKey sin entrada en el mapa revienta en runtime, no en compilación.
   it('responsable_viandas sees Viandas and nothing beyond Dashboard', async () => {
-    mockCurrentUser.mockResolvedValue({
-      publicMetadata: { role: 'responsable_viandas' },
-    })
+    comoRol('responsable_viandas')
 
     const result = await AppLayout({ children: <div /> })
     render(result)
@@ -74,9 +73,7 @@ describe('AppLayout role resolution from publicMetadata', () => {
   })
 
   it('roles outside the module do not see Viandas', async () => {
-    mockCurrentUser.mockResolvedValue({
-      publicMetadata: { role: 'entrenador' },
-    })
+    comoRol('entrenador')
 
     const result = await AppLayout({ children: <div /> })
     render(result)
@@ -85,29 +82,18 @@ describe('AppLayout role resolution from publicMetadata', () => {
     expect(screen.queryByText('Viandas')).not.toBeInTheDocument()
   })
 
-  it('user without role sees only Dashboard (fallback)', async () => {
-    mockCurrentUser.mockResolvedValue({
-      publicMetadata: {},
-    })
+  it('pasa el club activo al Sidebar', async () => {
+    comoRol('admin')
 
     const result = await AppLayout({ children: <div /> })
-    render(result)
+    const { container } = render(result)
 
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
-    expect(screen.queryByText('Deportistas')).not.toBeInTheDocument()
-    expect(screen.queryByText('Turnos')).not.toBeInTheDocument()
-    expect(screen.queryByText('Usuarios')).not.toBeInTheDocument()
+    expect(container.querySelector('aside')).toHaveAttribute('data-club-id', CLUB_TEST.id)
   })
 
-  it('unauthenticated (currentUser = null) sees only Dashboard', async () => {
-    mockCurrentUser.mockResolvedValue(null)
+  it('sin club accesible redirige a /bienvenida', async () => {
+    setContexto(null)
 
-    const result = await AppLayout({ children: <div /> })
-    render(result)
-
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
-    expect(screen.queryByText('Deportistas')).not.toBeInTheDocument()
-    expect(screen.queryByText('Turnos')).not.toBeInTheDocument()
-    expect(screen.queryByText('Usuarios')).not.toBeInTheDocument()
+    await expect(AppLayout({ children: <div /> })).rejects.toThrow('NEXT_REDIRECT:/bienvenida')
   })
 })

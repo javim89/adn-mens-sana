@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getTurnoById } from '@/lib/queries/turnos';
 import { getProfesionales } from '@/lib/actions/turnos';
 import TurnoForm from '../../_components/TurnoForm';
@@ -12,12 +12,11 @@ interface Props {
 
 export default async function EditarTurnoPage({ params }: Props) {
   const { id } = await params;
+  const { rol } = await requireContexto();
   const turno = await getTurnoById(id);
   if (!turno) notFound();
 
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-  const isAdmin = role === 'admin';
+  const isAdmin = rol === 'admin';
 
   const profesionales = isAdmin ? await getProfesionales() : [];
 

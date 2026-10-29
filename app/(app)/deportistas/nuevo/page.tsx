@@ -1,12 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import DeportistaForm from '../_components/DeportistaForm';
 
 export default async function NuevoDeportistaPage() {
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
+  const { rol: role } = await requireContexto();
   if (role === 'social') redirect('/deportistas');
 
   const disciplinas = await getDisciplinasConCategorias();

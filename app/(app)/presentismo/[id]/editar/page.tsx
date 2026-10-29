@@ -1,6 +1,8 @@
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
+import type { AppRole } from '@/lib/roles';
 import { getEntrenamientoById } from '@/lib/queries/presentismo';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { getEntrenadores } from '@/lib/actions/presentismo';
@@ -11,17 +13,14 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const ROLES_PERMITIDOS = ['admin', 'entrenador'];
+const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador'];
 
 export default async function EditarEntrenamientoPage({ params }: Props) {
   const { id } = await params;
 
+  const { rol: role } = await requireContexto(ROLES_PERMITIDOS);
+  // Solo para mostrar el nombre del entrenador logueado; el rol sale del contexto.
   const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-
-  if (!ROLES_PERMITIDOS.includes(role)) {
-    redirect('/dashboard');
-  }
 
   const isAdmin = role === 'admin';
 

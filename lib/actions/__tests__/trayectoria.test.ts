@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
-const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma, mockTx } =
+const { mockRevalidatePath, mockPrisma, mockTx } =
   vi.hoisted(() => {
     const mockTx = {
       pasoPorDivision: {
@@ -30,20 +30,15 @@ const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma, mockTx } =
       ),
     };
     return {
-      mockAuth: vi.fn().mockResolvedValue({ userId: 'user_test_123' }),
-      mockCurrentUser: vi
-        .fn()
-        .mockResolvedValue({ publicMetadata: { role: 'admin' } }),
       mockRevalidatePath: vi.fn(),
       mockPrisma,
       mockTx,
     };
   });
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: mockAuth,
-  currentUser: mockCurrentUser,
-}));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
@@ -52,6 +47,7 @@ import {
   updatePasoPorDivision,
   deletePasoPorDivision,
 } from '../trayectoria';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
 
 const validTransicion = {
   deportistaId: 'deportista-1',
@@ -63,8 +59,7 @@ const validTransicion = {
 describe('crearTransicionDivision', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_test_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+    setContexto(mockContexto('admin', { userId: 'user_test_123' }));
     mockPrisma.deportista.findUnique.mockResolvedValue({ id: 'deportista-1' });
     mockPrisma.pasoPorDivision.findFirst.mockResolvedValue({
       id: 'paso-abierto',
@@ -77,13 +72,13 @@ describe('crearTransicionDivision', () => {
   });
 
   test('rechaza si no hay userId', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: null });
+    setContexto(null);
     const result = await crearTransicionDivision(validTransicion);
     expect(result).toEqual({ success: false, error: 'No autorizado' });
   });
 
   test('rechaza si el rol no es admin', async () => {
-    mockCurrentUser.mockResolvedValueOnce({ publicMetadata: { role: 'social' } });
+    setContexto(mockContexto('social', { userId: 'user_test_123' }));
     const result = await crearTransicionDivision(validTransicion);
     expect(result).toEqual({ success: false, error: 'No autorizado' });
   });
@@ -136,15 +131,14 @@ describe('crearTransicionDivision', () => {
 describe('updatePasoPorDivision', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_test_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+    setContexto(mockContexto('admin', { userId: 'user_test_123' }));
     mockPrisma.pasoPorDivision.findUnique.mockResolvedValue({
       deportistaId: 'deportista-1',
     });
   });
 
   test('rechaza si no hay userId', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: null });
+    setContexto(null);
     const result = await updatePasoPorDivision({
       id: 'paso-1',
       categoriaId: null,
@@ -192,15 +186,14 @@ describe('updatePasoPorDivision', () => {
 describe('deletePasoPorDivision', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_test_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+    setContexto(mockContexto('admin', { userId: 'user_test_123' }));
     mockPrisma.pasoPorDivision.findUnique.mockResolvedValue({
       deportistaId: 'deportista-1',
     });
   });
 
   test('rechaza si no hay userId', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: null });
+    setContexto(null);
     const result = await deletePasoPorDivision('paso-1');
     expect(result).toEqual({ success: false, error: 'No autorizado' });
   });

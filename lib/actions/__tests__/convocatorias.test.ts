@@ -1,11 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // All mocks must be hoisted before vi.mock calls
-const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
-  const mockAuth = vi.fn().mockResolvedValue({ userId: 'user_entrenador_1' });
-  const mockCurrentUser = vi.fn().mockResolvedValue({
-    publicMetadata: { role: 'entrenador' },
-  });
+const { mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
   const mockRevalidatePath = vi.fn();
 
   const mockPrisma = {
@@ -19,13 +15,12 @@ const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted
       deleteMany: vi.fn().mockResolvedValue({}),
     },
   };
-  return { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma };
+  return { mockRevalidatePath, mockPrisma };
 });
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: mockAuth,
-  currentUser: mockCurrentUser,
-}));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
@@ -41,6 +36,7 @@ import {
   deleteConvocatoria,
 } from '../convocatorias';
 import type { ConvocatoriaFormData } from '@/lib/types/convocatorias';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
 
 const validData: ConvocatoriaFormData = {
   eventoTorneoId: 'evento-1',
@@ -54,13 +50,11 @@ const validData: ConvocatoriaFormData = {
 };
 
 function setCallerAsEntrenador(userId = 'user_entrenador_1') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'entrenador' } });
+  setContexto(mockContexto('entrenador', { userId }));
 }
 
 function setCallerAsAdmin(userId = 'user_admin_1') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+  setContexto(mockContexto('admin', { userId }));
 }
 
 // ─── createConvocatoria ───────────────────────────────────────────────────────
@@ -74,7 +68,7 @@ describe('createConvocatoria', () => {
   });
 
   test('1. rechaza si no autenticado (userId = null)', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: null });
+    setContexto(null);
     const result = await createConvocatoria(validData);
     expect(result).toEqual({ success: false, error: 'No autorizado' });
     expect(mockPrisma.convocatoria.create).not.toHaveBeenCalled();

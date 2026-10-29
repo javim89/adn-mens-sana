@@ -1,4 +1,4 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { contextoApi } from '@/lib/tenant/contexto';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { deleteFoto, getFotoUrl, isValidFotoKey } from '@/lib/s3';
@@ -324,15 +324,8 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { userId } = await auth();
-  if (!userId) {
-    return new Response(
-      JSON.stringify({
-        errors: [{ status: '401', code: 'UNAUTHENTICATED', title: 'No autorizado' }],
-      } satisfies JsonApiErrors),
-      { status: 401, headers: { 'Content-Type': JSON_API_CONTENT_TYPE } },
-    );
-  }
+  const acceso = await contextoApi();
+  if (!acceso.ok) return acceso.response;
 
   const { id } = await params;
   const deportista = await findDeportista(id);
@@ -353,19 +346,10 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { userId } = await auth();
-  if (!userId) {
-    return new Response(
-      JSON.stringify({
-        errors: [{ status: '401', code: 'UNAUTHENTICATED', title: 'No autorizado' }],
-      } satisfies JsonApiErrors),
-      { status: 401, headers: { 'Content-Type': JSON_API_CONTENT_TYPE } },
-    );
-  }
+  const acceso = await contextoApi();
+  if (!acceso.ok) return acceso.response;
 
-  const clerkUser = await currentUser();
-  const userRole = String(clerkUser?.publicMetadata?.role ?? '');
-  const isSocial = userRole === 'social';
+  const isSocial = acceso.contexto.rol === 'social';
 
   const contentType = request.headers.get('Content-Type') ?? '';
   if (!contentType.includes('application/vnd.api+json')) {
@@ -789,15 +773,8 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { userId } = await auth();
-  if (!userId) {
-    return new Response(
-      JSON.stringify({
-        errors: [{ status: '401', code: 'UNAUTHENTICATED', title: 'No autorizado' }],
-      } satisfies JsonApiErrors),
-      { status: 401, headers: { 'Content-Type': JSON_API_CONTENT_TYPE } },
-    );
-  }
+  const acceso = await contextoApi();
+  if (!acceso.ok) return acceso.response;
 
   const { id } = await params;
 

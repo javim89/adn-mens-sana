@@ -1,9 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // All mocks must be hoisted before vi.mock calls
-const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
-  const mockAuth = vi.fn().mockResolvedValue({ userId: 'user_test_123' });
-  const mockCurrentUser = vi.fn().mockResolvedValue({ publicMetadata: { role: 'admin' } });
+const { mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
   const mockRevalidatePath = vi.fn();
   const mockPrisma = {
     deportista: {
@@ -49,15 +47,18 @@ const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted
     },
     $transaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
   };
-  return { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma };
+  return { mockRevalidatePath, mockPrisma };
 });
 
-vi.mock('@clerk/nextjs/server', () => ({ auth: mockAuth, currentUser: mockCurrentUser }));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
 import { createDeportista, updateDeportista, deleteDeportista } from '../deportistas';
 import type { DeportistaFormData } from '@/lib/types/deportistas';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
 
 const validMinimalData: DeportistaFormData = {
   apellido: 'García',
@@ -74,14 +75,14 @@ const validMinimalData: DeportistaFormData = {
 describe('createDeportista', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_test_123' });
+    setContexto(mockContexto('admin', { userId: 'user_test_123' }));
     mockPrisma.deportista.create.mockResolvedValue({ id: 'new-deportista-id' });
     mockPrisma.datosEscolares.create.mockResolvedValue({ id: 'esc-id' });
     mockPrisma.clubAnterior.createMany.mockResolvedValue({ count: 1 });
   });
 
   test('retorna error si userId es null', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: null });
+    setContexto(null);
     const result = await createDeportista(validMinimalData);
     expect(result).toEqual({ success: false, error: 'No autorizado' });
   });
@@ -157,8 +158,7 @@ describe('createDeportista', () => {
 describe('updateDeportista', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_test_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+    setContexto(mockContexto('admin', { userId: 'user_test_123' }));
     mockPrisma.deportista.findUnique.mockResolvedValue({ id: 'existing-id' });
     mockPrisma.deportista.update.mockResolvedValue({ id: 'existing-id' });
     mockPrisma.clubAnterior.deleteMany.mockResolvedValue({ count: 0 });
@@ -170,7 +170,7 @@ describe('updateDeportista', () => {
   });
 
   test('retorna error si userId es null', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: null });
+    setContexto(null);
     const result = await updateDeportista('existing-id', validMinimalData);
     expect(result).toEqual({ success: false, error: 'No autorizado' });
   });
@@ -283,12 +283,12 @@ describe('updateDeportista', () => {
 describe('deleteDeportista', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_test_123' });
+    setContexto(mockContexto('admin', { userId: 'user_test_123' }));
     mockPrisma.deportista.delete.mockResolvedValue({ id: 'deleted-id' });
   });
 
   test('retorna error si userId es null', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: null });
+    setContexto(null);
     const result = await deleteDeportista('some-id');
     expect(result).toEqual({ success: false, error: 'No autorizado' });
   });

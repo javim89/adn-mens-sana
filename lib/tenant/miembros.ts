@@ -80,3 +80,43 @@ export async function getMiembrosDelClub(opciones: Opciones = {}): Promise<Miemb
     `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`),
   );
 }
+
+/** "Nombre Apellido", o el mail, o el id si Clerk no tiene ninguno de los dos. */
+export function nombreVisible(m: Pick<Miembro, 'userId' | 'nombre' | 'apellido' | 'email'>): string {
+  return `${m.nombre} ${m.apellido}`.trim() || m.email || m.userId;
+}
+
+/**
+ * Nombre visible de cada `userId` que aparece en datos del club (profesional de un
+ * turno, entrenador de una sesión, autor de un seguimiento).
+ *
+ * Primero se resuelve con los miembros del club (incluye inactivos). Los ids que
+ * quedan afuera son de alguien que ya no es miembro pero dejó registros: se
+ * preguntan a Clerk uno por uno, porque el id sale de una fila del club y no de
+ * un listado de usuarios. Si tampoco existe en Clerk, queda el id.
+ */
+export async function getNombresDeUsuarios(ids: readonly string[], clubId?: string): Promise<Record<string, string>> {
+  const unicos = [...new Set(ids)].filter(Boolean);
+  if (unicos.length === 0) return {};
+
+  const nombres: Record<string, string> = {};
+  const miembros = await getMiembrosDelClub({ incluirInactivos: true, clubId });
+  for (const m of miembros) nombres[m.userId] = nombreVisible(m);
+
+  const faltantes = unicos.filter((id) => !(id in nombres));
+  if (faltantes.length > 0) {
+    const client = await clerkClient();
+    const usuarios = await Promise.all(faltantes.map((id) => client.users.getUser(id).catch(() => null)));
+    for (const u of usuarios) {
+      if (!u) continue;
+      const meta = (u.publicMetadata ?? {}) as Record<string, unknown>;
+      const nombre = u.firstName || String(meta.firstName ?? '');
+      const apellido = u.lastName || String(meta.lastName ?? '');
+      nombres[u.id] = `${nombre} ${apellido}`.trim() || u.emailAddresses?.[0]?.emailAddress || u.id;
+    }
+  }
+
+  const resultado: Record<string, string> = {};
+  for (const id of unicos) resultado[id] = nombres[id] ?? id;
+  return resultado;
+}

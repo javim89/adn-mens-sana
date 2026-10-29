@@ -1,12 +1,11 @@
 import Link from 'next/link';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import SeguimientoForm from '../_components/SeguimientoForm';
 
 export default async function NuevoSeguimientoPage() {
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
+  const { rol: role } = await requireContexto();
   const isAdmin = role === 'admin';
 
   const profesionales = isAdmin ? await getProfesionalesSeguimientos() : [];

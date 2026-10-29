@@ -1,8 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
-  const mockAuth = vi.fn();
-  const mockCurrentUser = vi.fn();
+const { mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
   const mockRevalidatePath = vi.fn();
 
   const mockPrisma = {
@@ -15,18 +13,19 @@ const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted
       findUnique: vi.fn(),
     },
   };
-  return { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma };
+  return { mockRevalidatePath, mockPrisma };
 });
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: mockAuth,
-  currentUser: mockCurrentUser,
-}));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 vi.mock('@/lib/queries/viandas', () => ({ getPlantelViandas: vi.fn() }));
 
 import { marcarRetiro, desmarcarRetiro } from '../viandas';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
+import type { AppRole, LugarRetiro } from '@/lib/generated/prisma/client';
 
 /** 02:30 UTC del 15 = 23:30 ART del 14. El borde que rompe la cena. */
 const MEDIANOCHE_CRUZADA = new Date('2026-03-15T02:30:00.000Z');
@@ -37,11 +36,9 @@ const CREADA = {
   createdAt: new Date('2026-03-15T02:30:00.000Z'),
 };
 
-function comoSesion(role: string, lugarRetiro?: string) {
-  mockAuth.mockResolvedValue({ userId: 'user_1' });
-  mockCurrentUser.mockResolvedValue({
-    publicMetadata: lugarRetiro ? { role, lugarRetiro } : { role },
-  });
+/** Sesión con el rol y el lugar de retiro de la membresía del club activo. */
+function comoSesion(role: string, lugarRetiro?: LugarRetiro) {
+  setContexto(mockContexto(role as AppRole, { userId: 'user_1', lugarRetiro: lugarRetiro ?? null }));
 }
 
 beforeEach(() => {
@@ -62,7 +59,7 @@ afterEach(() => {
 
 describe('marcarRetiro — control de acceso', () => {
   test('sin sesión rechaza', async () => {
-    mockAuth.mockResolvedValue({ userId: null });
+    setContexto(null);
     const res = await marcarRetiro({ deportistaId: 'd1', comida: 'DESAYUNO' });
     expect(res.success).toBe(false);
     expect(mockPrisma.entregaComida.create).not.toHaveBeenCalled();
@@ -96,16 +93,6 @@ describe('marcarRetiro — resolución del lugar', () => {
     expect(mockPrisma.entregaComida.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ lugar: 'SEDE' }) }),
     );
-  });
-
-  // Un lugar viejo o mal tipeado en el `publicMetadata` no puede llegar a la
-  // columna enum: se trata igual que la ausencia de lugar.
-  test('un lugar inválido en el metadata del responsable vale como no tenerlo', async () => {
-    comoSesion('responsable_viandas', 'BOSQUE_CHICO');
-    const res = await marcarRetiro({ deportistaId: 'd1', comida: 'DESAYUNO' });
-    expect(res.success).toBe(false);
-    expect(res.success === false && res.error).toMatch(/no tiene un lugar de retiro/i);
-    expect(mockPrisma.entregaComida.create).not.toHaveBeenCalled();
   });
 
   test('el admin debe elegir un lugar', async () => {

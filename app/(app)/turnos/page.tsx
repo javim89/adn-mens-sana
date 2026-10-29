@@ -1,4 +1,5 @@
-import { auth, currentUser, clerkClient } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
+import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
 import { getTurnos } from '@/lib/queries/turnos';
 import { getProfesionales } from '@/lib/actions/turnos';
 import TurnosTable from './_components/TurnosTable';
@@ -17,10 +18,8 @@ export default async function TurnosPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const { userId } = await auth();
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-  const isAdmin = role === 'admin';
+  const { userId, rol } = await requireContexto();
+  const isAdmin = rol === 'admin';
 
   // --- Leer filtros / paginación de la URL ---
   const pageRaw = parseInt(firstParam(sp.page) ?? '', 10);
@@ -31,7 +30,7 @@ export default async function TurnosPage({
 
   // Admin ve todos los turnos (opcionalmente filtrados por área responsable);
   // los no-admin solo ven los propios.
-  const profesionalId = isAdmin ? area : userId!;
+  const profesionalId = isAdmin ? area : userId;
 
   const { items, total } = await getTurnos({
     page,
@@ -41,24 +40,10 @@ export default async function TurnosPage({
   });
 
   // Resolver nombres de los profesionales presentes en ESTA página (solo admin).
-  const profesionalesMap: Record<string, string> = {};
-  if (isAdmin && items.length > 0) {
-    const uniqueIds = [...new Set(items.map((t) => t.profesionalId))];
-    const client = await clerkClient();
-    const users = await Promise.all(
-      uniqueIds.map((id) => client.users.getUser(id).catch(() => null)),
-    );
-    for (const u of users) {
-      if (!u) continue;
-      const meta = (u.publicMetadata ?? {}) as Record<string, unknown>;
-      const nombre = u.firstName || String(meta.firstName ?? '');
-      const apellido = u.lastName || String(meta.lastName ?? '');
-      profesionalesMap[u.id] =
-        `${nombre} ${apellido}`.trim() ||
-        u.emailAddresses?.[0]?.emailAddress ||
-        u.id;
-    }
-  }
+  const profesionalesMap =
+    isAdmin && items.length > 0
+      ? await getNombresDeUsuarios(items.map((t) => t.profesionalId))
+      : {};
 
   const serialized: TurnoListItem[] = items.map((t) => ({
     id: t.id,

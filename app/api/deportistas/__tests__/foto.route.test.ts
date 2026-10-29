@@ -4,10 +4,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
-  currentUser: vi.fn(),
-}));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 
 vi.mock('@/lib/s3', async () => {
   const actual = await vi.importActual<typeof import('@/lib/s3')>('@/lib/s3');
@@ -24,13 +23,12 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { deleteFoto } from '@/lib/s3';
 import { prisma } from '@/lib/db';
 import { DELETE } from '../foto/route';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
+import type { AppRole } from '@/lib/roles';
 
-type AuthResult = ReturnType<typeof auth> extends Promise<infer T> ? T : never;
-type CurrentUserResult = ReturnType<typeof currentUser> extends Promise<infer T> ? T : never;
 
 const KEY = 'deportistas/123e4567-e89b-12d3-a456-426614174000.jpg';
 
@@ -40,19 +38,19 @@ function makeRequest(key?: string) {
 }
 
 function asRole(role: string) {
-  vi.mocked(currentUser).mockResolvedValue({ publicMetadata: { role } } as unknown as CurrentUserResult);
+  setContexto(mockContexto(role as AppRole, { userId: 'user1' }));
 }
 
 describe('DELETE /api/deportistas/foto', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as AuthResult);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     asRole('admin');
     vi.mocked(prisma.deportista.findFirst).mockResolvedValue(null);
   });
 
   it('returns 401 when not authenticated', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as AuthResult);
+    setContexto(null);
 
     const res = await DELETE(makeRequest(KEY));
 

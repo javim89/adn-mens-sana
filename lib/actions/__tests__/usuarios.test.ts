@@ -1,739 +1,612 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
-const { mockAuth, mockCurrentUser, mockClerkClient, mockUsersBan, mockUsersUnban, mockUsersDelete, mockInvitationsRevoke } = vi.hoisted(() => {
-  const mockAuth = vi.fn().mockResolvedValue({ userId: 'user_admin_123' });
-
-  const mockCurrentUser = vi.fn().mockResolvedValue({
-    publicMetadata: { role: 'admin' },
-  });
-
-  const mockUsersGetList = vi.fn().mockResolvedValue({ data: [] });
-  const mockInvitationsGetList = vi.fn().mockResolvedValue({ data: [] });
-  const mockInvitationsCreate = vi.fn().mockResolvedValue({ id: 'inv_new' });
-  const mockInvitationsRevoke = vi.fn().mockResolvedValue({ id: 'inv_old' });
-  const mockUsersUpdateMetadata = vi.fn().mockResolvedValue({ id: 'user_admin_123' });
-  const mockUsersBan = vi.fn().mockResolvedValue({});
-  const mockUsersUnban = vi.fn().mockResolvedValue({});
-  const mockUsersDelete = vi.fn().mockResolvedValue({});
-
-  const mockClerkClient = vi.fn().mockResolvedValue({
-    users: {
-      getUserList: mockUsersGetList,
-      updateUserMetadata: mockUsersUpdateMetadata,
-      banUser: mockUsersBan,
-      unbanUser: mockUsersUnban,
-      deleteUser: mockUsersDelete,
+const { mockDb, mockClerk, mockClerkClient, mockGetMiembros } = vi.hoisted(() => {
+  const mockDb = {
+    membresia: {
+      findFirst: vi.fn(),
+      count: vi.fn(),
+      create: vi.fn(),
+      updateMany: vi.fn(),
+      deleteMany: vi.fn(),
     },
-    invitations: {
-      getInvitationList: mockInvitationsGetList,
-      createInvitation: mockInvitationsCreate,
-      revokeInvitation: mockInvitationsRevoke,
+    invitacion: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
     },
-  });
+  };
 
-  return { mockAuth, mockCurrentUser, mockClerkClient, mockUsersBan, mockUsersUnban, mockUsersDelete, mockInvitationsRevoke };
-});
-
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: mockAuth,
-  currentUser: mockCurrentUser,
-  clerkClient: mockClerkClient,
-}));
-
-import { getUsuarios, invitarUsuario, cambiarRol, reenviarInvitacion, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '../usuarios';
-
-
-describe('getUsuarios', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
-  });
-
-  test('lanza error si el caller no es admin', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: 'user_no_admin' });
-    mockCurrentUser.mockResolvedValueOnce({ publicMetadata: { role: 'entrenador' } });
-
-    await expect(getUsuarios()).rejects.toThrow(/admin/i);
-  });
-
-  test('combina usuarios activos e invitaciones pendientes', async () => {
-    mockClerkClient.mockResolvedValueOnce({
-      users: {
-        getUserList: vi.fn().mockResolvedValue({
-          data: [
-            {
-              id: 'user_1',
-              firstName: 'Laura',
-              lastName: 'Méndez',
-              emailAddresses: [{ emailAddress: 'l.mendez@test.com' }],
-              publicMetadata: { role: 'admin' },
-              lastSignInAt: 1717459200000,
-              createdAt: 1710000000000,
-            },
-          ],
-        }),
-        updateUserMetadata: vi.fn(),
-      },
-      invitations: {
-        getInvitationList: vi.fn().mockResolvedValue({
-          data: [
-            {
-              id: 'inv_1',
-              emailAddress: 'nuevo@test.com',
-              publicMetadata: { role: 'entrenador', firstName: 'Carlos', lastName: 'Ruiz' },
-              createdAt: 1717459200000,
-              status: 'pending',
-            },
-          ],
-        }),
-        createInvitation: vi.fn(),
-        revokeInvitation: vi.fn(),
-      },
-    });
-
-    const result = await getUsuarios();
-
-    expect(result).toHaveLength(2);
-    expect(result[0].status).toBe('activo');
-    expect(result[0].email).toBe('l.mendez@test.com');
-    expect(result[1].status).toBe('pendiente');
-    expect(result[1].email).toBe('nuevo@test.com');
-    expect(result[1].firstName).toBe('Carlos');
-    expect(result[1].lastName).toBe('Ruiz');
-  });
-
-  test('activos aparecen antes que pendientes, ordenados por nombre', async () => {
-    mockClerkClient.mockResolvedValueOnce({
-      users: {
-        getUserList: vi.fn().mockResolvedValue({
-          data: [
-            {
-              id: 'user_b',
-              firstName: 'Zara',
-              lastName: 'Álvarez',
-              emailAddresses: [{ emailAddress: 'z@test.com' }],
-              publicMetadata: { role: 'medico' },
-              lastSignInAt: null,
-              createdAt: 1710000000000,
-            },
-            {
-              id: 'user_a',
-              firstName: 'Ana',
-              lastName: 'García',
-              emailAddresses: [{ emailAddress: 'a@test.com' }],
-              publicMetadata: { role: 'entrenador' },
-              lastSignInAt: null,
-              createdAt: 1710000000000,
-            },
-          ],
-        }),
-        updateUserMetadata: vi.fn(),
-      },
-      invitations: {
-        getInvitationList: vi.fn().mockResolvedValue({ data: [] }),
-        createInvitation: vi.fn(),
-        revokeInvitation: vi.fn(),
-      },
-    });
-
-    const result = await getUsuarios();
-
-    expect(result[0].firstName).toBe('Ana');
-    expect(result[1].firstName).toBe('Zara');
-    expect(result.every((u) => u.status === 'activo')).toBe(true);
-  });
-
-  test('devuelve lastSignInAt como null cuando el usuario nunca inició sesión', async () => {
-    mockClerkClient.mockResolvedValueOnce({
-      users: {
-        getUserList: vi.fn().mockResolvedValue({
-          data: [
-            {
-              id: 'user_1',
-              firstName: 'Sin',
-              lastName: 'Sesión',
-              emailAddresses: [{ emailAddress: 'sin@test.com' }],
-              publicMetadata: {},
-              lastSignInAt: null,
-              createdAt: 1710000000000,
-            },
-          ],
-        }),
-        updateUserMetadata: vi.fn(),
-      },
-      invitations: {
-        getInvitationList: vi.fn().mockResolvedValue({ data: [] }),
-        createInvitation: vi.fn(),
-        revokeInvitation: vi.fn(),
-      },
-    });
-
-    const result = await getUsuarios();
-    const activo = result[0];
-    expect(activo.status).toBe('activo');
-    if (activo.status === 'activo') {
-      expect(activo.lastSignInAt).toBeNull();
-    }
-  });
-});
-
-describe('invitarUsuario', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
-    mockClerkClient.mockResolvedValue({
-      users: {
-        getUserList: vi.fn(),
-        updateUserMetadata: vi.fn(),
-      },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: vi.fn().mockResolvedValue({ id: 'inv_new' }),
-        revokeInvitation: vi.fn(),
-      },
-    });
-  });
-
-  test('falla si el caller no es admin', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: 'user_no_admin' });
-    mockCurrentUser.mockResolvedValueOnce({ publicMetadata: { role: 'entrenador' } });
-
-    const result = await invitarUsuario({
-      firstName: 'Juan',
-      lastName: 'Pérez',
-      email: 'juan@test.com',
-      rol: 'entrenador',
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/admin/i);
-  });
-
-  test('falla si no hay usuario autenticado', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: null });
-
-    const result = await invitarUsuario({
-      firstName: 'Juan',
-      lastName: 'Pérez',
-      email: 'juan@test.com',
-      rol: 'entrenador',
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toBe('No autorizado');
-  });
-
-  test('llama createInvitation con los datos correctos', async () => {
-    const mockCreate = vi.fn().mockResolvedValue({ id: 'inv_new' });
-    mockClerkClient.mockResolvedValueOnce({
-      users: { getUserList: vi.fn(), updateUserMetadata: vi.fn() },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: mockCreate,
-        revokeInvitation: vi.fn(),
-      },
-    });
-
-    const result = await invitarUsuario({
-      firstName: 'María',
-      lastName: 'López',
-      email: 'maria@test.com',
-      rol: 'medico',
-    });
-
-    expect(result.ok).toBe(true);
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        emailAddress: 'maria@test.com',
-        publicMetadata: expect.objectContaining({
-          role: 'medico',
-          firstName: 'María',
-          lastName: 'López',
-        }),
-      }),
-    );
-  });
-
-  test('normaliza el email a minúsculas antes de enviar', async () => {
-    const mockCreate = vi.fn().mockResolvedValue({ id: 'inv_new' });
-    mockClerkClient.mockResolvedValueOnce({
-      users: { getUserList: vi.fn(), updateUserMetadata: vi.fn() },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: mockCreate,
-        revokeInvitation: vi.fn(),
-      },
-    });
-
-    await invitarUsuario({
-      firstName: 'Juan',
-      lastName: 'Test',
-      email: '  JUAN@TEST.COM  ',
-      rol: 'medico',
-    });
-
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ emailAddress: 'juan@test.com' }),
-    );
-  });
-
-  test('rechaza rol arbitrario no incluido en ROLES_PERMITIDOS', async () => {
-    const result = await invitarUsuario({
-      firstName: 'Hack',
-      lastName: 'Er',
-      email: 'hack@test.com',
-      rol: 'superadmin',
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/rol no permitido/i);
-  });
-
-  test('acepta kinesiologo como rol válido', async () => {
-    const mockCreate = vi.fn().mockResolvedValue({ id: 'inv_kine' });
-    mockClerkClient.mockResolvedValueOnce({
-      users: { getUserList: vi.fn(), updateUserMetadata: vi.fn() },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: mockCreate,
-        revokeInvitation: vi.fn(),
-      },
-    });
-
-    const result = await invitarUsuario({
-      firstName: 'Clara',
-      lastName: 'Ríos',
-      email: 'clara@test.com',
-      rol: 'kinesiologo',
-    });
-
-    expect(result.ok).toBe(true);
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        publicMetadata: expect.objectContaining({ role: 'kinesiologo' }),
-      }),
-    );
-  });
-});
-
-describe('cambiarRol', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
-    mockClerkClient.mockResolvedValue({
-      users: {
-        getUserList: vi.fn(),
-        updateUserMetadata: vi.fn().mockResolvedValue({ id: 'user_target' }),
-      },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: vi.fn(),
-        revokeInvitation: vi.fn(),
-      },
-    });
-  });
-
-  test('falla si el caller no es admin', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: 'user_no_admin' });
-    mockCurrentUser.mockResolvedValueOnce({ publicMetadata: { role: 'medico' } });
-
-    const result = await cambiarRol('user_target', 'entrenador');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/admin/i);
-  });
-
-  test('actualiza publicMetadata con el nuevo rol', async () => {
-    const mockUpdateMetadata = vi.fn().mockResolvedValue({ id: 'user_target' });
-    mockClerkClient.mockResolvedValueOnce({
-      users: { getUserList: vi.fn(), updateUserMetadata: mockUpdateMetadata },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: vi.fn(),
-        revokeInvitation: vi.fn(),
-      },
-    });
-
-    const result = await cambiarRol('user_target', 'entrenador');
-
-    expect(result.ok).toBe(true);
-    // `lugarRetiro: null` explícito: `updateUserMetadata` hace PATCH y MERGEA, así
-    // que sin esto un ex responsable_viandas se quedaría con el lugar huérfano.
-    expect(mockUpdateMetadata).toHaveBeenCalledWith('user_target', {
-      publicMetadata: { role: 'entrenador', lugarRetiro: null },
-    });
-  });
-
-  test('retorna error si updateUserMetadata lanza excepción', async () => {
-    mockClerkClient.mockResolvedValueOnce({
-      users: {
-        getUserList: vi.fn(),
-        updateUserMetadata: vi.fn().mockRejectedValue(new Error('User not found')),
-      },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: vi.fn(),
-        revokeInvitation: vi.fn(),
-      },
-    });
-
-    const result = await cambiarRol('user_inexistente', 'admin');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toBe('User not found');
-  });
-
-  test('rechaza rol arbitrario no incluido en ROLES_PERMITIDOS', async () => {
-    const result = await cambiarRol('user_target', 'god');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/rol no permitido/i);
-  });
-
-  test('impide que el admin cambie su propio rol', async () => {
-    const result = await cambiarRol('user_admin_123', 'entrenador');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/propio rol/i);
-  });
-
-  test('acepta nutricionista como rol válido al cambiar rol', async () => {
-    const mockUpdateMetadata = vi.fn().mockResolvedValue({ id: 'user_target' });
-    mockClerkClient.mockResolvedValueOnce({
-      users: { getUserList: vi.fn(), updateUserMetadata: mockUpdateMetadata },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: vi.fn(),
-        revokeInvitation: vi.fn(),
-      },
-    });
-
-    const result = await cambiarRol('user_target', 'nutricionista');
-
-    expect(result.ok).toBe(true);
-    expect(mockUpdateMetadata).toHaveBeenCalledWith('user_target', {
-      publicMetadata: { role: 'nutricionista', lugarRetiro: null },
-    });
-  });
-
-  // La contracara: al PASAR a responsable_viandas no se manda la clave, para no
-  // borrar un lugar que el admin pudo haber asignado antes con asignarLugarRetiro.
-  test('al pasar a responsable_viandas no toca el lugarRetiro existente', async () => {
-    const mockUpdateMetadata = vi.fn().mockResolvedValue({ id: 'user_target' });
-    mockClerkClient.mockResolvedValueOnce({
-      users: { getUserList: vi.fn(), updateUserMetadata: mockUpdateMetadata },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: vi.fn(),
-        revokeInvitation: vi.fn(),
-      },
-    });
-
-    const result = await cambiarRol('user_target', 'responsable_viandas');
-
-    expect(result.ok).toBe(true);
-    expect(mockUpdateMetadata).toHaveBeenCalledWith('user_target', {
-      publicMetadata: { role: 'responsable_viandas' },
-    });
-  });
-});
-
-describe('reenviarInvitacion', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
-  });
-
-  test('falla si el caller no es admin', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: 'user_no_admin' });
-    mockCurrentUser.mockResolvedValueOnce({ publicMetadata: { role: 'entrenador' } });
-
-    const result = await reenviarInvitacion('inv_123');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/admin/i);
-  });
-
-  test('revoca y recrea la invitación con los mismos datos', async () => {
-    const mockCreate = vi.fn().mockResolvedValue({ id: 'inv_new' });
-    const mockRevoke = vi.fn().mockResolvedValue({ id: 'inv_123' });
-    const mockGetList = vi.fn().mockResolvedValue({
-      data: [
-        {
-          id: 'inv_123',
-          emailAddress: 'usuario@test.com',
-          publicMetadata: { role: 'medico', firstName: 'Test', lastName: 'User' },
-          createdAt: 1710000000000,
-          status: 'pending',
-        },
-      ],
-    });
-
-    mockClerkClient.mockResolvedValue({
-      users: { getUserList: vi.fn(), updateUserMetadata: vi.fn() },
-      invitations: {
-        getInvitationList: mockGetList,
-        createInvitation: mockCreate,
-        revokeInvitation: mockRevoke,
-      },
-    });
-
-    const result = await reenviarInvitacion('inv_123');
-
-    expect(result.ok).toBe(true);
-    expect(mockRevoke).toHaveBeenCalledWith('inv_123');
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        emailAddress: 'usuario@test.com',
-        publicMetadata: expect.objectContaining({ role: 'medico' }),
-      }),
-    );
-  });
-});
-
-describe('getUsuarios — disabled field', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
-  });
-
-  const makeUserClient = (banned: boolean) => ({
+  const mockClerk = {
     users: {
-      getUserList: vi.fn().mockResolvedValue({
-        data: [
-          {
-            id: 'user_1',
-            firstName: 'Test',
-            lastName: 'User',
-            emailAddresses: [{ emailAddress: 't@test.com' }],
-            publicMetadata: { role: 'entrenador' },
-            lastSignInAt: null,
-            createdAt: 1710000000000,
-            banned,
-          },
-        ],
-      }),
-      updateUserMetadata: vi.fn(),
+      getUserList: vi.fn(),
       banUser: vi.fn(),
       unbanUser: vi.fn(),
       deleteUser: vi.fn(),
+      updateUserMetadata: vi.fn(),
     },
     invitations: {
-      getInvitationList: vi.fn().mockResolvedValue({ data: [] }),
+      getInvitationList: vi.fn(),
       createInvitation: vi.fn(),
       revokeInvitation: vi.fn(),
     },
+  };
+
+  return {
+    mockDb,
+    mockClerk,
+    mockClerkClient: vi.fn(async () => mockClerk),
+    mockGetMiembros: vi.fn(),
+  };
+});
+
+vi.mock('@clerk/nextjs/server', () => ({ clerkClient: mockClerkClient }));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
+vi.mock('@/lib/tenant/db', async () => (await import('@/test-utils/tenant')).moduloDbMock(mockDb));
+vi.mock('@/lib/tenant/miembros', () => ({ getMiembrosDelClub: mockGetMiembros }));
+vi.mock('@/lib/tenant/invitaciones', () => ({
+  nuevoTokenInvitacion: () => ({ token: 'tok', tokenHash: 'hash_tok' }),
+}));
+
+import {
+  getUsuarios,
+  invitarUsuario,
+  reenviarInvitacion,
+  deshabilitarUsuario,
+  reactivarUsuario,
+  eliminarUsuario,
+  cambiarRol,
+  asignarLugarRetiro,
+} from '../usuarios';
+import { mockContexto, setContexto, CLUB_TEST } from '@/test-utils/tenant';
+
+const ADMIN = 'user_admin_123';
+
+/** Una cuenta de Clerk con el mail dado; `verificado` decide si cuenta como suya. */
+function cuentaClerk(id: string, email: string, verificado = true) {
+  return {
+    id,
+    emailAddresses: [
+      { emailAddress: email, verification: { status: verificado ? 'verified' : 'unverified' } },
+    ],
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  setContexto(mockContexto('admin', { userId: ADMIN }));
+
+  mockDb.membresia.findFirst.mockResolvedValue(null);
+  mockDb.membresia.count.mockResolvedValue(2);
+  mockDb.membresia.create.mockResolvedValue({ id: 'mem_new' });
+  mockDb.membresia.updateMany.mockResolvedValue({ count: 1 });
+  mockDb.membresia.deleteMany.mockResolvedValue({ count: 1 });
+  mockDb.invitacion.findMany.mockResolvedValue([]);
+  mockDb.invitacion.findFirst.mockResolvedValue(null);
+  mockDb.invitacion.create.mockResolvedValue({ id: 'inv_db_new' });
+  mockDb.invitacion.update.mockResolvedValue({});
+  mockDb.invitacion.updateMany.mockResolvedValue({ count: 1 });
+
+  mockClerk.users.getUserList.mockResolvedValue({ data: [] });
+  mockClerk.invitations.getInvitationList.mockResolvedValue({ data: [] });
+  mockClerk.invitations.createInvitation.mockResolvedValue({ id: 'clerk_inv_new' });
+  mockClerk.invitations.revokeInvitation.mockResolvedValue({});
+  mockGetMiembros.mockResolvedValue([]);
+});
+
+/** Ninguna action de usuarios toca la cuenta de Clerk: eso la sacaría de TODOS los clubes. */
+function expectCuentaIntacta() {
+  expect(mockClerk.users.banUser).not.toHaveBeenCalled();
+  expect(mockClerk.users.unbanUser).not.toHaveBeenCalled();
+  expect(mockClerk.users.deleteUser).not.toHaveBeenCalled();
+  expect(mockClerk.users.updateUserMetadata).not.toHaveBeenCalled();
+}
+
+// ---------------------------------------------------------------------------
+// Autorización (contexto del club activo)
+// ---------------------------------------------------------------------------
+
+describe('autorización', () => {
+  const acciones: [string, () => Promise<{ ok: boolean; error?: string }>][] = [
+    ['invitarUsuario', () => invitarUsuario({ firstName: 'A', lastName: 'B', email: 'a@b.com', rol: 'medico' })],
+    ['reenviarInvitacion', () => reenviarInvitacion('inv_1')],
+    ['deshabilitarUsuario', () => deshabilitarUsuario('user_x')],
+    ['reactivarUsuario', () => reactivarUsuario('user_x')],
+    ['eliminarUsuario', () => eliminarUsuario('user_x', 'activo')],
+    ['cambiarRol', () => cambiarRol('user_x', 'medico')],
+    ['asignarLugarRetiro', () => asignarLugarRetiro('user_x', 'SEDE')],
+  ];
+
+  test.each(acciones)('%s sin club activo devuelve No autorizado', async (_, accion) => {
+    setContexto(null);
+    await expect(accion()).resolves.toEqual({ ok: false, error: 'No autorizado' });
+    expect(mockDb.membresia.updateMany).not.toHaveBeenCalled();
+    expect(mockDb.membresia.create).not.toHaveBeenCalled();
   });
 
-  test('expone disabled: false para usuario no baneado', async () => {
-    mockClerkClient.mockResolvedValueOnce(makeUserClient(false));
-    const result = await getUsuarios();
-    expect(result[0].status).toBe('activo');
-    if (result[0].status === 'activo') {
-      expect(result[0].disabled).toBe(false);
-    }
+  test.each(acciones)('%s con un rol no admin devuelve acceso denegado', async (_, accion) => {
+    setContexto(mockContexto('entrenador'));
+    const res = await accion();
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/admin/i);
+    expect(mockDb.membresia.updateMany).not.toHaveBeenCalled();
   });
 
-  test('expone disabled: true para usuario baneado', async () => {
-    mockClerkClient.mockResolvedValueOnce(makeUserClient(true));
-    const result = await getUsuarios();
-    expect(result[0].status).toBe('activo');
-    if (result[0].status === 'activo') {
-      expect(result[0].disabled).toBe(true);
-    }
+  test('getUsuarios lanza si el caller no es admin', async () => {
+    setContexto(mockContexto('medico'));
+    await expect(getUsuarios()).rejects.toThrow(/admin/i);
   });
 });
 
-describe('deshabilitarUsuario', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
-    mockClerkClient.mockResolvedValue({
-      users: {
-        getUserList: vi.fn(),
-        updateUserMetadata: vi.fn(),
-        banUser: mockUsersBan,
-        unbanUser: mockUsersUnban,
-        deleteUser: mockUsersDelete,
+// ---------------------------------------------------------------------------
+// getUsuarios
+// ---------------------------------------------------------------------------
+
+describe('getUsuarios', () => {
+  test('lista miembros del club (activos e inactivos) y las invitaciones pendientes', async () => {
+    mockGetMiembros.mockResolvedValue([
+      {
+        userId: 'user_2',
+        rol: 'entrenador',
+        lugarRetiro: null,
+        activo: false,
+        nombre: 'Pedro',
+        apellido: 'González',
+        email: 'p@club.com',
+        lastSignInAt: null,
+        createdAt: new Date('2026-01-01'),
       },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: vi.fn(),
-        revokeInvitation: mockInvitationsRevoke,
+      {
+        userId: 'user_1',
+        rol: 'admin',
+        lugarRetiro: null,
+        activo: true,
+        nombre: 'Laura',
+        apellido: 'Méndez',
+        email: 'l@club.com',
+        lastSignInAt: new Date('2026-06-01'),
+        createdAt: new Date('2026-01-01'),
       },
+    ]);
+    mockDb.invitacion.findMany.mockResolvedValue([
+      {
+        id: 'inv_1',
+        email: 's@club.com',
+        nombre: 'Sergio',
+        apellido: 'Blanco',
+        rol: 'responsable_viandas',
+        lugarRetiro: 'SEDE',
+        createdAt: new Date('2026-06-02'),
+      },
+    ]);
+
+    const usuarios = await getUsuarios();
+
+    expect(mockGetMiembros).toHaveBeenCalledWith({ incluirInactivos: true, clubId: CLUB_TEST.id });
+    expect(usuarios.map((u) => [u.id, u.status])).toEqual([
+      ['user_1', 'activo'],
+      ['user_2', 'inactivo'],
+      ['inv_1', 'pendiente'],
+    ]);
+    expect(usuarios[2]).toMatchObject({ firstName: 'Sergio', rol: 'responsable_viandas', lugarRetiro: 'SEDE' });
+  });
+
+  test('pide solo invitaciones vigentes (no aceptadas, no revocadas, no vencidas)', async () => {
+    await getUsuarios();
+    const { where } = mockDb.invitacion.findMany.mock.calls[0][0];
+    expect(where).toMatchObject({ aceptadaAt: null, revocadaAt: null, expira: { gt: expect.any(Date) } });
+  });
+
+  test('no lista la invitación de alguien que ya es miembro', async () => {
+    mockGetMiembros.mockResolvedValue([
+      {
+        userId: 'user_1',
+        rol: 'medico',
+        lugarRetiro: null,
+        activo: true,
+        nombre: 'Ana',
+        apellido: 'Paz',
+        email: 'ana@club.com',
+        lastSignInAt: null,
+        createdAt: new Date(),
+      },
+    ]);
+    mockDb.invitacion.findMany.mockResolvedValue([
+      { id: 'inv_1', email: 'ANA@club.com', nombre: 'Ana', apellido: 'Paz', rol: 'medico', lugarRetiro: null, createdAt: new Date() },
+    ]);
+
+    const usuarios = await getUsuarios();
+    expect(usuarios.map((u) => u.id)).toEqual(['user_1']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// invitarUsuario
+// ---------------------------------------------------------------------------
+
+describe('invitarUsuario', () => {
+  const base = { firstName: 'Ana', lastName: 'Paz', email: '  Ana@Club.com ', rol: 'medico' };
+
+  test('rechaza un rol no permitido', async () => {
+    const res = await invitarUsuario({ ...base, rol: 'superusuario' });
+    expect(res).toEqual({ ok: false, error: 'Rol no permitido' });
+    expect(mockClerk.invitations.createInvitation).not.toHaveBeenCalled();
+  });
+
+  test('responsable de viandas sin lugar se rechaza antes de tocar Clerk', async () => {
+    const res = await invitarUsuario({ ...base, rol: 'responsable_viandas' });
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/lugar de retiro/i);
+    expect(mockClerk.users.getUserList).not.toHaveBeenCalled();
+  });
+
+  test('responsable de viandas con lugar inválido se rechaza', async () => {
+    const res = await invitarUsuario({ ...base, rol: 'responsable_viandas', lugarRetiro: 'MARTE' });
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/inválido/i);
+  });
+
+  test('cuenta de Clerk existente (mail verificado): crea la membresía directo, sin invitación', async () => {
+    mockClerk.users.getUserList.mockResolvedValue({ data: [cuentaClerk('user_ana', 'ana@club.com')] });
+
+    const res = await invitarUsuario(base);
+
+    expect(res).toEqual({ ok: true });
+    expect(mockClerk.users.getUserList).toHaveBeenCalledWith(
+      expect.objectContaining({ emailAddress: ['ana@club.com'] }),
+    );
+    expect(mockDb.membresia.create).toHaveBeenCalledWith({
+      data: { userId: 'user_ana', clubId: CLUB_TEST.id, rol: 'medico', lugarRetiro: null },
+    });
+    expect(mockDb.invitacion.create).not.toHaveBeenCalled();
+    expect(mockClerk.invitations.createInvitation).not.toHaveBeenCalled();
+    expectCuentaIntacta();
+  });
+
+  test('cuenta existente que ya es miembro del club: error, sin duplicar', async () => {
+    mockClerk.users.getUserList.mockResolvedValue({ data: [cuentaClerk('user_ana', 'ana@club.com')] });
+    mockDb.membresia.findFirst.mockResolvedValue({ id: 'mem_1' });
+
+    const res = await invitarUsuario(base);
+
+    expect(res).toEqual({ ok: false, error: 'Esa persona ya es miembro del club' });
+    expect(mockDb.membresia.create).not.toHaveBeenCalled();
+  });
+
+  test('un mail sin verificar no cuenta como cuenta existente: va por invitación', async () => {
+    mockClerk.users.getUserList.mockResolvedValue({
+      data: [cuentaClerk('user_otro', 'ana@club.com', false)],
+    });
+
+    const res = await invitarUsuario(base);
+
+    expect(res).toEqual({ ok: true });
+    expect(mockDb.membresia.create).not.toHaveBeenCalled();
+    expect(mockDb.invitacion.create).toHaveBeenCalled();
+  });
+
+  test('sin cuenta: crea la invitación de Clerk y la Invitacion del club', async () => {
+    const res = await invitarUsuario({ ...base, rol: 'responsable_viandas', lugarRetiro: 'SEDE' });
+
+    expect(res).toEqual({ ok: true });
+    expect(mockClerk.invitations.createInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({ emailAddress: 'ana@club.com' }),
+    );
+    // La invitación de Clerk ya no lleva el rol: el acceso lo da la fila del club.
+    expect(mockClerk.invitations.createInvitation.mock.calls[0][0]).not.toHaveProperty('publicMetadata');
+    expect(mockDb.invitacion.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        clubId: CLUB_TEST.id,
+        email: 'ana@club.com',
+        nombre: 'Ana',
+        apellido: 'Paz',
+        rol: 'responsable_viandas',
+        lugarRetiro: 'SEDE',
+        tokenHash: 'hash_tok',
+        clerkInvitationId: 'clerk_inv_new',
+        invitadoPor: ADMIN,
+        expira: expect.any(Date),
+      }),
+    });
+    expect(mockDb.membresia.create).not.toHaveBeenCalled();
+  });
+
+  test('reutiliza la invitación de Clerk pendiente que dejó otro club', async () => {
+    mockClerk.invitations.getInvitationList.mockResolvedValue({
+      data: [{ id: 'clerk_inv_otro_club', emailAddress: 'ana@club.com' }],
+    });
+
+    const res = await invitarUsuario(base);
+
+    expect(res).toEqual({ ok: true });
+    expect(mockClerk.invitations.createInvitation).not.toHaveBeenCalled();
+    expect(mockClerk.invitations.revokeInvitation).not.toHaveBeenCalled();
+    expect(mockDb.invitacion.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ clerkInvitationId: 'clerk_inv_otro_club' }),
     });
   });
 
-  test('falla si el caller no es admin', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: 'user_no_admin' });
-    mockCurrentUser.mockResolvedValueOnce({ publicMetadata: { role: 'entrenador' } });
+  test('ya hay una invitación pendiente del club para ese mail: error', async () => {
+    mockDb.invitacion.findFirst.mockResolvedValue({ id: 'inv_vieja' });
 
-    const result = await deshabilitarUsuario('user_target');
+    const res = await invitarUsuario(base);
 
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/admin/i);
+    expect(res).toEqual({ ok: false, error: 'Ya existe una invitación pendiente para ese email' });
+    expect(mockClerk.invitations.createInvitation).not.toHaveBeenCalled();
+    expect(mockDb.invitacion.create).not.toHaveBeenCalled();
   });
 
-  test('falla si el userId es el propio admin', async () => {
-    const result = await deshabilitarUsuario('user_admin_123');
+  test('un error de Clerk se devuelve sin crear la Invitacion', async () => {
+    mockClerk.invitations.createInvitation.mockRejectedValue(new Error('Clerk caído'));
 
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/propia cuenta/i);
-  });
+    const res = await invitarUsuario(base);
 
-  test('llama banUser con el userId correcto', async () => {
-    const result = await deshabilitarUsuario('user_target');
-
-    expect(result.ok).toBe(true);
-    expect(mockUsersBan).toHaveBeenCalledWith('user_target');
-  });
-
-  test('retorna error si banUser lanza excepción', async () => {
-    mockUsersBan.mockRejectedValueOnce(new Error('Clerk ban failed'));
-
-    const result = await deshabilitarUsuario('user_target');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toBe('Clerk ban failed');
+    expect(res).toEqual({ ok: false, error: 'Clerk caído' });
+    expect(mockDb.invitacion.create).not.toHaveBeenCalled();
   });
 });
 
-describe('reactivarUsuario', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
-    mockClerkClient.mockResolvedValue({
-      users: {
-        getUserList: vi.fn(),
-        updateUserMetadata: vi.fn(),
-        banUser: mockUsersBan,
-        unbanUser: mockUsersUnban,
-        deleteUser: mockUsersDelete,
-      },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: vi.fn(),
-        revokeInvitation: mockInvitationsRevoke,
-      },
+// ---------------------------------------------------------------------------
+// reenviarInvitacion
+// ---------------------------------------------------------------------------
+
+describe('reenviarInvitacion', () => {
+  const invitacion = {
+    id: 'inv_1',
+    clubId: CLUB_TEST.id,
+    email: 'ana@club.com',
+    rol: 'medico',
+    lugarRetiro: null,
+  };
+
+  test('invitación inexistente (o de otro club): error', async () => {
+    const res = await reenviarInvitacion('inv_x');
+    expect(res).toEqual({ ok: false, error: 'Invitación no encontrada' });
+  });
+
+  test('renueva la invitación de Clerk (revoca la pendiente y crea otra) y extiende la vigencia', async () => {
+    mockDb.invitacion.findFirst.mockResolvedValue(invitacion);
+    mockClerk.invitations.getInvitationList.mockResolvedValue({
+      data: [{ id: 'clerk_inv_vieja', emailAddress: 'ana@club.com' }],
+    });
+
+    const res = await reenviarInvitacion('inv_1');
+
+    expect(res).toEqual({ ok: true });
+    expect(mockClerk.invitations.revokeInvitation).toHaveBeenCalledWith('clerk_inv_vieja');
+    expect(mockClerk.invitations.createInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({ emailAddress: 'ana@club.com' }),
+    );
+    expect(mockDb.invitacion.update).toHaveBeenCalledWith({
+      where: { id: 'inv_1' },
+      data: { clerkInvitationId: 'clerk_inv_new', tokenHash: 'hash_tok', expira: expect.any(Date) },
     });
   });
 
-  test('falla si el caller no es admin', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: 'user_no_admin' });
-    mockCurrentUser.mockResolvedValueOnce({ publicMetadata: { role: 'entrenador' } });
+  test('si mientras tanto creó la cuenta, lo suma al club en vez de reenviar', async () => {
+    mockDb.invitacion.findFirst.mockResolvedValue(invitacion);
+    mockClerk.users.getUserList.mockResolvedValue({ data: [cuentaClerk('user_ana', 'ana@club.com')] });
 
-    const result = await reactivarUsuario('user_target');
+    const res = await reenviarInvitacion('inv_1');
 
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/admin/i);
-  });
-
-  test('falla si el userId es el propio admin', async () => {
-    const result = await reactivarUsuario('user_admin_123');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/propia cuenta/i);
-  });
-
-  test('llama unbanUser con el userId correcto', async () => {
-    const result = await reactivarUsuario('user_target');
-
-    expect(result.ok).toBe(true);
-    expect(mockUsersUnban).toHaveBeenCalledWith('user_target');
-  });
-
-  test('retorna error si unbanUser lanza excepción', async () => {
-    mockUsersUnban.mockRejectedValueOnce(new Error('Clerk unban failed'));
-
-    const result = await reactivarUsuario('user_target');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toBe('Clerk unban failed');
+    expect(res).toEqual({ ok: true });
+    expect(mockDb.membresia.create).toHaveBeenCalledWith({
+      data: { userId: 'user_ana', clubId: CLUB_TEST.id, rol: 'medico', lugarRetiro: null },
+    });
+    expect(mockDb.invitacion.update).toHaveBeenCalledWith({
+      where: { id: 'inv_1' },
+      data: { aceptadaAt: expect.any(Date), aceptadaPor: 'user_ana' },
+    });
+    expect(mockClerk.invitations.createInvitation).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// deshabilitar / reactivar
+// ---------------------------------------------------------------------------
+
+describe('deshabilitarUsuario / reactivarUsuario', () => {
+  test('deshabilitar apaga la membresía del club y no banea la cuenta', async () => {
+    const res = await deshabilitarUsuario('user_x');
+
+    expect(res).toEqual({ ok: true });
+    expect(mockDb.membresia.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user_x' },
+      data: { activo: false },
+    });
+    expectCuentaIntacta();
+  });
+
+  test('reactivar prende la membresía y no toca la cuenta', async () => {
+    const res = await reactivarUsuario('user_x');
+
+    expect(res).toEqual({ ok: true });
+    expect(mockDb.membresia.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user_x' },
+      data: { activo: true },
+    });
+    expectCuentaIntacta();
+  });
+
+  test('no se puede deshabilitar ni reactivar a uno mismo', async () => {
+    await expect(deshabilitarUsuario(ADMIN)).resolves.toEqual({
+      ok: false,
+      error: 'No podés deshabilitar tu propia cuenta',
+    });
+    await expect(reactivarUsuario(ADMIN)).resolves.toEqual({
+      ok: false,
+      error: 'No podés reactivar tu propia cuenta',
+    });
+    expect(mockDb.membresia.updateMany).not.toHaveBeenCalled();
+  });
+
+  test('un usuario que no es miembro del club: no encontrado', async () => {
+    mockDb.membresia.updateMany.mockResolvedValue({ count: 0 });
+    await expect(deshabilitarUsuario('user_otro_club')).resolves.toEqual({
+      ok: false,
+      error: 'Usuario no encontrado',
+    });
+  });
+
+  test('no se puede deshabilitar al último admin activo', async () => {
+    mockDb.membresia.findFirst.mockResolvedValue({ id: 'mem_admin' });
+    mockDb.membresia.count.mockResolvedValue(1);
+
+    const res = await deshabilitarUsuario('user_ultimo_admin');
+
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/al menos un administrador/i);
+    expect(mockDb.membresia.updateMany).not.toHaveBeenCalled();
+  });
+
+  test('con otro admin activo, sí se puede deshabilitar a un admin', async () => {
+    mockDb.membresia.findFirst.mockResolvedValue({ id: 'mem_admin' });
+    mockDb.membresia.count.mockResolvedValue(2);
+
+    await expect(deshabilitarUsuario('user_otro_admin')).resolves.toEqual({ ok: true });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// eliminarUsuario
+// ---------------------------------------------------------------------------
 
 describe('eliminarUsuario', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'user_admin_123' });
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
-    mockClerkClient.mockResolvedValue({
-      users: {
-        getUserList: vi.fn(),
-        updateUserMetadata: vi.fn(),
-        banUser: mockUsersBan,
-        unbanUser: mockUsersUnban,
-        deleteUser: mockUsersDelete,
-      },
-      invitations: {
-        getInvitationList: vi.fn(),
-        createInvitation: vi.fn(),
-        revokeInvitation: mockInvitationsRevoke,
-      },
+  test.each(['activo', 'inactivo'] as const)(
+    'un miembro (%s) se elimina borrando su membresía, sin deleteUser',
+    async (status) => {
+      const res = await eliminarUsuario('user_x', status);
+
+      expect(res).toEqual({ ok: true });
+      expect(mockDb.membresia.deleteMany).toHaveBeenCalledWith({ where: { userId: 'user_x' } });
+      expectCuentaIntacta();
+    },
+  );
+
+  test('una invitación pendiente se revoca en la DB, sin revocar la de Clerk', async () => {
+    const res = await eliminarUsuario('inv_1', 'pendiente');
+
+    expect(res).toEqual({ ok: true });
+    expect(mockDb.invitacion.updateMany).toHaveBeenCalledWith({
+      where: { id: 'inv_1', aceptadaAt: null, revocadaAt: null },
+      data: { revocadaAt: expect.any(Date) },
+    });
+    expect(mockClerk.invitations.revokeInvitation).not.toHaveBeenCalled();
+    expect(mockDb.membresia.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test('no se puede eliminar a uno mismo', async () => {
+    const res = await eliminarUsuario(ADMIN, 'activo');
+    expect(res).toEqual({ ok: false, error: 'No podés eliminar tu propia cuenta' });
+    expect(mockDb.membresia.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test('no se puede eliminar al último admin activo', async () => {
+    mockDb.membresia.findFirst.mockResolvedValue({ id: 'mem_admin' });
+    mockDb.membresia.count.mockResolvedValue(1);
+
+    const res = await eliminarUsuario('user_ultimo_admin', 'activo');
+
+    expect(res.ok).toBe(false);
+    expect(mockDb.membresia.deleteMany).not.toHaveBeenCalled();
+  });
+
+  test('invitación ya aceptada o de otro club: no encontrada', async () => {
+    mockDb.invitacion.updateMany.mockResolvedValue({ count: 0 });
+    await expect(eliminarUsuario('inv_x', 'pendiente')).resolves.toEqual({
+      ok: false,
+      error: 'Invitación no encontrada',
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// cambiarRol / asignarLugarRetiro
+// ---------------------------------------------------------------------------
+
+describe('cambiarRol', () => {
+  test('escribe el rol en la membresía y limpia el lugar si deja de ser responsable', async () => {
+    const res = await cambiarRol('user_x', 'medico');
+
+    expect(res).toEqual({ ok: true });
+    expect(mockDb.membresia.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user_x' },
+      data: { rol: 'medico', lugarRetiro: null },
+    });
+    expectCuentaIntacta();
+  });
+
+  test('a responsable de viandas no le borra el lugar', async () => {
+    await cambiarRol('user_x', 'responsable_viandas');
+    expect(mockDb.membresia.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user_x' },
+      data: { rol: 'responsable_viandas' },
     });
   });
 
-  test('falla si el caller no es admin', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: 'user_no_admin' });
-    mockCurrentUser.mockResolvedValueOnce({ publicMetadata: { role: 'entrenador' } });
-
-    const result = await eliminarUsuario('user_target', 'activo');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/admin/i);
+  test('rechaza un rol no permitido', async () => {
+    await expect(cambiarRol('user_x', 'dios')).resolves.toEqual({ ok: false, error: 'Rol no permitido' });
   });
 
-  test('falla si el admin intenta eliminarse a sí mismo (status activo)', async () => {
-    const result = await eliminarUsuario('user_admin_123', 'activo');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/propia cuenta/i);
+  test('no se puede cambiar el rol propio', async () => {
+    await expect(cambiarRol(ADMIN, 'medico')).resolves.toEqual({
+      ok: false,
+      error: 'No podés cambiar tu propio rol',
+    });
   });
 
-  test('llama deleteUser para usuario activo', async () => {
-    const result = await eliminarUsuario('user_target', 'activo');
+  test('no se puede degradar al último admin activo', async () => {
+    mockDb.membresia.findFirst.mockResolvedValue({ id: 'mem_admin' });
+    mockDb.membresia.count.mockResolvedValue(1);
 
-    expect(result.ok).toBe(true);
-    expect(mockUsersDelete).toHaveBeenCalledWith('user_target');
+    const res = await cambiarRol('user_ultimo_admin', 'entrenador');
+
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/al menos un administrador/i);
+    expect(mockDb.membresia.updateMany).not.toHaveBeenCalled();
   });
 
-  test('llama revokeInvitation para invitación pendiente', async () => {
-    const result = await eliminarUsuario('inv_123', 'pendiente');
-
-    expect(result.ok).toBe(true);
-    expect(mockInvitationsRevoke).toHaveBeenCalledWith('inv_123');
+  test('pasar a admin no consulta el guard del último admin', async () => {
+    await cambiarRol('user_x', 'admin');
+    expect(mockDb.membresia.count).not.toHaveBeenCalled();
   });
 
-  test('no aplica self-guard para invitaciones pendientes', async () => {
-    // Even if the id matches the admin's userId, pending invitations are not user accounts
-    const result = await eliminarUsuario('user_admin_123', 'pendiente');
+  test('un superadmin (sin membresía) tampoco puede vaciar el club de admins', async () => {
+    setContexto(mockContexto('admin', { userId: 'user_staff', esSuperadmin: true, comoSuperadmin: true }));
+    mockDb.membresia.findFirst.mockResolvedValue({ id: 'mem_admin' });
+    mockDb.membresia.count.mockResolvedValue(1);
 
-    expect(result.ok).toBe(true);
-    expect(mockInvitationsRevoke).toHaveBeenCalledWith('user_admin_123');
+    const res = await cambiarRol('user_ultimo_admin', 'medico');
+    expect(res.ok).toBe(false);
+  });
+});
+
+describe('asignarLugarRetiro', () => {
+  test('escribe el lugar en la membresía', async () => {
+    const res = await asignarLugarRetiro('user_x', 'SEDE');
+
+    expect(res).toEqual({ ok: true });
+    expect(mockDb.membresia.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user_x' },
+      data: { lugarRetiro: 'SEDE' },
+    });
+    expectCuentaIntacta();
   });
 
-  test('retorna error si deleteUser lanza excepción', async () => {
-    mockUsersDelete.mockRejectedValueOnce(new Error('Clerk delete failed'));
-
-    const result = await eliminarUsuario('user_target', 'activo');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toBe('Clerk delete failed');
+  test('null limpia el lugar', async () => {
+    await asignarLugarRetiro('user_x', null);
+    expect(mockDb.membresia.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user_x' },
+      data: { lugarRetiro: null },
+    });
   });
 
-  test('retorna error si revokeInvitation lanza excepción', async () => {
-    mockInvitationsRevoke.mockRejectedValueOnce(new Error('Clerk revoke failed'));
-
-    const result = await eliminarUsuario('inv_123', 'pendiente');
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toBe('Clerk revoke failed');
+  test('rechaza un lugar inválido', async () => {
+    const res = await asignarLugarRetiro('user_x', 'MARTE');
+    expect(res.ok).toBe(false);
+    expect(mockDb.membresia.updateMany).not.toHaveBeenCalled();
   });
 });

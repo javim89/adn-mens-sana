@@ -1,12 +1,8 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import UsuariosTable from '../UsuariosTable';
 import ConfirmarAccionModal from '../ConfirmarAccionModal';
 import type { Usuario } from '@/lib/types/usuarios';
-
-vi.mock('@clerk/nextjs', () => ({
-  useUser: vi.fn(),
-}));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -24,7 +20,6 @@ vi.mock('@/lib/actions/usuarios', () => ({
   eliminarUsuario: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
-import { useUser } from '@clerk/nextjs';
 import { reenviarInvitacion, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
 import { toast } from 'sonner';
 
@@ -38,7 +33,6 @@ const mockActivo: Usuario = {
   createdAt: new Date('2026-01-01'),
   lugarRetiro: null,
   status: 'activo',
-  disabled: false,
 };
 
 const mockDeshabilitado: Usuario = {
@@ -50,8 +44,7 @@ const mockDeshabilitado: Usuario = {
   lastSignInAt: new Date('2026-05-01'),
   createdAt: new Date('2026-01-01'),
   lugarRetiro: null,
-  status: 'activo',
-  disabled: true,
+  status: 'inactivo',
 };
 
 const mockPendiente: Usuario = {
@@ -65,18 +58,15 @@ const mockPendiente: Usuario = {
   status: 'pendiente',
 };
 
+/** Rol y userId del logueado: llegan por props desde la page (salen de su membresía). */
+let sesion = { rol: 'entrenador', currentUserId: 'user_other' };
+
 function asNonAdmin() {
-  vi.mocked(useUser).mockReturnValue({
-    user: { id: 'user_other', publicMetadata: { role: 'entrenador' } },
-    isLoaded: true,
-  } as ReturnType<typeof useUser>);
+  sesion = { rol: 'entrenador', currentUserId: 'user_other' };
 }
 
 function asAdmin(id = 'user_admin') {
-  vi.mocked(useUser).mockReturnValue({
-    user: { id, publicMetadata: { role: 'admin' } },
-    isLoaded: true,
-  } as ReturnType<typeof useUser>);
+  sesion = { rol: 'admin', currentUserId: id };
 }
 
 describe('UsuariosTable', () => {
@@ -86,7 +76,7 @@ describe('UsuariosTable', () => {
 
   test('renderiza usuarios activos correctamente', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     expect(screen.getAllByText('Laura Méndez')[0]).toBeInTheDocument();
     expect(screen.getAllByText('l.mendez@gimnasia.org.ar')[0]).toBeInTheDocument();
@@ -96,7 +86,7 @@ describe('UsuariosTable', () => {
 
   test('renderiza invitaciones pendientes con badge "Pendiente"', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockPendiente]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockPendiente]} />);
 
     expect(screen.getAllByText('Sergio Blanco')[0]).toBeInTheDocument();
     expect(screen.getAllByText('s.blanco@gimnasia.org.ar')[0]).toBeInTheDocument();
@@ -105,7 +95,7 @@ describe('UsuariosTable', () => {
 
   test('admin ve botón de reenviar invitación en usuarios pendientes', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockPendiente]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockPendiente]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     expect(screen.getByRole('button', { name: /reenviar/i })).toBeInTheDocument();
@@ -113,21 +103,21 @@ describe('UsuariosTable', () => {
 
   test('no-admin no ve botón de reenviar aunque el usuario sea pendiente', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockPendiente]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockPendiente]} />);
 
     expect(screen.queryByRole('button', { name: /reenviar/i })).not.toBeInTheDocument();
   });
 
   test('usuario activo no muestra botón de reenviar (ni para admin)', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     expect(screen.queryByRole('button', { name: /reenviar/i })).not.toBeInTheDocument();
   });
 
   test('botón reenviar llama reenviarInvitacion con el id correcto', async () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockPendiente]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockPendiente]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /reenviar/i }));
@@ -144,7 +134,7 @@ describe('UsuariosTable', () => {
     vi.setSystemTime(new Date('2026-06-10T12:00:00Z'));
     try {
       asNonAdmin();
-      render(<UsuariosTable usuarios={[mockActivo]} />);
+      render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
       const cells = screen.getAllByText(/hace 2 días/i);
       expect(cells.length).toBeGreaterThan(0);
@@ -158,7 +148,7 @@ describe('UsuariosTable', () => {
     vi.setSystemTime(new Date('2026-10-29T12:00:00Z'));
     try {
       asNonAdmin();
-      render(<UsuariosTable usuarios={[mockActivo]} />);
+      render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
       const cells = screen.getAllByText(/^\d{2}\/\d{2}\/2026$/);
       expect(cells.length).toBeGreaterThan(0);
@@ -170,7 +160,7 @@ describe('UsuariosTable', () => {
 
   test('usuario pendiente muestra "—" en columna último ingreso', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockPendiente]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockPendiente]} />);
 
     const dashes = screen.getAllByText('—');
     expect(dashes.length).toBeGreaterThan(0);
@@ -178,21 +168,21 @@ describe('UsuariosTable', () => {
 
   test('columna "Cambiar rol" no aparece para usuarios no-admin', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     expect(screen.queryByText('Cambiar rol')).not.toBeInTheDocument();
   });
 
   test('columna "Cambiar rol" aparece para admin', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     expect(screen.getByText('Cambiar rol')).toBeInTheDocument();
   });
 
   test('admin ve el selector de rol para usuarios activos', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     // El selector de rol es un CustomSelect (botón trigger con el rol actual),
     // no un <select> nativo: se reemplazó a propósito en 7bbc737.
@@ -205,14 +195,14 @@ describe('UsuariosTable', () => {
 
   test('no-admin no ve el selector de rol', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     expect(screen.queryByRole('button', { name: 'Admin' })).not.toBeInTheDocument();
   });
 
   test('muestra mensaje vacío cuando no hay usuarios', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[]} />);
+    render(<UsuariosTable {...sesion} usuarios={[]} />);
 
     const messages = screen.getAllByText(/no hay usuarios registrados/i);
     expect(messages.length).toBeGreaterThan(0);
@@ -229,10 +219,9 @@ describe('UsuariosTable', () => {
       createdAt: new Date('2026-01-01'),
       lugarRetiro: null,
       status: 'activo',
-      disabled: false,
     };
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockKinesiologo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockKinesiologo]} />);
 
     // Badge should display the label (not raw rol value)
     const badge = screen.getAllByText('Kinesiólogo')[0];
@@ -251,7 +240,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('admin ve botón "Deshabilitar" para usuario activo no deshabilitado', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     expect(screen.getByRole('button', { name: /deshabilitar/i })).toBeInTheDocument();
@@ -259,7 +248,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('admin NO ve botón "Deshabilitar" para usuario ya deshabilitado', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockDeshabilitado]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     expect(screen.queryByRole('button', { name: /deshabilitar/i })).not.toBeInTheDocument();
@@ -267,7 +256,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('admin ve botón "Reactivar" para usuario deshabilitado', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockDeshabilitado]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     expect(screen.getByRole('button', { name: /reactivar/i })).toBeInTheDocument();
@@ -275,7 +264,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('admin NO ve botón "Reactivar" para usuario activo no deshabilitado', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     expect(screen.queryByRole('button', { name: /reactivar/i })).not.toBeInTheDocument();
@@ -283,7 +272,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('admin ve botón "Eliminar" para usuario activo', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     expect(screen.getByRole('button', { name: /eliminar/i })).toBeInTheDocument();
@@ -291,7 +280,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('admin ve botón "Eliminar" para invitación pendiente', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockPendiente]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockPendiente]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     expect(screen.getByRole('button', { name: /eliminar/i })).toBeInTheDocument();
@@ -299,28 +288,28 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('no-admin NO ve botón "Deshabilitar"', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     expect(screen.queryByRole('button', { name: /deshabilitar/i })).not.toBeInTheDocument();
   });
 
   test('no-admin NO ve botón "Reactivar"', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockDeshabilitado]} />);
 
     expect(screen.queryByRole('button', { name: /reactivar/i })).not.toBeInTheDocument();
   });
 
   test('no-admin NO ve botón "Eliminar"', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     expect(screen.queryByRole('button', { name: /eliminar/i })).not.toBeInTheDocument();
   });
 
   test('click en "Deshabilitar" abre modal de confirmación', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /deshabilitar/i }));
@@ -331,7 +320,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('click en "Reactivar" abre modal de confirmación', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockDeshabilitado]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /reactivar/i }));
@@ -342,7 +331,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('click en "Eliminar" (activo) abre modal de confirmación', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /eliminar/i }));
@@ -353,7 +342,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('confirmar deshabilitar llama deshabilitarUsuario con el userId correcto', async () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /deshabilitar/i }));
@@ -368,7 +357,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('confirmar reactivar llama reactivarUsuario con el userId correcto', async () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockDeshabilitado]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /reactivar/i }));
@@ -383,7 +372,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('confirmar eliminar (activo) llama eliminarUsuario con status activo', async () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /eliminar/i }));
@@ -398,7 +387,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('confirmar eliminar (pendiente) llama eliminarUsuario con status pendiente', async () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockPendiente]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockPendiente]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /eliminar/i }));
@@ -413,7 +402,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('cancelar en modal no llama ninguna acción', async () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /deshabilitar/i }));
@@ -426,16 +415,38 @@ describe('UsuariosTable — acciones admin', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  test('usuario deshabilitado muestra badge "Deshabilitado"', () => {
+  test('membresía desactivada muestra badge "Inactivo"', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockDeshabilitado]} />);
 
-    expect(screen.getAllByText('Deshabilitado')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Inactivo')[0]).toBeInTheDocument();
+  });
+
+  test('un miembro inactivo se puede eliminar del club con su estado', async () => {
+    asAdmin();
+    render(<UsuariosTable {...sesion} usuarios={[mockDeshabilitado]} />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
+    fireEvent.click(screen.getByRole('button', { name: /eliminar/i }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /eliminar/i }));
+
+    await waitFor(() => {
+      expect(eliminarUsuario).toHaveBeenCalledWith('user_2', 'inactivo');
+    });
+  });
+
+  test('el admin no ve "Deshabilitar" sobre sí mismo', () => {
+    asAdmin('user_1');
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
+    expect(screen.queryByRole('button', { name: /deshabilitar/i })).not.toBeInTheDocument();
   });
 
   test('usuario deshabilitado tiene clase de opacidad en la fila', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockDeshabilitado]} />);
 
     const nameEl = screen.getAllByText('Pedro González')[0];
     const container = nameEl.closest('[class*="opacity-60"]');
@@ -444,15 +455,15 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('usuario activo no deshabilitado muestra badge "Activo" (regresión)', () => {
     asNonAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     expect(screen.getAllByText('Activo')[0]).toBeInTheDocument();
-    expect(screen.queryByText('Deshabilitado')).not.toBeInTheDocument();
+    expect(screen.queryByText('Inactivo')).not.toBeInTheDocument();
   });
 
   test('el trigger "Acciones" abre el dropdown al hacer click', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     expect(screen.queryByRole('button', { name: /deshabilitar/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
@@ -461,7 +472,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('el dropdown muestra solo las acciones aplicables para cada estado', () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockPendiente]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockPendiente]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     expect(screen.getByRole('button', { name: /reenviar/i })).toBeInTheDocument();
@@ -473,7 +484,7 @@ describe('UsuariosTable — acciones admin', () => {
   test('admin NO ve botón "Deshabilitar" para su propia fila', () => {
     // Admin is logged in as user_1, so their own row should not show Deshabilitar
     asAdmin('user_1');
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     expect(screen.queryByRole('button', { name: /deshabilitar/i })).not.toBeInTheDocument();
@@ -481,7 +492,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('éxito en deshabilitar muestra toast y cierra modal', async () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /deshabilitar/i }));
@@ -496,7 +507,7 @@ describe('UsuariosTable — acciones admin', () => {
 
   test('éxito en reactivar muestra toast "Usuario reactivado"', async () => {
     asAdmin();
-    render(<UsuariosTable usuarios={[mockDeshabilitado]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockDeshabilitado]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /reactivar/i }));
@@ -511,7 +522,7 @@ describe('UsuariosTable — acciones admin', () => {
   test('error en acción muestra toast de error', async () => {
     vi.mocked(deshabilitarUsuario).mockResolvedValueOnce({ ok: false, error: 'Error de prueba' });
     asAdmin();
-    render(<UsuariosTable usuarios={[mockActivo]} />);
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /acciones/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: /deshabilitar/i }));

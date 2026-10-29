@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 
 /**
  * Guard de acceso del módulo Insights — exclusivo de admin.
@@ -19,12 +18,7 @@ export default async function InsightsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-
-  if (role !== 'admin') {
-    redirect('/dashboard');
-  }
+  await requireContexto(['admin']);
 
   return <>{children}</>;
 }

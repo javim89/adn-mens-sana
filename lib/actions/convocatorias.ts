@@ -1,8 +1,8 @@
 'use server';
 
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
+import { getContextoClub } from '@/lib/tenant/contexto';
 import {
   getProximoPartido,
   getDeportistasParaConvocar,
@@ -13,12 +13,11 @@ import type {
   DeportistaConvocable,
 } from '@/lib/types/convocatorias';
 
+/** Usuario y rol en el club activo. Sin club accesible, `userId` es null. */
 async function getCallerInfo() {
-  const { userId } = await auth();
-  if (!userId) return { userId: null, role: null };
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-  return { userId, role };
+  const contexto = await getContextoClub();
+  if (!contexto) return { userId: null, role: null };
+  return { userId: contexto.userId, role: contexto.rol };
 }
 
 export async function getProximoPartidoAction(

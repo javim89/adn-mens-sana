@@ -1,4 +1,5 @@
-import { auth, currentUser, clerkClient } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
+import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
 import { getSeguimientos } from '@/lib/queries/seguimientos';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
@@ -19,9 +20,7 @@ export default async function SeguimientosPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const { userId } = await auth();
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
+  const { userId, rol: role } = await requireContexto();
   const isAdmin = role === 'admin';
   const HEALTH_ROLES = ['medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'];
   // 'social' puede crear/editar/eliminar solo sus propios seguimientos GENERICOS
@@ -55,24 +54,8 @@ export default async function SeguimientosPage({
   });
 
   // Resolver nombres de los profesionales presentes en ESTA página
-  const profesionalesMap: Record<string, string> = {};
-  if (items.length > 0) {
-    const uniqueIds = [...new Set(items.map((s) => s.profesionalId))];
-    const client = await clerkClient();
-    const users = await Promise.all(
-      uniqueIds.map((id) => client.users.getUser(id).catch(() => null)),
-    );
-    for (const u of users) {
-      if (!u) continue;
-      const meta = (u.publicMetadata ?? {}) as Record<string, unknown>;
-      const nombre = u.firstName || String(meta.firstName ?? '');
-      const apellido = u.lastName || String(meta.lastName ?? '');
-      profesionalesMap[u.id] =
-        `${nombre} ${apellido}`.trim() ||
-        u.emailAddresses?.[0]?.emailAddress ||
-        u.id;
-    }
-  }
+  const profesionalesMap =
+    items.length > 0 ? await getNombresDeUsuarios(items.map((s) => s.profesionalId)) : {};
 
   const serialized = items.map((s) => ({
     id: s.id,
@@ -109,7 +92,7 @@ export default async function SeguimientosPage({
         pageSize={PAGE_SIZE}
         isAdmin={isAdmin}
         canWrite={canWrite}
-        currentUserId={userId!}
+        currentUserId={userId}
         profesionales={profesionales}
         currentPrioridad={prioridad ?? ''}
         currentArea={area ?? ''}

@@ -1,12 +1,11 @@
 import Link from 'next/link';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getProfesionales } from '@/lib/actions/turnos';
 import TurnoForm from '../_components/TurnoForm';
 
 export default async function NuevoTurnoPage() {
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-  const isAdmin = role === 'admin';
+  const { rol } = await requireContexto();
+  const isAdmin = rol === 'admin';
 
   const profesionales = isAdmin ? await getProfesionales() : [];
 

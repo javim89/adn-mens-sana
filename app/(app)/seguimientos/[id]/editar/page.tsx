@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getSeguimientoById } from '@/lib/queries/seguimientos';
 import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
@@ -13,11 +13,10 @@ interface Props {
 
 export default async function EditarSeguimientoPage({ params }: Props) {
   const { id } = await params;
+  const { rol: role } = await requireContexto();
   const seguimiento = await getSeguimientoById(id);
   if (!seguimiento) notFound();
 
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
   const isAdmin = role === 'admin';
 
   const profesionales = isAdmin ? await getProfesionalesSeguimientos() : [];
