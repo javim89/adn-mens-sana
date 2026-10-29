@@ -100,8 +100,8 @@ try {
 // caso malo, en el que el rol sí tuviera permiso de escritura.
 try {
   await sql.transaction([
-    sql`INSERT INTO insights_dashboards (id, slug, nombre, creado_por, updated_at)
-        VALUES ('probe', 'probe-readonly', 'probe', 'probe', now())`,
+    sql`INSERT INTO insights_dashboards (id, club_id, slug, nombre, creado_por, updated_at)
+        VALUES ('probe', 'club_gimnasia_lp', 'probe-readonly', 'probe', 'probe', now())`,
   ]);
   fail("PUEDE ESCRIBIR — el rol tiene permisos de más, revisá los GRANT");
 } catch (e) {

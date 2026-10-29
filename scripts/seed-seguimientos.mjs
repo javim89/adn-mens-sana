@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * Seeds random seguimientos for EVERY existing deportista (min. 10 each, 10-14).
+ * Seeds random seguimientos for EVERY deportista of the club (min. 10 each, 10-14).
+ * Cada seguimiento se vincula a su deportista por `seguimiento_deportistas`.
  *
  * Para cada seguimiento:
  *   - Elige un tipo (TipoSeguimiento) con una distribución ponderada.
  *   - Asigna un profesional_id (un userId de Clerk) del pool elegible para ese
- *     tipo, según el rol de publicMetadata.role. Los profesionales se traen en
- *     runtime desde Clerk (@clerk/backend) — NO se hardcodean IDs.
+ *     tipo, según el rol de su membresía en el club. Los profesionales se traen
+ *     en runtime de `membresias` — NO se hardcodean IDs.
  *   - Crea la fila satélite 1:1 correspondiente al tipo (para GENERICO no se
  *     crea satélite).
  *
@@ -22,27 +23,24 @@
  * Uses Neon's HTTP driver (avoids the TCP/IPv6 issue like apply-migration.mjs).
  * NO recrea deportistas: los lee de la DB.
  *
- * ⚠️  IDEMPOTENCIA: Al inicio ejecuta `DELETE FROM "seguimientos"`, que borra en
+ * ⚠️  IDEMPOTENCIA: Al inicio borra los seguimientos DEL CLUB, que borran en
  * cascada todas las tablas satélite. Re-correr no duplica. Corré esto sólo en
  * entornos de prueba.
  *
- * Requiere CLERK_SECRET_KEY en .env.local.
+ * Requiere las membresías del club (scripts/migrar-membresias.mjs para Gimnasia).
  *
- * Usage: node scripts/seed-seguimientos.mjs
+ * Usage: node scripts/seed-seguimientos.mjs [--club <id>]   (default: club_gimnasia_lp)
  */
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
+import { getClubId, assertClubExiste, fetchProfesionalesPorRol } from "./club-arg.mjs";
 
 config({ path: ".env.local" });
 
 const url = process.env.DATABASE_URL;
 if (!url) {
   console.error("DATABASE_URL not set");
-  process.exit(1);
-}
-if (!process.env.CLERK_SECRET_KEY) {
-  console.error("CLERK_SECRET_KEY not set (necesario para traer profesionales)");
   process.exit(1);
 }
 const sql = neon(url);
@@ -414,28 +412,17 @@ function buildAntropometria(seguimientoId) {
 
 const HEALTH_ROLES = ["medico", "kinesiologo", "nutricionista", "psicologo", "cardiologo"];
 
-async function fetchProfesionalesPorRol() {
-  const { createClerkClient } = await import("@clerk/backend");
-  const client = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
-  const res = await client.users.getUserList({ limit: 100 });
-  const porRol = {};
-  for (const user of res.data ?? []) {
-    const role = String(user.publicMetadata?.role ?? "");
-    if (!role) continue;
-    (porRol[role] ??= []).push(user.id);
-  }
-  return porRol;
-}
-
 async function main() {
   console.log("Seeding seguimientos aleatorios (datos de prueba)...");
+  const clubId = getClubId();
+  await assertClubExiste(sql, clubId);
 
-  // 1. Traer profesionales desde Clerk y armar pools por tipo.
-  const porRol = await fetchProfesionalesPorRol();
+  // 1. Traer los profesionales del club y armar pools por tipo.
+  const porRol = await fetchProfesionalesPorRol(sql, clubId);
   const conteoRoles = Object.fromEntries(
     Object.entries(porRol).map(([r, ids]) => [r, ids.length])
   );
-  console.log("  ✓ Profesionales por rol (Clerk):", JSON.stringify(conteoRoles));
+  console.log("  ✓ Profesionales por rol (membresías):", JSON.stringify(conteoRoles));
 
   const idsSalud = HEALTH_ROLES.flatMap((r) => porRol[r] ?? []);
   const idsAdmin = porRol.admin ?? [];
@@ -459,12 +446,12 @@ async function main() {
     console.log(`  ⚠️  Tipos omitidos (sin profesional elegible): ${tiposOmitidos.join(", ")}`);
   }
   if (tiposHabilitados.length === 0) {
-    console.error("No hay ningún profesional elegible en Clerk. Abortando.");
+    console.error("No hay ningún profesional elegible en el club. Abortando.");
     process.exit(1);
   }
 
   // 2. Leer deportistas.
-  const deportistas = await sql.query('SELECT id FROM "deportistas"');
+  const deportistas = await sql.query('SELECT id FROM "deportistas" WHERE "club_id" = $1', [clubId]);
   if (deportistas.length === 0) {
     console.error("No hay deportistas. Corré primero: npm run seed:deportistas");
     process.exit(1);
@@ -472,11 +459,12 @@ async function main() {
   console.log(`  ✓ ${deportistas.length} deportistas encontrados`);
 
   // 3. Limpiar (idempotencia). seguimientos borra en cascada los satélites.
-  await sql.query('DELETE FROM "seguimientos"');
+  await sql.query('DELETE FROM "seguimientos" WHERE "club_id" = $1', [clubId]);
   console.log("  ✓ seguimientos limpiados (cascade sobre satélites)");
 
   // 4. Generar filas.
   const seguimientoRows = [];
+  const seguimientoDeportistaRows = [];
   const traumaRows = [];
   const historiaRows = [];
   const psicoRows = [];
@@ -500,7 +488,7 @@ async function main() {
 
       seguimientoRows.push({
         id: seguimientoId,
-        deportista_id: dep.id,
+        club_id: clubId,
         profesional_id: profesionalId,
         fecha,
         titulo: rand(cat.titulos),
@@ -513,6 +501,11 @@ async function main() {
         tipo_seguimiento: tipo,
         created_at: timestamp,
         updated_at: timestamp,
+      });
+      seguimientoDeportistaRows.push({
+        seguimiento_id: seguimientoId,
+        deportista_id: dep.id,
+        created_at: timestamp,
       });
 
       switch (tipo) {
@@ -540,13 +533,20 @@ async function main() {
   await insertAll(
     "seguimientos",
     [
-      "id", "deportista_id", "profesional_id", "fecha", "titulo", "descripcion",
+      "id", "club_id", "profesional_id", "fecha", "titulo", "descripcion",
       "recomendaciones", "resultados_evaluacion", "prioridad", "proxima_cita",
       "alerta_seguimiento", "tipo_seguimiento", "created_at", "updated_at",
     ],
     seguimientoRows
   );
   console.log(`  ✓ ${seguimientoRows.length} filas en seguimientos`);
+
+  await insertAll(
+    "seguimiento_deportistas",
+    ["seguimiento_id", "deportista_id", "created_at"],
+    seguimientoDeportistaRows
+  );
+  console.log(`  ✓ ${seguimientoDeportistaRows.length} filas en seguimiento_deportistas`);
 
   await insertAll(
     "seguimientos_traumatologia",
@@ -605,17 +605,25 @@ async function main() {
   console.log(`  ✓ ${antropoRows.length} filas en seguimientos_antropometria`);
 
   // 6. Conteos reales desde la DB.
-  const [{ total }] = await sql.query('SELECT COUNT(*)::int AS total FROM "seguimientos"');
-  const [{ trauma }] = await sql.query('SELECT COUNT(*)::int AS trauma FROM "seguimientos_traumatologia"');
-  const [{ historia }] = await sql.query('SELECT COUNT(*)::int AS historia FROM "seguimientos_historia_clinica"');
-  const [{ psico }] = await sql.query('SELECT COUNT(*)::int AS psico FROM "seguimientos_evaluacion_psicologica"');
-  const [{ cardio }] = await sql.query('SELECT COUNT(*)::int AS cardio FROM "seguimientos_evaluacion_cardiologica"');
-  const [{ antropo }] = await sql.query('SELECT COUNT(*)::int AS antropo FROM "seguimientos_antropometria"');
+  // Los satélites no tienen club_id: se acotan por el seguimiento.
+  const DEL_CLUB = `"seguimiento_id" IN (SELECT "id" FROM "seguimientos" WHERE "club_id" = $1)`;
+  const p = [clubId];
+  const [{ total }] = await sql.query('SELECT COUNT(*)::int AS total FROM "seguimientos" WHERE "club_id" = $1', p);
+  const [{ trauma }] = await sql.query(`SELECT COUNT(*)::int AS trauma FROM "seguimientos_traumatologia" WHERE ${DEL_CLUB}`, p);
+  const [{ historia }] = await sql.query(`SELECT COUNT(*)::int AS historia FROM "seguimientos_historia_clinica" WHERE ${DEL_CLUB}`, p);
+  const [{ psico }] = await sql.query(`SELECT COUNT(*)::int AS psico FROM "seguimientos_evaluacion_psicologica" WHERE ${DEL_CLUB}`, p);
+  const [{ cardio }] = await sql.query(`SELECT COUNT(*)::int AS cardio FROM "seguimientos_evaluacion_cardiologica" WHERE ${DEL_CLUB}`, p);
+  const [{ antropo }] = await sql.query(`SELECT COUNT(*)::int AS antropo FROM "seguimientos_antropometria" WHERE ${DEL_CLUB}`, p);
   const [{ min_por_dep }] = await sql.query(
-    'SELECT MIN(c)::int AS min_por_dep FROM (SELECT COUNT(*) AS c FROM "seguimientos" GROUP BY deportista_id) t'
+    `SELECT MIN(c)::int AS min_por_dep
+       FROM (SELECT COUNT(*) AS c FROM "seguimiento_deportistas" WHERE ${DEL_CLUB} GROUP BY deportista_id) t`,
+    p
   );
   const [{ sin_seguimientos }] = await sql.query(
-    'SELECT COUNT(*)::int AS sin_seguimientos FROM "deportistas" d WHERE NOT EXISTS (SELECT 1 FROM "seguimientos" s WHERE s.deportista_id = d.id)'
+    `SELECT COUNT(*)::int AS sin_seguimientos FROM "deportistas" d
+      WHERE d."club_id" = $1
+        AND NOT EXISTS (SELECT 1 FROM "seguimiento_deportistas" sd WHERE sd.deportista_id = d.id)`,
+    p
   );
 
   console.log("\nConteos finales (desde la DB):");

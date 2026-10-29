@@ -3,19 +3,20 @@
  * Seeds the "disciplinas" catalog and its category links.
  * Uses Neon's HTTP driver (avoids the TCP/IPv6 issue like apply-migration.mjs).
  *
- * (a) Upsert de las 21 disciplinas por "codigo" (ON CONFLICT DO UPDATE).
+ * (a) Upsert de las 21 disciplinas por (club, "codigo") (ON CONFLICT DO UPDATE).
  * (b) Vincula Fútbol -> las 15 categorías en "disciplina_categorias"
  *     (idempotente, ON CONFLICT DO NOTHING). Otras disciplinas quedan sin
  *     categorías por ahora.
  *
- * ⚠️  IDEMPOTENCIA: upsert por "codigo" / link por (disciplina_id, categoria_id).
+ * ⚠️  IDEMPOTENCIA: upsert por (club, "codigo") / link por (disciplina_id, categoria_id).
  * Re-correr no duplica ni destruye asignaciones existentes.
  *
- * Usage: node scripts/seed-disciplinas.mjs
+ * Usage: node scripts/seed-disciplinas.mjs [--club <id>]   (default: club_gimnasia_lp)
  */
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
+import { getClubId, assertClubExiste } from "./club-arg.mjs";
 
 config({ path: ".env.local" });
 
@@ -53,26 +54,31 @@ export const catalogoDisciplinas = [
 
 async function main() {
   console.log("Seeding Disciplinas (catálogo)...");
+  const clubId = getClubId();
+  await assertClubExiste(sql, clubId);
 
   // (a) Upsert por codigo — idempotente, no destructivo.
   for (const d of catalogoDisciplinas) {
     await sql.query(
-      `INSERT INTO "disciplinas" ("id", "nombre", "codigo", "orden") VALUES ($1, $2, $3, $4)
-       ON CONFLICT ("codigo") DO UPDATE SET "nombre" = EXCLUDED."nombre", "orden" = EXCLUDED."orden"`,
-      [randomUUID(), d.nombre, d.codigo, d.orden]
+      `INSERT INTO "disciplinas" ("id", "club_id", "nombre", "codigo", "orden") VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT ("club_id", "codigo") DO UPDATE SET "nombre" = EXCLUDED."nombre", "orden" = EXCLUDED."orden"`,
+      [randomUUID(), clubId, d.nombre, d.codigo, d.orden]
     );
   }
   console.log(`  ✓ ${catalogoDisciplinas.length} disciplinas upserted`);
 
   // (b) Vincular Fútbol -> todas las categorías.
-  const futbolRows = await sql.query('SELECT id FROM "disciplinas" WHERE codigo = $1', ["FUTBOL"]);
+  const futbolRows = await sql.query(
+    'SELECT id FROM "disciplinas" WHERE "club_id" = $1 AND codigo = $2',
+    [clubId, "FUTBOL"]
+  );
   if (futbolRows.length === 0) {
     console.error("No se encontró la disciplina FUTBOL");
     process.exit(1);
   }
   const futbolId = futbolRows[0].id;
 
-  const categorias = await sql.query('SELECT id, nombre FROM "categorias"');
+  const categorias = await sql.query('SELECT id, nombre FROM "categorias" WHERE "club_id" = $1', [clubId]);
   if (categorias.length === 0) {
     console.warn("  ~ no hay categorías; corré primero: node scripts/seed-categorias.mjs");
   }
@@ -86,7 +92,7 @@ async function main() {
   }
   console.log(`  ✓ Fútbol vinculado a ${categorias.length} categorías`);
 
-  const [{ total }] = await sql.query('SELECT COUNT(*)::int AS total FROM "disciplinas"');
+  const [{ total }] = await sql.query('SELECT COUNT(*)::int AS total FROM "disciplinas" WHERE "club_id" = $1', [clubId]);
   console.log(`\nConteos finales: ${total} disciplinas en la DB.`);
   console.log("✓ Seed completado.");
 }

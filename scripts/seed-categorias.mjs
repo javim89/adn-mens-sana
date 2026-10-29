@@ -7,15 +7,16 @@
  * fixture de seed-calendario.mjs; el resto (orden 7..15) sólo pobla el catálogo
  * para el ABM de deportistas.
  *
- * ⚠️  IDEMPOTENCIA: upsert por "nombre" (ON CONFLICT DO UPDATE). NO borra
+ * ⚠️  IDEMPOTENCIA: upsert por (club, "nombre") (ON CONFLICT DO UPDATE). NO borra
  * categorías existentes ni sus asignaciones — "deportistas" tiene FK
  * (ON DELETE SET NULL) hacia esta tabla. Re-correr no duplica.
  *
- * Usage: node scripts/seed-categorias.mjs
+ * Usage: node scripts/seed-categorias.mjs [--club <id>]   (default: club_gimnasia_lp)
  */
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
+import { getClubId, assertClubExiste } from "./club-arg.mjs";
 
 config({ path: ".env.local" });
 
@@ -49,18 +50,20 @@ export const catalogoCategorias = [
 
 async function main() {
   console.log("Seeding Categorías (catálogo)...");
+  const clubId = getClubId();
+  await assertClubExiste(sql, clubId);
 
   // Upsert por nombre — idempotente, no destructivo (respeta asignaciones desde
   // "deportistas", que referencian por FK con ON DELETE SET NULL).
   for (const c of catalogoCategorias) {
     await sql.query(
-      `INSERT INTO "categorias" ("id", "nombre", "orden") VALUES ($1, $2, $3)
-       ON CONFLICT ("nombre") DO UPDATE SET "orden" = EXCLUDED."orden"`,
-      [randomUUID(), c.nombre, c.orden]
+      `INSERT INTO "categorias" ("id", "club_id", "nombre", "orden") VALUES ($1, $2, $3, $4)
+       ON CONFLICT ("club_id", "nombre") DO UPDATE SET "orden" = EXCLUDED."orden"`,
+      [randomUUID(), clubId, c.nombre, c.orden]
     );
   }
 
-  const [{ total }] = await sql.query('SELECT COUNT(*)::int AS total FROM "categorias"');
+  const [{ total }] = await sql.query('SELECT COUNT(*)::int AS total FROM "categorias" WHERE "club_id" = $1', [clubId]);
   console.log(`  ✓ ${catalogoCategorias.length} categorías upserted (${total} en la DB)`);
   console.log("✓ Seed completado.");
 }

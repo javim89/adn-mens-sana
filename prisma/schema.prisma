@@ -100,20 +100,155 @@ enum NivelTriage {
 }
 
 // ---------------------------------------------------------------------------
+// Enums — Multi-tenant
+// ---------------------------------------------------------------------------
+
+/// Los roles de `lib/roles.ts`. El rol vive en la membresía (por club), no en Clerk.
+enum AppRole {
+  admin
+  entrenador
+  medico
+  kinesiologo
+  nutricionista
+  psicologo
+  cardiologo
+  social
+  responsable_viandas
+}
+
+// ---------------------------------------------------------------------------
+// Models — Multi-tenant
+// ---------------------------------------------------------------------------
+
+/// Un club cliente de BioTeam. Toda tabla raíz cuelga de acá por `clubId`; los
+/// hijos se acotan por la relación con su padre (ver `lib/tenant/scope.ts`).
+model Club {
+  id              String  @id @default(cuid())
+  nombre          String
+  slug            String  @unique
+  logoKey         String? @map("logo_key")
+  logoUrl         String? @map("logo_url")
+  /// Reservados para el branding por club (fase 2).
+  colorPrimario   String? @map("color_primario")
+  colorSecundario String? @map("color_secundario")
+  activo          Boolean @default(true)
+
+  membresias         Membresia[]
+  invitaciones       Invitacion[]
+  insightsSesiones   InsightsSesion[]
+  deportistas        Deportista[]
+  disciplinas        Disciplina[]
+  categorias         Categoria[]
+  equipos            Equipo[]
+  diasCalendario     DiaCalendario[]
+  eventosTorneo      EventoTorneo[]
+  turnos             Turno[]
+  seguimientos       Seguimiento[]
+  entrenamientos     Entrenamiento[]
+  convocatorias      Convocatoria[]
+  insightsDashboards InsightsDashboard[]
+  triages            Triage[]
+  entregasComida     EntregaComida[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("clubes")
+}
+
+/// Pertenencia de un usuario de Clerk a un club, con su rol en ese club.
+model Membresia {
+  id          String       @id @default(cuid())
+  /// Clerk userId. Sin FK, como el resto de los ids de Clerk en el schema.
+  userId      String       @map("user_id")
+  clubId      String       @map("club_id")
+  rol         AppRole
+  /// Solo lo usan los `responsable_viandas`.
+  lugarRetiro LugarRetiro? @map("lugar_retiro")
+  activo      Boolean      @default(true)
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, clubId])
+  @@index([clubId])
+  @@map("membresias")
+}
+
+/// Invitación a un club. La de Clerk solo sirve para crear la cuenta; el acceso
+/// al club lo da esta fila al aceptarse.
+model Invitacion {
+  id                String       @id @default(cuid())
+  clubId            String       @map("club_id")
+  email             String
+  nombre            String
+  apellido          String
+  rol               AppRole
+  lugarRetiro       LugarRetiro? @map("lugar_retiro")
+  tokenHash         String       @unique @map("token_hash")
+  clerkInvitationId String?      @map("clerk_invitation_id")
+  /// Clerk userId de quien invitó.
+  invitadoPor       String       @map("invitado_por")
+  expira            DateTime
+  aceptadaAt        DateTime?    @map("aceptada_at")
+  /// Clerk userId de quien la aceptó.
+  aceptadaPor       String?      @map("aceptada_por")
+  revocadaAt        DateTime?    @map("revocada_at")
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([clubId])
+  @@index([email])
+  @@map("invitaciones")
+}
+
+/// Staff de BioTeam: puede dar de alta clubes y entrar a cualquiera.
+model Superadmin {
+  /// Clerk userId.
+  userId    String   @id @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("superadmins")
+}
+
+/// Token efímero de una ejecución de Insights: las policies RLS de `insights_ro`
+/// lo resuelven al club de la sesión.
+model InsightsSesion {
+  token  String   @id
+  clubId String   @map("club_id")
+  expira DateTime
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([expira])
+  @@map("insights_sesiones")
+}
+
+// ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
 
 model Deportista {
   id                      String                   @id @default(cuid())
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId                  String                   @default("club_gimnasia_lp") @map("club_id")
+  club                    Club                     @relation(fields: [clubId], references: [id])
   apellido                String
   nombre                  String
-  dni                     String                   @unique
+  dni                     String
   fechaNacimiento         DateTime                 @map("fecha_nacimiento")
   provincia               String?
   ciudad                  String?
   genero                  Genero?
   telefono                String?
-  email                   String?                  @unique
+  email                   String?
   domicilioActual         String?                  @map("domicilio_actual")
   nacionalidad            String?
   contactoEmergencia      String?                  @map("contacto_emergencia")
@@ -155,6 +290,8 @@ model Deportista {
   createdAt               DateTime                 @default(now()) @map("created_at")
   updatedAt               DateTime                 @updatedAt @map("updated_at")
 
+  @@unique([clubId, dni])
+  @@unique([clubId, email])
   @@map("deportistas")
 }
 
@@ -337,6 +474,9 @@ enum EnfermedadPreexistente {
 
 model Turno {
   id            String            @id @default(cuid())
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId        String            @default("club_gimnasia_lp") @map("club_id")
+  club          Club              @relation(fields: [clubId], references: [id])
   titulo        String
   fecha         DateTime
   hora          String
@@ -349,6 +489,7 @@ model Turno {
   createdAt     DateTime          @default(now()) @map("created_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
 
+  @@index([clubId, fecha])
   @@map("turnos")
 }
 
@@ -390,6 +531,9 @@ enum TipoSeguimiento {
 
 model Seguimiento {
   id                   String               @id @default(cuid())
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId               String               @default("club_gimnasia_lp") @map("club_id")
+  club                 Club                 @relation(fields: [clubId], references: [id])
   profesionalId        String               @map("profesional_id")
   fecha                DateTime
   titulo               String
@@ -411,6 +555,7 @@ model Seguimiento {
   createdAt            DateTime             @default(now()) @map("created_at")
   updatedAt            DateTime             @updatedAt @map("updated_at")
 
+  @@index([clubId, fecha])
   @@map("seguimientos")
 }
 
@@ -560,19 +705,26 @@ enum EstadoEvento {
 
 model Equipo {
   id               String         @id @default(cuid())
-  nombre           String         @unique
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId           String         @default("club_gimnasia_lp") @map("club_id")
+  club             Club           @relation(fields: [clubId], references: [id])
+  nombre           String
   esGimnasiaLP     Boolean        @default(false) @map("es_gimnasia_lp")
   eventosLocal     EventoTorneo[] @relation("EventoLocal")
   eventosVisitante EventoTorneo[] @relation("EventoVisitante")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
 
+  @@unique([clubId, nombre])
   @@map("equipos")
 }
 
 model Categoria {
   id             String                 @id @default(cuid())
-  nombre         String                 @unique
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId         String                 @default("club_gimnasia_lp") @map("club_id")
+  club           Club                   @relation(fields: [clubId], references: [id])
+  nombre         String
   orden          Int
   eventos        EventoTorneo[]
   deportistas    Deportista[]
@@ -581,13 +733,17 @@ model Categoria {
   convocatorias  Convocatoria[]
   pasosPorDivision PasoPorDivision[]
 
+  @@unique([clubId, nombre])
   @@map("categorias")
 }
 
 model Disciplina {
   id             String                @id @default(cuid())
-  nombre         String                @unique
-  codigo         String                @unique
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId         String                @default("club_gimnasia_lp") @map("club_id")
+  club           Club                  @relation(fields: [clubId], references: [id])
+  nombre         String
+  codigo         String
   orden          Int
   categorias     DisciplinaCategoria[]
   deportistas    Deportista[]
@@ -595,6 +751,8 @@ model Disciplina {
   convocatorias  Convocatoria[]
   pasosPorDivision PasoPorDivision[]
 
+  @@unique([clubId, nombre])
+  @@unique([clubId, codigo])
   @@map("disciplinas")
 }
 
@@ -612,18 +770,25 @@ model DisciplinaCategoria {
 
 model DiaCalendario {
   id          String         @id @default(cuid())
-  fecha       DateTime       @unique @db.Date
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId      String         @default("club_gimnasia_lp") @map("club_id")
+  club        Club           @relation(fields: [clubId], references: [id])
+  fecha       DateTime       @db.Date
   tipo        TipoDia
   numeroFecha Int?           @map("numero_fecha")
   eventos     EventoTorneo[]
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
 
+  @@unique([clubId, fecha])
   @@map("dias_calendario")
 }
 
 model EventoTorneo {
   id              String          @id @default(cuid())
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId          String          @default("club_gimnasia_lp") @map("club_id")
+  club            Club            @relation(fields: [clubId], references: [id])
   diaCalendarioId String          @map("dia_calendario_id")
   categoriaId     String          @map("categoria_id")
   localId         String          @map("local_id")
@@ -638,6 +803,7 @@ model EventoTorneo {
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   @@unique([diaCalendarioId, categoriaId])
+  @@index([clubId])
   @@map("eventos_torneo")
 }
 
@@ -666,6 +832,9 @@ enum EstadoAsistencia {
 
 model Entrenamiento {
   id            String       @id @default(cuid())
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId        String       @default("club_gimnasia_lp") @map("club_id")
+  club          Club         @relation(fields: [clubId], references: [id])
   fecha         DateTime     @db.Date
   entrenadorId  String       @map("entrenador_id")
   tipoSesion    TipoSesion   @map("tipo_sesion")
@@ -681,6 +850,7 @@ model Entrenamiento {
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
+  @@index([clubId, fecha])
   @@map("entrenamientos")
 }
 
@@ -704,6 +874,9 @@ model Asistencia {
 
 model Convocatoria {
   id             String   @id @default(cuid())
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId         String   @default("club_gimnasia_lp") @map("club_id")
+  club           Club     @relation(fields: [clubId], references: [id])
   eventoTorneoId String   @unique @map("evento_torneo_id")
   disciplinaId   String   @map("disciplina_id")
   categoriaId    String   @map("categoria_id")
@@ -721,6 +894,7 @@ model Convocatoria {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
+  @@index([clubId])
   @@map("convocatorias")
 }
 
@@ -765,6 +939,9 @@ model PasoPorDivision {
 
 model Triage {
   id           String      @id @default(cuid())
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId       String      @default("club_gimnasia_lp") @map("club_id")
+  club         Club        @relation(fields: [clubId], references: [id])
   deportistaId String      @map("deportista_id")
   nivel        NivelTriage
   puntajeTotal Int         @map("puntaje_total")
@@ -774,6 +951,7 @@ model Triage {
   deportista   Deportista  @relation(fields: [deportistaId], references: [id], onDelete: Cascade)
 
   @@index([deportistaId, calculatedAt])
+  @@index([clubId, calculatedAt])
   @@map("triage")
 }
 
@@ -783,7 +961,10 @@ model Triage {
 
 model InsightsDashboard {
   id          String   @id @default(cuid())
-  slug        String   @unique
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId      String   @default("club_gimnasia_lp") @map("club_id")
+  club        Club     @relation(fields: [clubId], references: [id])
+  slug        String
   nombre      String
   descripcion String?
   esSistema   Boolean  @default(false) @map("es_sistema")
@@ -796,6 +977,7 @@ model InsightsDashboard {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  @@unique([clubId, slug])
   @@map("insights_dashboards")
 }
 
@@ -877,6 +1059,9 @@ enum LugarRetiro {
 /// nadie retira la misma comida dos veces el mismo día, ni yendo a otro lugar.
 model EntregaComida {
   id           String      @id @default(cuid())
+  /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
+  clubId       String      @default("club_gimnasia_lp") @map("club_id")
+  club         Club        @relation(fields: [clubId], references: [id])
   deportistaId String      @map("deportista_id")
   fecha        DateTime    @db.Date
   comida       TipoComida
@@ -891,5 +1076,6 @@ model EntregaComida {
   @@unique([deportistaId, fecha, comida])
   @@index([fecha, lugar])
   @@index([entregadoPor])
+  @@index([clubId, fecha, lugar])
   @@map("entregas_comida")
 }

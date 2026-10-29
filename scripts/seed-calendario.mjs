@@ -2,18 +2,20 @@
 /**
  * Seeds the Calendario module with the LPF "Torneo Juveniles 2026" fixture.
  * Uses Neon's HTTP driver (avoids the TCP/IPv6 issue like apply-migration.mjs).
- * Idempotent: clears the 4 calendario tables and re-inserts.
+ * Idempotent: clears the club's calendario tables and re-inserts. Only touches
+ * rows of the target club.
  *
  * Populates: catálogo completo de 15 categorías (upsert no destructivo por
  * nombre), 36 equipos, 39 días (35 torneo + 4 especiales), and 210 eventos of
  * GIMNASIA (LP) (one row per torneo category, 6 per fecha).
  *
- * Usage: node scripts/seed-calendario.mjs
+ * Usage: node scripts/seed-calendario.mjs [--club <id>]   (default: club_gimnasia_lp)
  */
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
 import { catalogoCategorias } from "./seed-categorias.mjs";
+import { getClubId, assertClubExiste } from "./club-arg.mjs";
 
 config({ path: ".env.local" });
 
@@ -126,26 +128,29 @@ async function insertRows(table, columns, rows) {
 
 async function main() {
   console.log("Seeding Calendario (Torneo Juveniles 2026)...");
+  const clubId = getClubId();
+  await assertClubExiste(sql, clubId);
 
   // 1. Clear (FK-safe order). NO borramos "categorias": tiene FK desde
   // "deportistas" (ON DELETE SET NULL) y borrarlas limpiaría asignaciones. El
   // catálogo se puebla de forma no destructiva (upsert por nombre) más abajo.
-  await sql.query('DELETE FROM "eventos_torneo"');
-  await sql.query('DELETE FROM "dias_calendario"');
-  await sql.query('DELETE FROM "equipos"');
+  // Solo las filas del club: los otros clubes no se tocan.
+  await sql.query('DELETE FROM "eventos_torneo" WHERE "club_id" = $1', [clubId]);
+  await sql.query('DELETE FROM "dias_calendario" WHERE "club_id" = $1', [clubId]);
+  await sql.query('DELETE FROM "equipos" WHERE "club_id" = $1', [clubId]);
   console.log("  ✓ tablas limpiadas");
 
   // 2. Catálogo de categorías (upsert por nombre — idempotente, no destructivo)
   for (const c of catalogoCategorias) {
     await sql.query(
-      `INSERT INTO "categorias" ("id", "nombre", "orden") VALUES ($1, $2, $3)
-       ON CONFLICT ("nombre") DO UPDATE SET "orden" = EXCLUDED."orden"`,
-      [randomUUID(), c.nombre, c.orden]
+      `INSERT INTO "categorias" ("id", "club_id", "nombre", "orden") VALUES ($1, $2, $3, $4)
+       ON CONFLICT ("club_id", "nombre") DO UPDATE SET "orden" = EXCLUDED."orden"`,
+      [randomUUID(), clubId, c.nombre, c.orden]
     );
   }
   // Releer ids reales (respeta filas preexistentes) para mapear el fixture.
   const catId = {}; // nombre -> id
-  const catRows = await sql.query('SELECT id, nombre FROM "categorias"');
+  const catRows = await sql.query('SELECT id, nombre FROM "categorias" WHERE "club_id" = $1', [clubId]);
   for (const row of catRows) catId[row.nombre] = row.id;
   console.log(`  ✓ ${catalogoCategorias.length} categorías (catálogo completo)`);
 
@@ -153,11 +158,11 @@ async function main() {
   const equipoId = {}; // nombre -> id
   await insertRows(
     "equipos",
-    ["id", "nombre", "es_gimnasia_lp"],
+    ["id", "club_id", "nombre", "es_gimnasia_lp"],
     equipoNombres.map((nombre) => {
       const id = randomUUID();
       equipoId[nombre] = id;
-      return { id, nombre, es_gimnasia_lp: nombre === LP };
+      return { id, club_id: clubId, nombre, es_gimnasia_lp: nombre === LP };
     })
   );
   console.log(`  ✓ ${equipoNombres.length} equipos`);
@@ -168,14 +173,14 @@ async function main() {
   for (const [numero, fecha] of fechasTorneo) {
     const id = randomUUID();
     diaIdByNumero[numero] = id;
-    diasRows.push({ id, fecha, tipo: "TORNEO", numero_fecha: numero });
+    diasRows.push({ id, club_id: clubId, fecha, tipo: "TORNEO", numero_fecha: numero });
   }
   for (const [tipo, fecha] of fechasEspeciales) {
-    diasRows.push({ id: randomUUID(), fecha, tipo, numero_fecha: null });
+    diasRows.push({ id: randomUUID(), club_id: clubId, fecha, tipo, numero_fecha: null });
   }
   await insertRows(
     "dias_calendario",
-    ["id", "fecha", "tipo", "numero_fecha"],
+    ["id", "club_id", "fecha", "tipo", "numero_fecha"],
     diasRows
   );
   console.log(`  ✓ ${diasRows.length} días (${fechasTorneo.length} torneo + ${fechasEspeciales.length} especiales)`);
@@ -191,6 +196,7 @@ async function main() {
       const visitanteNombre = lpLocal ? rival : LP;
       eventosRows.push({
         id: randomUUID(),
+        club_id: clubId,
         dia_calendario_id: diaId,
         categoria_id: catId[cat.nombre],
         local_id: equipoId[localNombre],
@@ -204,7 +210,7 @@ async function main() {
   for (let i = 0; i < eventosRows.length; i += chunkSize) {
     await insertRows(
       "eventos_torneo",
-      ["id", "dia_calendario_id", "categoria_id", "local_id", "visitante_id", "estado"],
+      ["id", "club_id", "dia_calendario_id", "categoria_id", "local_id", "visitante_id", "estado"],
       eventosRows.slice(i, i + chunkSize)
     );
   }
@@ -213,11 +219,11 @@ async function main() {
   // 6. Verify counts
   const [counts] = await sql.query(`
     SELECT
-      (SELECT COUNT(*) FROM "categorias") AS categorias,
-      (SELECT COUNT(*) FROM "equipos") AS equipos,
-      (SELECT COUNT(*) FROM "dias_calendario") AS dias,
-      (SELECT COUNT(*) FROM "eventos_torneo") AS eventos
-  `);
+      (SELECT COUNT(*) FROM "categorias" WHERE "club_id" = $1) AS categorias,
+      (SELECT COUNT(*) FROM "equipos" WHERE "club_id" = $1) AS equipos,
+      (SELECT COUNT(*) FROM "dias_calendario" WHERE "club_id" = $1) AS dias,
+      (SELECT COUNT(*) FROM "eventos_torneo" WHERE "club_id" = $1) AS eventos
+  `, [clubId]);
   console.log("\nConteos finales:", counts);
   console.log("✓ Seed completado.");
 }

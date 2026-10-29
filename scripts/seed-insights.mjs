@@ -3,16 +3,17 @@
  * Seeds the system Insights dashboards ("Panorama general" y "Viandas").
  * Uses Neon's HTTP driver (avoids the TCP/IPv6 issue like apply-migration.mjs).
  *
- * ⚠️  IDEMPOTENCIA: upsert de cada dashboard por "slug"; sus widgets y filtros se
+ * ⚠️  IDEMPOTENCIA: upsert de cada dashboard por (club, "slug"); sus widgets y filtros se
  * borran y se recrean en cada corrida, así el seed puede evolucionar sin dejar
  * widgets viejos colgados. Los demás dashboards no se tocan.
  *
  * Los `query_spec` de abajo usan ids REALES del catálogo (`lib/insights/catalog.ts`).
  * Si se renombra un dataset/dimensión/medida allá, hay que actualizarlos acá.
  *
- * Usage: node scripts/seed-insights.mjs
+ * Usage: node scripts/seed-insights.mjs [--club <id>]   (default: club_gimnasia_lp)
  */
 import { randomUUID } from "crypto";
+import { getClubId, assertClubExiste } from "./club-arg.mjs";
 
 const SLUG = "panorama-general";
 const NOMBRE = "Panorama general";
@@ -500,19 +501,19 @@ async function connect() {
   return neon(url);
 }
 
-async function seedDashboard(sql, { slug, nombre, descripcion, orden, widgets }) {
+async function seedDashboard(sql, clubId, { slug, nombre, descripcion, orden, widgets }) {
   const [dashboard] = await sql.query(
     `INSERT INTO "insights_dashboards"
-       ("id", "slug", "nombre", "descripcion", "es_sistema", "orden", "creado_por", "updated_at")
-     VALUES ($1, $2, $3, $4, true, $5, 'seed', NOW())
-     ON CONFLICT ("slug") DO UPDATE
+       ("id", "club_id", "slug", "nombre", "descripcion", "es_sistema", "orden", "creado_por", "updated_at")
+     VALUES ($1, $2, $3, $4, $5, true, $6, 'seed', NOW())
+     ON CONFLICT ("club_id", "slug") DO UPDATE
        SET "nombre" = EXCLUDED."nombre",
            "descripcion" = EXCLUDED."descripcion",
            "es_sistema" = true,
            "orden" = EXCLUDED."orden",
            "updated_at" = NOW()
      RETURNING "id"`,
-    [randomUUID(), slug, nombre, descripcion, orden]
+    [randomUUID(), clubId, slug, nombre, descripcion, orden]
   );
 
   const id = dashboard.id;
@@ -550,8 +551,10 @@ async function main() {
   console.log("Seeding Insights...");
 
   const sql = await connect();
+  const clubId = getClubId();
+  await assertClubExiste(sql, clubId);
 
-  await seedDashboard(sql, {
+  await seedDashboard(sql, clubId, {
     slug: SLUG,
     nombre: NOMBRE,
     descripcion: DESCRIPCION,
@@ -559,7 +562,7 @@ async function main() {
     widgets: widgetsPanoramaGeneral,
   });
 
-  await seedDashboard(sql, {
+  await seedDashboard(sql, clubId, {
     slug: SLUG_VIANDAS,
     nombre: NOMBRE_VIANDAS,
     descripcion: DESCRIPCION_VIANDAS,
