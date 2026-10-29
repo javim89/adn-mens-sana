@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { prisma } from '@/lib/db';
+import { dbDelClub } from '@/lib/tenant/db';
+import { mensajeDeError } from '@/lib/tenant/errores';
 import type { AppRole } from '@/lib/roles';
 import { getContextoClub } from '@/lib/tenant/contexto';
 import { getMiembrosDelClub } from '@/lib/tenant/miembros';
@@ -12,8 +13,8 @@ const HEALTH_ROLES: AppRole[] = ['medico', 'kinesiologo', 'nutricionista', 'psic
 /** Usuario y rol en el club activo. Sin club accesible, `userId` es null. */
 async function getCallerInfo() {
   const contexto = await getContextoClub();
-  if (!contexto) return { userId: null, role: null };
-  return { userId: contexto.userId, role: contexto.rol };
+  if (!contexto) return { userId: null, clubId: null, role: null } as const;
+  return { userId: contexto.userId, clubId: contexto.clubId, role: contexto.rol };
 }
 
 export async function getProfesionales(): Promise<Profesional[]> {
@@ -28,8 +29,9 @@ export async function createTurno(
   data: TurnoFormData,
 ): Promise<{ success: true; id: string } | { success: false; error: string }> {
   try {
-    const { userId, role } = await getCallerInfo();
+    const { userId, clubId, role } = await getCallerInfo();
     if (!userId) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(clubId);
 
     const profesionalId = role === 'admin' ? data.profesionalId : userId;
 
@@ -39,7 +41,7 @@ export async function createTurno(
     if (!data.lugar?.trim()) return { success: false, error: 'El lugar es requerido' };
     if (!profesionalId) return { success: false, error: 'El profesional es requerido' };
 
-    const turno = await prisma.turno.create({
+    const turno = await db.turno.create({
       data: {
         titulo: data.titulo.trim(),
         fecha: new Date(data.fecha),
@@ -65,7 +67,7 @@ export async function createTurno(
     console.error('createTurno error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al crear el turno',
+      error: mensajeDeError(error, 'Error al crear el turno'),
     };
   }
 }
@@ -75,10 +77,11 @@ export async function updateTurno(
   data: TurnoFormData,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const { userId, role } = await getCallerInfo();
+    const { userId, clubId, role } = await getCallerInfo();
     if (!userId) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(clubId);
 
-    const existing = await prisma.turno.findUnique({ where: { id } });
+    const existing = await db.turno.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Turno no encontrado' };
 
     if (role !== 'admin' && existing.profesionalId !== userId) {
@@ -87,9 +90,9 @@ export async function updateTurno(
 
     const profesionalId = role === 'admin' ? data.profesionalId : existing.profesionalId;
 
-    await prisma.turnoDeportista.deleteMany({ where: { turnoId: id } });
+    await db.turnoDeportista.deleteMany({ where: { turnoId: id } });
 
-    await prisma.turno.update({
+    await db.turno.update({
       where: { id },
       data: {
         titulo: data.titulo.trim(),
@@ -116,7 +119,7 @@ export async function updateTurno(
     console.error('updateTurno error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al actualizar el turno',
+      error: mensajeDeError(error, 'Error al actualizar el turno'),
     };
   }
 }
@@ -125,17 +128,18 @@ export async function deleteTurno(
   id: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const { userId, role } = await getCallerInfo();
+    const { userId, clubId, role } = await getCallerInfo();
     if (!userId) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(clubId);
 
-    const existing = await prisma.turno.findUnique({ where: { id } });
+    const existing = await db.turno.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Turno no encontrado' };
 
     if (role !== 'admin' && existing.profesionalId !== userId) {
       return { success: false, error: 'Acceso denegado' };
     }
 
-    await prisma.turno.delete({ where: { id } });
+    await db.turno.delete({ where: { id } });
 
     revalidatePath('/turnos');
     return { success: true };
@@ -143,7 +147,7 @@ export async function deleteTurno(
     console.error('deleteTurno error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al eliminar el turno',
+      error: mensajeDeError(error, 'Error al eliminar el turno'),
     };
   }
 }

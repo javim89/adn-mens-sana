@@ -122,6 +122,11 @@ enum AppRole {
 
 /// Un club cliente de BioTeam. Toda tabla raíz cuelga de acá por `clubId`; los
 /// hijos se acotan por la relación con su padre (ver `lib/tenant/scope.ts`).
+///
+/// En las raíces, `clubId` lleva `@default(dbgenerated("NULL"))`: en TS queda
+/// opcional porque lo inyecta `dbDelClub`, y en la DB (después de M5) es NOT NULL
+/// sin default, así que un insert que se saltee el cliente del club falla en vez
+/// de caer en un club cualquiera. Hasta M5 la DB conserva el default transicional.
 model Club {
   id              String  @id @default(cuid())
   nombre          String
@@ -238,7 +243,7 @@ model InsightsSesion {
 model Deportista {
   id                      String                   @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId                  String                   @default("club_gimnasia_lp") @map("club_id")
+  clubId                  String                   @default(dbgenerated("NULL")) @map("club_id")
   club                    Club                     @relation(fields: [clubId], references: [id])
   apellido                String
   nombre                  String
@@ -475,7 +480,7 @@ enum EnfermedadPreexistente {
 model Turno {
   id            String            @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId        String            @default("club_gimnasia_lp") @map("club_id")
+  clubId        String            @default(dbgenerated("NULL")) @map("club_id")
   club          Club              @relation(fields: [clubId], references: [id])
   titulo        String
   fecha         DateTime
@@ -532,7 +537,7 @@ enum TipoSeguimiento {
 model Seguimiento {
   id                   String               @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId               String               @default("club_gimnasia_lp") @map("club_id")
+  clubId               String               @default(dbgenerated("NULL")) @map("club_id")
   club                 Club                 @relation(fields: [clubId], references: [id])
   profesionalId        String               @map("profesional_id")
   fecha                DateTime
@@ -706,7 +711,7 @@ enum EstadoEvento {
 model Equipo {
   id               String         @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId           String         @default("club_gimnasia_lp") @map("club_id")
+  clubId           String         @default(dbgenerated("NULL")) @map("club_id")
   club             Club           @relation(fields: [clubId], references: [id])
   nombre           String
   esGimnasiaLP     Boolean        @default(false) @map("es_gimnasia_lp")
@@ -722,7 +727,7 @@ model Equipo {
 model Categoria {
   id             String                 @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId         String                 @default("club_gimnasia_lp") @map("club_id")
+  clubId         String                 @default(dbgenerated("NULL")) @map("club_id")
   club           Club                   @relation(fields: [clubId], references: [id])
   nombre         String
   orden          Int
@@ -740,7 +745,7 @@ model Categoria {
 model Disciplina {
   id             String                @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId         String                @default("club_gimnasia_lp") @map("club_id")
+  clubId         String                @default(dbgenerated("NULL")) @map("club_id")
   club           Club                  @relation(fields: [clubId], references: [id])
   nombre         String
   codigo         String
@@ -771,7 +776,7 @@ model DisciplinaCategoria {
 model DiaCalendario {
   id          String         @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId      String         @default("club_gimnasia_lp") @map("club_id")
+  clubId      String         @default(dbgenerated("NULL")) @map("club_id")
   club        Club           @relation(fields: [clubId], references: [id])
   fecha       DateTime       @db.Date
   tipo        TipoDia
@@ -787,7 +792,7 @@ model DiaCalendario {
 model EventoTorneo {
   id              String          @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId          String          @default("club_gimnasia_lp") @map("club_id")
+  clubId          String          @default(dbgenerated("NULL")) @map("club_id")
   club            Club            @relation(fields: [clubId], references: [id])
   diaCalendarioId String          @map("dia_calendario_id")
   categoriaId     String          @map("categoria_id")
@@ -833,7 +838,7 @@ enum EstadoAsistencia {
 model Entrenamiento {
   id            String       @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId        String       @default("club_gimnasia_lp") @map("club_id")
+  clubId        String       @default(dbgenerated("NULL")) @map("club_id")
   club          Club         @relation(fields: [clubId], references: [id])
   fecha         DateTime     @db.Date
   entrenadorId  String       @map("entrenador_id")
@@ -875,7 +880,7 @@ model Asistencia {
 model Convocatoria {
   id             String   @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId         String   @default("club_gimnasia_lp") @map("club_id")
+  clubId         String   @default(dbgenerated("NULL")) @map("club_id")
   club           Club     @relation(fields: [clubId], references: [id])
   eventoTorneoId String   @unique @map("evento_torneo_id")
   disciplinaId   String   @map("disciplina_id")
@@ -940,7 +945,7 @@ model PasoPorDivision {
 model Triage {
   id           String      @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId       String      @default("club_gimnasia_lp") @map("club_id")
+  clubId       String      @default(dbgenerated("NULL")) @map("club_id")
   club         Club        @relation(fields: [clubId], references: [id])
   deportistaId String      @map("deportista_id")
   nivel        NivelTriage
@@ -962,7 +967,7 @@ model Triage {
 model InsightsDashboard {
   id          String   @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId      String   @default("club_gimnasia_lp") @map("club_id")
+  clubId      String   @default(dbgenerated("NULL")) @map("club_id")
   club        Club     @relation(fields: [clubId], references: [id])
   slug        String
   nombre      String
@@ -1060,7 +1065,7 @@ enum LugarRetiro {
 model EntregaComida {
   id           String      @id @default(cuid())
   /// TRANSICIONAL: el default pasa a dbgenerated("NULL") cuando la app use getDb().
-  clubId       String      @default("club_gimnasia_lp") @map("club_id")
+  clubId       String      @default(dbgenerated("NULL")) @map("club_id")
   club         Club        @relation(fields: [clubId], references: [id])
   deportistaId String      @map("deportista_id")
   fecha        DateTime    @db.Date

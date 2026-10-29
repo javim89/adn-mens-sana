@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { prisma } from '@/lib/db';
+import { dbDelClub } from '@/lib/tenant/db';
 import { getContextoClub } from '@/lib/tenant/contexto';
 import { getPlantelViandas } from '@/lib/queries/viandas';
 import { fechaDbDesdeClave, hoyEnArgentina, horaEnArgentina } from '@/lib/utils/fecha';
@@ -31,9 +31,10 @@ type ResultadoBorrado =
 /** Usuario, rol y lugar de retiro en el club activo (salen de su `Membresia`). */
 async function getCallerInfo() {
   const contexto = await getContextoClub();
-  if (!contexto) return { userId: null, role: '', lugarRetiro: null };
+  if (!contexto) return { userId: null, clubId: null, role: '', lugarRetiro: null } as const;
   return {
     userId: contexto.userId,
+    clubId: contexto.clubId,
     role: contexto.rol as string,
     lugarRetiro: contexto.lugarRetiro,
   };
@@ -48,11 +49,11 @@ async function getCallerInfo() {
  * cubrir cualquiera de los tres puestos.
  */
 type Contexto =
-  | { ok: true; userId: string; isAdmin: boolean; lugar: LugarRetiro }
+  | { ok: true; userId: string; clubId: string; isAdmin: boolean; lugar: LugarRetiro }
   | { ok: false; error: string };
 
 async function resolverContexto(lugarSolicitado?: string): Promise<Contexto> {
-  const { userId, role, lugarRetiro } = await getCallerInfo();
+  const { userId, clubId, role, lugarRetiro } = await getCallerInfo();
   if (!userId) return { ok: false, error: 'No autorizado' };
   if (!ROLES_VIANDAS.includes(role)) return { ok: false, error: 'Acceso denegado' };
 
@@ -60,7 +61,7 @@ async function resolverContexto(lugarSolicitado?: string): Promise<Contexto> {
 
   if (!isAdmin) {
     if (!lugarRetiro) return { ok: false, error: SIN_LUGAR_ASIGNADO };
-    return { ok: true, userId, isAdmin, lugar: lugarRetiro };
+    return { ok: true, userId, clubId, isAdmin, lugar: lugarRetiro };
   }
 
   if (!lugarSolicitado) {
@@ -69,7 +70,7 @@ async function resolverContexto(lugarSolicitado?: string): Promise<Contexto> {
   if (!esLugarRetiro(lugarSolicitado)) {
     return { ok: false, error: 'Lugar de retiro inválido' };
   }
-  return { ok: true, userId, isAdmin, lugar: lugarSolicitado };
+  return { ok: true, userId, clubId, isAdmin, lugar: lugarSolicitado };
 }
 
 export async function marcarRetiro(input: {
@@ -88,6 +89,7 @@ export async function marcarRetiro(input: {
     return { success: false, fecha, error: 'Comida inválida' };
   }
   const comida: TipoComida = input.comida;
+  const db = dbDelClub(ctx.clubId);
 
   // NO se valida elegibilidad. `recibeAlmuerzo` / `recibeCena` son lo que la
   // ficha del deportista dice que *debería* recibir, no un permiso: la ficha
@@ -97,7 +99,7 @@ export async function marcarRetiro(input: {
   // el desvío en Insights (cruce `comida` x `recibe_*`).
 
   try {
-    const creada = await prisma.entregaComida.create({
+    const creada = await db.entregaComida.create({
       data: {
         deportistaId: input.deportistaId,
         fecha: fechaDbDesdeClave(fecha),
@@ -124,7 +126,7 @@ export async function marcarRetiro(input: {
     // Devolvemos dónde y a qué hora ya retiró, y la entrega existente para que
     // la UI la adopte en lugar de revertir el optimismo.
     if (esViolacionDeUnique(error)) {
-      const existente = await prisma.entregaComida.findUnique({
+      const existente = await db.entregaComida.findUnique({
         where: {
           deportistaId_fecha_comida: {
             deportistaId: input.deportistaId,
@@ -169,8 +171,9 @@ export async function desmarcarRetiro(input: {
 }): Promise<ResultadoBorrado> {
   const fecha = hoyEnArgentina();
 
-  const { userId, role, lugarRetiro } = await getCallerInfo();
+  const { userId, clubId, role, lugarRetiro } = await getCallerInfo();
   if (!userId) return { success: false, fecha, error: 'No autorizado' };
+  const db = dbDelClub(clubId);
   if (!ROLES_VIANDAS.includes(role)) {
     return { success: false, fecha, error: 'Acceso denegado' };
   }
@@ -190,7 +193,7 @@ export async function desmarcarRetiro(input: {
   // La autorización va DENTRO del `where`, no en un `if` previo: así no hay
   // ventana entre leer y borrar, y un responsable no puede tocar la entrega de
   // otro puesto ni con una request armada a mano.
-  const { count } = await prisma.entregaComida.deleteMany({
+  const { count } = await db.entregaComida.deleteMany({
     where: {
       deportistaId: input.deportistaId,
       comida: input.comida,

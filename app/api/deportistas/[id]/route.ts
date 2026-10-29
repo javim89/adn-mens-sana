@@ -1,6 +1,8 @@
 import { contextoApi } from '@/lib/tenant/contexto';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
+import { dbDelClub, type DbClub } from '@/lib/tenant/db';
+import { CrossTenantError } from '@/lib/tenant/errores';
+import { mensajeDuplicadoDeportista } from '@/lib/utils/prisma-errores';
 import { deleteFoto, getFotoUrl, isValidFotoKey } from '@/lib/s3';
 import {
   FOTO_KEY_EN_USO,
@@ -287,8 +289,8 @@ async function serializeFullItem(
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function findDeportista(id: string): Promise<DeportistaWithRelations | null> {
-  return prisma.deportista.findUnique({
+async function findDeportista(db: DbClub, id: string): Promise<DeportistaWithRelations | null> {
+  return db.deportista.findUnique({
     where: { id },
     include: {
       disciplina: { select: { id: true, nombre: true } },
@@ -326,9 +328,10 @@ export async function GET(
 ) {
   const acceso = await contextoApi();
   if (!acceso.ok) return acceso.response;
+  const db = dbDelClub(acceso.contexto.clubId);
 
   const { id } = await params;
-  const deportista = await findDeportista(id);
+  const deportista = await findDeportista(db, id);
   if (!deportista) {
     return new Response(JSON.stringify(notFoundBody()), {
       status: 404,
@@ -348,6 +351,7 @@ export async function PATCH(
 ) {
   const acceso = await contextoApi();
   if (!acceso.ok) return acceso.response;
+  const db = dbDelClub(acceso.contexto.clubId);
 
   const isSocial = acceso.contexto.rol === 'social';
 
@@ -412,7 +416,7 @@ export async function PATCH(
     );
   }
 
-  const existing = await prisma.deportista.findUnique({ where: { id } });
+  const existing = await db.deportista.findUnique({ where: { id } });
   if (!existing) {
     return new Response(JSON.stringify(notFoundBody()), {
       status: 404,
@@ -424,7 +428,7 @@ export async function PATCH(
 
   try {
     if (!isSocial && attrs.fotoKey && attrs.fotoKey !== existing.fotoKey) {
-      const fotoError = await validarFotoKeyNueva(attrs.fotoKey, id);
+      const fotoError = await validarFotoKeyNueva(attrs.fotoKey, acceso.contexto.clubId, id);
       if (fotoError) {
         return new Response(JSON.stringify(fotoKeyErrorBody(fotoError)), {
           status: 422,
@@ -435,7 +439,7 @@ export async function PATCH(
 
     if (!isSocial) {
       // Update main record (only provided fields)
-      await prisma.deportista.update({
+      await db.deportista.update({
         where: { id },
         data: {
           ...(attrs.apellido !== undefined ? { apellido: attrs.apellido.trim() } : {}),
@@ -470,9 +474,9 @@ export async function PATCH(
 
       // Handle clubs anteriores
       if (attrs.clubesAnteriores !== undefined) {
-        await prisma.clubAnterior.deleteMany({ where: { deportistaId: id } });
+        await db.clubAnterior.deleteMany({ where: { deportistaId: id } });
         if (attrs.clubesAnteriores.length > 0) {
-          await prisma.clubAnterior.createMany({
+          await db.clubAnterior.createMany({
             data: attrs.clubesAnteriores.map((c) => ({
               deportistaId: id,
               nombre: c.nombre,
@@ -486,7 +490,7 @@ export async function PATCH(
     // Upsert datos escolares
     const de = attrs.datosEscolares;
     if (de && (de.nivelEstudio || de.nombreColegio || de.anoCursa != null || de.materiasAdeudadas)) {
-      await prisma.datosEscolares.upsert({
+      await db.datosEscolares.upsert({
         where: { deportistaId: id },
         create: {
           deportistaId: id,
@@ -507,7 +511,7 @@ export async function PATCH(
     // Upsert datos sociales
     const ds = attrs.datosSociales;
     if (ds && (ds.trabaja != null || ds.situacionLaboralHogar || ds.conQuienVive || ds.composicionGrupoFamiliar)) {
-      await prisma.datosSociales.upsert({
+      await db.datosSociales.upsert({
         where: { deportistaId: id },
         create: {
           deportistaId: id,
@@ -532,7 +536,7 @@ export async function PATCH(
       (df.padreNombre || df.padreApellido || df.padreNacionalidad || df.padreOcupacion ||
         df.madreNombre || df.madreApellido || df.madreNacionalidad || df.madreOcupacion)
     ) {
-      await prisma.datosFamiliares.upsert({
+      await db.datosFamiliares.upsert({
         where: { deportistaId: id },
         create: {
           deportistaId: id,
@@ -568,12 +572,12 @@ export async function PATCH(
         vf.cuentaConHabitaciones != null ||
         (vf.servicios && vf.servicios.length > 0))
     ) {
-      const viviendaExisting = await prisma.viviendaFamiliar.findUnique({
+      const viviendaExisting = await db.viviendaFamiliar.findUnique({
         where: { deportistaId: id },
       });
       if (viviendaExisting) {
-        await prisma.servicioVivienda.deleteMany({ where: { viviendaFamiliarId: viviendaExisting.id } });
-        await prisma.viviendaFamiliar.update({
+        await db.servicioVivienda.deleteMany({ where: { viviendaFamiliarId: viviendaExisting.id } });
+        await db.viviendaFamiliar.update({
           where: { deportistaId: id },
           data: {
             personasDependientes: vf.personasDependientes ?? null,
@@ -592,7 +596,7 @@ export async function PATCH(
           },
         });
       } else {
-        await prisma.viviendaFamiliar.create({
+        await db.viviendaFamiliar.create({
           data: {
             deportistaId: id,
             personasDependientes: vf.personasDependientes ?? null,
@@ -623,12 +627,12 @@ export async function PATCH(
         na.esSocio != null ||
         (na.apoyosRequeridos && na.apoyosRequeridos.length > 0))
     ) {
-      const necesidadesExisting = await prisma.necesidadesApoyo.findUnique({
+      const necesidadesExisting = await db.necesidadesApoyo.findUnique({
         where: { deportistaId: id },
       });
       if (necesidadesExisting) {
-        await prisma.apoyoRequerido.deleteMany({ where: { necesidadesApoyoId: necesidadesExisting.id } });
-        await prisma.necesidadesApoyo.update({
+        await db.apoyoRequerido.deleteMany({ where: { necesidadesApoyoId: necesidadesExisting.id } });
+        await db.necesidadesApoyo.update({
           where: { deportistaId: id },
           data: {
             dificultadAlimentacion: na.dificultadAlimentacion || null,
@@ -647,7 +651,7 @@ export async function PATCH(
           },
         });
       } else {
-        await prisma.necesidadesApoyo.create({
+        await db.necesidadesApoyo.create({
           data: {
             deportistaId: id,
             dificultadAlimentacion: na.dificultadAlimentacion || null,
@@ -671,11 +675,11 @@ export async function PATCH(
     // Upsert datos salud (blocked for social role)
     const sal = attrs.datosSalud;
     if (!isSocial && sal) {
-      const saludExisting = await prisma.datosSalud.findUnique({ where: { deportistaId: id } });
+      const saludExisting = await db.datosSalud.findUnique({ where: { deportistaId: id } });
       if (saludExisting) {
-        await prisma.enfermedadPreexistenteItem.deleteMany({ where: { datosSaludId: saludExisting.id } });
-        await prisma.antecedenteEnfermedadFamiliarItem.deleteMany({ where: { datosSaludId: saludExisting.id } });
-        await prisma.datosSalud.update({
+        await db.enfermedadPreexistenteItem.deleteMany({ where: { datosSaludId: saludExisting.id } });
+        await db.antecedenteEnfermedadFamiliarItem.deleteMany({ where: { datosSaludId: saludExisting.id } });
+        await db.datosSalud.update({
           where: { deportistaId: id },
           data: {
             grupoSanguineo: sal.grupoSanguineo?.trim() || null,
@@ -706,7 +710,7 @@ export async function PATCH(
           },
         });
       } else {
-        await prisma.datosSalud.create({
+        await db.datosSalud.create({
           data: {
             deportistaId: id,
             grupoSanguineo: sal.grupoSanguineo?.trim() || null,
@@ -740,7 +744,7 @@ export async function PATCH(
     }
 
     // Return the updated full record
-    const updated = await findDeportista(id);
+    const updated = await findDeportista(db, id);
     return new Response(JSON.stringify({ data: await serializeFullItem(updated!) }), {
       status: 200,
       headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
@@ -749,6 +753,22 @@ export async function PATCH(
     if (isFotoKeyUniqueViolation(error)) {
       return new Response(JSON.stringify(fotoKeyErrorBody(FOTO_KEY_EN_USO)), {
         status: 422,
+        headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
+      });
+    }
+    const duplicado = mensajeDuplicadoDeportista(error);
+    if (duplicado) {
+      return new Response(
+        JSON.stringify({
+          errors: [{ status: '409', code: 'CONFLICT', title: 'Deportista duplicado', detail: duplicado }],
+        } satisfies JsonApiErrors),
+        { status: 409, headers: { 'Content-Type': JSON_API_CONTENT_TYPE } },
+      );
+    }
+    // Una disciplina/categoría de otro club se trata como inexistente.
+    if (error instanceof CrossTenantError) {
+      return new Response(JSON.stringify(notFoundBody()), {
+        status: 404,
         headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
       });
     }
@@ -775,10 +795,11 @@ export async function DELETE(
 ) {
   const acceso = await contextoApi();
   if (!acceso.ok) return acceso.response;
+  const db = dbDelClub(acceso.contexto.clubId);
 
   const { id } = await params;
 
-  const existing = await prisma.deportista.findUnique({ where: { id } });
+  const existing = await db.deportista.findUnique({ where: { id } });
   if (!existing) {
     return new Response(JSON.stringify(notFoundBody()), {
       status: 404,
@@ -786,7 +807,7 @@ export async function DELETE(
     });
   }
 
-  await prisma.deportista.delete({ where: { id } });
+  await db.deportista.delete({ where: { id } });
   await deleteFoto(existing.fotoKey);
   return new Response(null, { status: 204 });
 }

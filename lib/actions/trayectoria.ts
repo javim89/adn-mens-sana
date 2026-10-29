@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { prisma } from '@/lib/db';
+import { dbDelClub } from '@/lib/tenant/db';
 import { contextoAccion } from '@/lib/tenant/contexto';
 
 type ActionResult = { success: true } | { success: false; error: string };
@@ -29,17 +29,18 @@ export async function crearTransicionDivision(input: {
   try {
     const acceso = await contextoAccion(['admin']);
     if (!acceso.ok) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(acceso.contexto.clubId);
 
     const fecha = parseDate(input.fecha);
     if (!fecha) return { success: false, error: 'La fecha es inválida' };
 
-    const deportista = await prisma.deportista.findUnique({
+    const deportista = await db.deportista.findUnique({
       where: { id: input.deportistaId },
       select: { id: true },
     });
     if (!deportista) return { success: false, error: 'Deportista no encontrado' };
 
-    const periodoAbierto = await prisma.pasoPorDivision.findFirst({
+    const periodoAbierto = await db.pasoPorDivision.findFirst({
       where: { deportistaId: input.deportistaId, hasta: null },
       orderBy: { desde: 'desc' },
     });
@@ -51,7 +52,7 @@ export async function crearTransicionDivision(input: {
       };
     }
 
-    await prisma.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       if (periodoAbierto) {
         await tx.pasoPorDivision.update({
           where: { id: periodoAbierto.id },
@@ -100,6 +101,7 @@ export async function updatePasoPorDivision(input: {
   try {
     const acceso = await contextoAccion(['admin']);
     if (!acceso.ok) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(acceso.contexto.clubId);
 
     const desde = parseDate(input.desde);
     if (!desde) return { success: false, error: 'La fecha de inicio es inválida' };
@@ -113,13 +115,13 @@ export async function updatePasoPorDivision(input: {
       }
     }
 
-    const existing = await prisma.pasoPorDivision.findUnique({
+    const existing = await db.pasoPorDivision.findUnique({
       where: { id: input.id },
       select: { deportistaId: true },
     });
     if (!existing) return { success: false, error: 'Período no encontrado' };
 
-    await prisma.pasoPorDivision.update({
+    await db.pasoPorDivision.update({
       where: { id: input.id },
       data: {
         categoriaId: input.categoriaId,
@@ -145,14 +147,15 @@ export async function deletePasoPorDivision(id: string): Promise<ActionResult> {
   try {
     const acceso = await contextoAccion(['admin']);
     if (!acceso.ok) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(acceso.contexto.clubId);
 
-    const existing = await prisma.pasoPorDivision.findUnique({
+    const existing = await db.pasoPorDivision.findUnique({
       where: { id },
       select: { deportistaId: true },
     });
     if (!existing) return { success: false, error: 'Período no encontrado' };
 
-    await prisma.pasoPorDivision.delete({ where: { id } });
+    await db.pasoPorDivision.delete({ where: { id } });
 
     revalidateDeportista(existing.deportistaId);
     return { success: true };

@@ -33,3 +33,15 @@ export class SinContextoError extends Error {
     this.name = 'SinContextoError';
   }
 }
+
+/** Lo que ve el usuario cuando una operación apunta a una fila de otro club. */
+export const NO_ENCONTRADO = 'No encontrado';
+
+/**
+ * Texto de error para devolver desde una action. Un `CrossTenantError` se informa
+ * como "no encontrado": decir "es de otro club" confirmaría que la fila existe.
+ */
+export function mensajeDeError(error: unknown, fallback: string): string {
+  if (error instanceof CrossTenantError) return NO_ENCONTRADO;
+  return error instanceof Error ? error.message : fallback;
+}

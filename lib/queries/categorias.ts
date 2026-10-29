@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 
 export interface CategoriaCatalogo {
   id: string;
@@ -7,7 +7,8 @@ export interface CategoriaCatalogo {
 }
 
 export async function getCategorias(): Promise<CategoriaCatalogo[]> {
-  return prisma.categoria.findMany({
+  const db = await getDb();
+  return db.categoria.findMany({
     select: { id: true, nombre: true, orden: true },
     orderBy: { orden: 'asc' },
   });

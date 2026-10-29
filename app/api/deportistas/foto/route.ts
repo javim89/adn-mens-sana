@@ -1,5 +1,5 @@
 import { contextoApi } from '@/lib/tenant/contexto';
-import { deleteFoto, isValidFotoKey } from '@/lib/s3';
+import { deleteFoto, keyEsDelClub } from '@/lib/s3';
 import { isFotoKeyEnUso } from '@/lib/foto-deportista';
 import type { JsonApiErrors } from '@/lib/types/jsonapi';
 
@@ -27,8 +27,10 @@ export async function DELETE(request: Request) {
     });
   }
 
+  // Solo se descartan subidas del propio club: una key legacy o de otro club se
+  // trata como inválida, sin decir si existe.
   const key = new URL(request.url).searchParams.get('key');
-  if (!isValidFotoKey(key)) {
+  if (!keyEsDelClub(key, acceso.contexto.clubId)) {
     return errorResponse(422, {
       errors: [
         {

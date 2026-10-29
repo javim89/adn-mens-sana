@@ -7,7 +7,9 @@ const { mockPrisma } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock(mockPrisma),
+);
 
 import { getPlantelViandas } from '../viandas';
 

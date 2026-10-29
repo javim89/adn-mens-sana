@@ -20,7 +20,18 @@ export { FOTO_MAX_BYTES, FOTO_TIPOS } from '@/lib/foto-constants';
 
 const UPLOAD_EXPIRES_SECONDS = 5 * 60;
 const DOWNLOAD_EXPIRES_SECONDS = 60 * 60;
-const FOTO_KEY_REGEX = /^deportistas\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
+/**
+ * Formatos de key de una foto de deportista:
+ * - nuevo: `clubes/<clubId>/deportistas/<uuid>.<ext>` — cada club en su prefijo;
+ * - legacy: `deportistas/<uuid>.<ext>` — las fotos de antes del multi-tenant (todas
+ *   de Gimnasia). Se siguen leyendo, pero no se generan ni se asignan de nuevo.
+ */
+const FOTO_KEY_REGEX =
+  /^(?:clubes\/[A-Za-z0-9_-]+\/)?deportistas\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
+
+function prefijoDelClub(clubId: string): string {
+  return `clubes/${clubId}/deportistas/`;
+}
 
 type S3Config = { client: S3Client; bucket: string };
 
@@ -56,12 +67,24 @@ export function isValidFotoKey(key: unknown): key is string {
   return typeof key === 'string' && FOTO_KEY_REGEX.test(key);
 }
 
+/**
+ * La key es válida y vive bajo el prefijo de `clubId`. Una key legacy da `false`:
+ * no dice de qué club es, así que no se puede asignar ni borrar por pedido del
+ * cliente (sí se conserva la que un deportista ya tenía).
+ */
+export function keyEsDelClub(key: unknown, clubId: string): key is string {
+  return isValidFotoKey(key) && !!clubId && key.startsWith(prefijoDelClub(clubId));
+}
+
 export async function createUploadUrl({
   contentType,
   size,
+  clubId,
 }: {
   contentType: string;
   size: number;
+  /** El club de la sesión: la key queda bajo su prefijo. */
+  clubId: string;
 }): Promise<{ uploadUrl: string; key: string }> {
   if (!isFotoContentType(contentType)) {
     throw new Error('Tipo de archivo no permitido. Usá JPG, PNG o WebP');
@@ -71,7 +94,8 @@ export async function createUploadUrl({
   }
 
   const { client, bucket } = requireS3Config();
-  const key = `deportistas/${crypto.randomUUID()}.${FOTO_TIPOS[contentType]}`;
+  if (!clubId) throw new Error('Falta el club para generar la key de la foto');
+  const key = `${prefijoDelClub(clubId)}${crypto.randomUUID()}.${FOTO_TIPOS[contentType]}`;
 
   const uploadUrl = await getSignedUrl(
     client,

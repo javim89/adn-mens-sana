@@ -1,7 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { prisma } from '@/lib/db';
+import { dbDelClub } from '@/lib/tenant/db';
+import { mensajeDeError } from '@/lib/tenant/errores';
+import { mensajeDuplicadoDeportista } from '@/lib/utils/prisma-errores';
 import { contextoAccion } from '@/lib/tenant/contexto';
 import type { DeportistaFormData } from '@/lib/types/deportistas';
 
@@ -15,6 +17,7 @@ export async function createDeportista(
   try {
     const acceso = await contextoAccion();
     if (!acceso.ok) throw new Error(acceso.error);
+    const db = dbDelClub(acceso.contexto.clubId);
 
     // Validate required fields
     if (!data.apellido?.trim()) return { success: false, error: 'El apellido es requerido' };
@@ -49,7 +52,7 @@ export async function createDeportista(
     };
 
     // Create main record first to get the ID
-    const deportista = await prisma.deportista.create({ data: deportistaData });
+    const deportista = await db.deportista.create({ data: deportistaData });
     const deportistaId = deportista.id;
 
     // Build satellite operations array (Promise-based, for $transaction)
@@ -59,7 +62,7 @@ export async function createDeportista(
     // Crear el período inicial de trayectoria (abierto). Siempre, para mantener
     // el invariante "todo deportista tiene un período abierto".
     satOps.push(
-      prisma.pasoPorDivision.create({
+      db.pasoPorDivision.create({
         data: {
           deportistaId,
           categoriaId: data.categoriaId || null,
@@ -74,7 +77,7 @@ export async function createDeportista(
 
     if (data.clubesAnteriores && data.clubesAnteriores.length > 0) {
       satOps.push(
-        prisma.clubAnterior.createMany({
+        db.clubAnterior.createMany({
           data: data.clubesAnteriores.map((c) => ({
             deportistaId,
             nombre: c.nombre,
@@ -87,7 +90,7 @@ export async function createDeportista(
     const de = data.datosEscolares;
     if (de && (de.nivelEstudio || de.nombreColegio || de.anoCursa != null || de.materiasAdeudadas)) {
       satOps.push(
-        prisma.datosEscolares.create({
+        db.datosEscolares.create({
           data: {
             deportistaId,
             nivelEstudio: de.nivelEstudio || null,
@@ -102,7 +105,7 @@ export async function createDeportista(
     const ds = data.datosSociales;
     if (ds && (ds.trabaja != null || ds.situacionLaboralHogar || ds.conQuienVive || ds.composicionGrupoFamiliar)) {
       satOps.push(
-        prisma.datosSociales.create({
+        db.datosSociales.create({
           data: {
             deportistaId,
             trabaja: ds.trabaja ?? null,
@@ -121,7 +124,7 @@ export async function createDeportista(
         df.madreNombre || df.madreApellido || df.madreNacionalidad || df.madreOcupacion)
     ) {
       satOps.push(
-        prisma.datosFamiliares.create({
+        db.datosFamiliares.create({
           data: {
             deportistaId,
             padreNombre: df.padreNombre?.trim() || null,
@@ -139,7 +142,7 @@ export async function createDeportista(
 
     const vf = data.viviendaFamiliar;
     if (vf && (vf.personasDependientes != null || vf.medioTransporte || vf.condicionVivienda || vf.cuentaConHabitaciones != null || (vf.servicios && vf.servicios.length > 0))) {
-      const viviendaOp = prisma.viviendaFamiliar.create({
+      const viviendaOp = db.viviendaFamiliar.create({
         data: {
           deportistaId,
           personasDependientes: vf.personasDependientes ?? null,
@@ -162,7 +165,7 @@ export async function createDeportista(
 
     const na = data.necesidadesApoyo;
     if (na && (na.dificultadAlimentacion || na.recibeAlmuerzo != null || na.recibeCena != null || na.esSocio != null || (na.apoyosRequeridos && na.apoyosRequeridos.length > 0))) {
-      const apoyoOp = prisma.necesidadesApoyo.create({
+      const apoyoOp = db.necesidadesApoyo.create({
         data: {
           deportistaId,
           dificultadAlimentacion: na.dificultadAlimentacion || null,
@@ -186,7 +189,7 @@ export async function createDeportista(
     const sal = data.datosSalud;
     if (sal) {
       satOps.push(
-        prisma.datosSalud.create({
+        db.datosSalud.create({
           data: {
             deportistaId,
             grupoSanguineo: sal.grupoSanguineo?.trim() || null,
@@ -227,10 +230,9 @@ export async function createDeportista(
     return { success: true, id: deportistaId };
   } catch (error) {
     console.error('createDeportista error:', error);
-    if (error instanceof Error) {
-      return { success: false, error: error.message };
-    }
-    return { success: false, error: 'Error al crear el deportista' };
+    const duplicado = mensajeDuplicadoDeportista(error);
+    if (duplicado) return { success: false, error: duplicado };
+    return { success: false, error: mensajeDeError(error, 'Error al crear el deportista') };
   }
 }
 
@@ -245,16 +247,17 @@ export async function updateDeportista(
   try {
     const acceso = await contextoAccion();
     if (!acceso.ok) throw new Error(acceso.error);
+    const db = dbDelClub(acceso.contexto.clubId);
 
     const isSocial = acceso.contexto.rol === 'social';
 
     // Verify existence
-    const existing = await prisma.deportista.findUnique({ where: { id } });
+    const existing = await db.deportista.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Deportista no encontrado' };
 
     if (!isSocial) {
     // Update main record
-    await prisma.deportista.update({
+    await db.deportista.update({
       where: { id },
       data: {
         apellido: data.apellido.trim(),
@@ -283,9 +286,9 @@ export async function updateDeportista(
     });
 
     // Handle club anteriores: delete all and re-create
-    await prisma.clubAnterior.deleteMany({ where: { deportistaId: id } });
+    await db.clubAnterior.deleteMany({ where: { deportistaId: id } });
     if (data.clubesAnteriores && data.clubesAnteriores.length > 0) {
-      await prisma.clubAnterior.createMany({
+      await db.clubAnterior.createMany({
         data: data.clubesAnteriores.map((c) => ({
           deportistaId: id,
           nombre: c.nombre,
@@ -304,19 +307,19 @@ export async function updateDeportista(
       // Fecha de modificación normalizada a UTC-midnight (mismo criterio que crearTransicionDivision)
       const hoy = new Date(new Date().toISOString().slice(0, 10));
 
-      const periodoAbierto = await prisma.pasoPorDivision.findFirst({
+      const periodoAbierto = await db.pasoPorDivision.findFirst({
         where: { deportistaId: id, hasta: null },
         orderBy: { desde: 'desc' },
       });
 
       if (periodoAbierto && hoy > periodoAbierto.desde) {
         // Cerrar el período abierto y abrir uno nuevo desde hoy
-        await prisma.$transaction([
-          prisma.pasoPorDivision.update({
+        await db.$transaction([
+          db.pasoPorDivision.update({
             where: { id: periodoAbierto.id },
             data: { hasta: hoy },
           }),
-          prisma.pasoPorDivision.create({
+          db.pasoPorDivision.create({
             data: {
               deportistaId: id,
               categoriaId: nuevaCategoriaId,
@@ -328,13 +331,13 @@ export async function updateDeportista(
         ]);
       } else if (periodoAbierto) {
         // El período abierto empezó hoy (o después): corregir en su lugar, sin crear períodos degenerados
-        await prisma.pasoPorDivision.update({
+        await db.pasoPorDivision.update({
           where: { id: periodoAbierto.id },
           data: { categoriaId: nuevaCategoriaId, disciplinaId: nuevaDisciplinaId },
         });
       } else {
         // Sin período abierto (deportista sin trayectoria previa): crear el primero
-        await prisma.pasoPorDivision.create({
+        await db.pasoPorDivision.create({
           data: {
             deportistaId: id,
             categoriaId: nuevaCategoriaId,
@@ -350,7 +353,7 @@ export async function updateDeportista(
     // Upsert datos escolares
     const de = data.datosEscolares;
     if (de && (de.nivelEstudio || de.nombreColegio || de.anoCursa != null || de.materiasAdeudadas)) {
-      await prisma.datosEscolares.upsert({
+      await db.datosEscolares.upsert({
         where: { deportistaId: id },
         create: {
           deportistaId: id,
@@ -371,7 +374,7 @@ export async function updateDeportista(
     // Upsert datos sociales
     const ds = data.datosSociales;
     if (ds && (ds.trabaja != null || ds.situacionLaboralHogar || ds.conQuienVive || ds.composicionGrupoFamiliar)) {
-      await prisma.datosSociales.upsert({
+      await db.datosSociales.upsert({
         where: { deportistaId: id },
         create: {
           deportistaId: id,
@@ -396,7 +399,7 @@ export async function updateDeportista(
       (df.padreNombre || df.padreApellido || df.padreNacionalidad || df.padreOcupacion ||
         df.madreNombre || df.madreApellido || df.madreNacionalidad || df.madreOcupacion)
     ) {
-      await prisma.datosFamiliares.upsert({
+      await db.datosFamiliares.upsert({
         where: { deportistaId: id },
         create: {
           deportistaId: id,
@@ -425,10 +428,10 @@ export async function updateDeportista(
     // Upsert vivienda familiar
     const vf = data.viviendaFamiliar;
     if (vf && (vf.personasDependientes != null || vf.medioTransporte || vf.condicionVivienda || vf.cuentaConHabitaciones != null || (vf.servicios && vf.servicios.length > 0))) {
-      const viviendaExisting = await prisma.viviendaFamiliar.findUnique({ where: { deportistaId: id } });
+      const viviendaExisting = await db.viviendaFamiliar.findUnique({ where: { deportistaId: id } });
       if (viviendaExisting) {
-        await prisma.servicioVivienda.deleteMany({ where: { viviendaFamiliarId: viviendaExisting.id } });
-        await prisma.viviendaFamiliar.update({
+        await db.servicioVivienda.deleteMany({ where: { viviendaFamiliarId: viviendaExisting.id } });
+        await db.viviendaFamiliar.update({
           where: { deportistaId: id },
           data: {
             personasDependientes: vf.personasDependientes ?? null,
@@ -447,7 +450,7 @@ export async function updateDeportista(
           },
         });
       } else {
-        await prisma.viviendaFamiliar.create({
+        await db.viviendaFamiliar.create({
           data: {
             deportistaId: id,
             personasDependientes: vf.personasDependientes ?? null,
@@ -471,10 +474,10 @@ export async function updateDeportista(
     // Upsert necesidades apoyo
     const na = data.necesidadesApoyo;
     if (na && (na.dificultadAlimentacion || na.recibeAlmuerzo != null || na.recibeCena != null || na.esSocio != null || (na.apoyosRequeridos && na.apoyosRequeridos.length > 0))) {
-      const necesidadesExisting = await prisma.necesidadesApoyo.findUnique({ where: { deportistaId: id } });
+      const necesidadesExisting = await db.necesidadesApoyo.findUnique({ where: { deportistaId: id } });
       if (necesidadesExisting) {
-        await prisma.apoyoRequerido.deleteMany({ where: { necesidadesApoyoId: necesidadesExisting.id } });
-        await prisma.necesidadesApoyo.update({
+        await db.apoyoRequerido.deleteMany({ where: { necesidadesApoyoId: necesidadesExisting.id } });
+        await db.necesidadesApoyo.update({
           where: { deportistaId: id },
           data: {
             dificultadAlimentacion: na.dificultadAlimentacion || null,
@@ -493,7 +496,7 @@ export async function updateDeportista(
           },
         });
       } else {
-        await prisma.necesidadesApoyo.create({
+        await db.necesidadesApoyo.create({
           data: {
             deportistaId: id,
             dificultadAlimentacion: na.dificultadAlimentacion || null,
@@ -517,11 +520,11 @@ export async function updateDeportista(
     // Upsert datos salud (blocked for social role)
     const sal = data.datosSalud;
     if (!isSocial && sal) {
-      const saludExisting = await prisma.datosSalud.findUnique({ where: { deportistaId: id } });
+      const saludExisting = await db.datosSalud.findUnique({ where: { deportistaId: id } });
       if (saludExisting) {
-        await prisma.enfermedadPreexistenteItem.deleteMany({ where: { datosSaludId: saludExisting.id } });
-        await prisma.antecedenteEnfermedadFamiliarItem.deleteMany({ where: { datosSaludId: saludExisting.id } });
-        await prisma.datosSalud.update({
+        await db.enfermedadPreexistenteItem.deleteMany({ where: { datosSaludId: saludExisting.id } });
+        await db.antecedenteEnfermedadFamiliarItem.deleteMany({ where: { datosSaludId: saludExisting.id } });
+        await db.datosSalud.update({
           where: { deportistaId: id },
           data: {
             grupoSanguineo: sal.grupoSanguineo?.trim() || null,
@@ -552,7 +555,7 @@ export async function updateDeportista(
           },
         });
       } else {
-        await prisma.datosSalud.create({
+        await db.datosSalud.create({
           data: {
             deportistaId: id,
             grupoSanguineo: sal.grupoSanguineo?.trim() || null,
@@ -590,10 +593,9 @@ export async function updateDeportista(
     return { success: true };
   } catch (error) {
     console.error('updateDeportista error:', error);
-    if (error instanceof Error) {
-      return { success: false, error: error.message };
-    }
-    return { success: false, error: 'Error al actualizar el deportista' };
+    const duplicado = mensajeDuplicadoDeportista(error);
+    if (duplicado) return { success: false, error: duplicado };
+    return { success: false, error: mensajeDeError(error, 'Error al actualizar el deportista') };
   }
 }
 
@@ -607,16 +609,14 @@ export async function deleteDeportista(
   try {
     const acceso = await contextoAccion();
     if (!acceso.ok) throw new Error(acceso.error);
+    const db = dbDelClub(acceso.contexto.clubId);
 
-    await prisma.deportista.delete({ where: { id } });
+    await db.deportista.delete({ where: { id } });
 
     revalidatePath('/deportistas');
     return { success: true };
   } catch (error) {
     console.error('deleteDeportista error:', error);
-    if (error instanceof Error) {
-      return { success: false, error: error.message };
-    }
-    return { success: false, error: 'Error al eliminar el deportista' };
+    return { success: false, error: mensajeDeError(error, 'Error al eliminar el deportista') };
   }
 }

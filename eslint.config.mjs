@@ -17,7 +17,6 @@ const eslintConfig = defineConfig([
   ]),
   // Multi-tenant: el cliente Prisma sin acotar ve todos los clubes. La app usa
   // `getDb()` de `@/lib/tenant/db`; solo este allowlist puede usar el base.
-  // Arranca en "warn" mientras se migra la app y pasa a "error" al terminar.
   {
     files: ["**/*.{ts,tsx,mts}"],
     ignores: [
@@ -34,7 +33,7 @@ const eslintConfig = defineConfig([
     ],
     rules: {
       "no-restricted-imports": [
-        "warn",
+        "error",
         {
           paths: [
             {

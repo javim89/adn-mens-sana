@@ -15,7 +15,7 @@
  *   o una operación que no sabe acotar.
  *
  * El SQL crudo (`$queryRaw`) NO pasa por acá: tiene que llevar `club_id`
- * explícito.
+ * explícito (`db.$clubId()`).
  *
  * La validación de FK consulta el cliente base, fuera de la transacción en
  * curso, así que no ve filas creadas dentro de ella. Para eso está `propios`: los
@@ -315,6 +315,14 @@ export function dbDelClub(clubId: string, base: PrismaClient = prisma) {
   const interceptar = crearInterceptor(clubId, base);
   return base.$extends({
     name: 'tenant',
+    client: {
+      /**
+       * El club de este cliente. Es para el SQL crudo (`$queryRaw`), que no pasa
+       * por la extension y tiene que filtrar `club_id` a mano: sacarlo del mismo
+       * cliente evita que la query y el filtro hablen de clubes distintos.
+       */
+      $clubId: () => clubId,
+    },
     query: {
       $allModels: {
         $allOperations: (operacion) => interceptar(operacion as OperacionPrisma),

@@ -12,6 +12,7 @@ vi.mock('@/lib/s3', async () => {
   const actual = await vi.importActual<typeof import('@/lib/s3')>('@/lib/s3');
   return {
     isValidFotoKey: actual.isValidFotoKey,
+    keyEsDelClub: actual.keyEsDelClub,
     deleteFoto: vi.fn(),
     fotoExiste: vi.fn(),
   };
@@ -26,11 +27,13 @@ vi.mock('@/lib/db', () => ({
 import { deleteFoto } from '@/lib/s3';
 import { prisma } from '@/lib/db';
 import { DELETE } from '../foto/route';
-import { mockContexto, setContexto } from '@/test-utils/tenant';
+import { CLUB_TEST, mockContexto, setContexto } from '@/test-utils/tenant';
 import type { AppRole } from '@/lib/roles';
 
 
-const KEY = 'deportistas/123e4567-e89b-12d3-a456-426614174000.jpg';
+const UUID = '123e4567-e89b-12d3-a456-426614174000';
+/** Una subida del club de la sesión (`CLUB_TEST`). */
+const KEY = `clubes/${CLUB_TEST.id}/deportistas/${UUID}.jpg`;
 
 function makeRequest(key?: string) {
   const qs = key === undefined ? '' : `?key=${encodeURIComponent(key)}`;
@@ -67,7 +70,15 @@ describe('DELETE /api/deportistas/foto', () => {
     expect(deleteFoto).not.toHaveBeenCalled();
   });
 
-  it.each([undefined, '', 'otros/hack.jpg', 'deportistas/../../secreto.jpg'])(
+  it.each([
+    undefined,
+    '',
+    'otros/hack.jpg',
+    'deportistas/../../secreto.jpg',
+    // Formato válido pero de otro club, o legacy (no dice de qué club es).
+    `clubes/club_otro/deportistas/${UUID}.jpg`,
+    `deportistas/${UUID}.jpg`,
+  ])(
     'returns 422 for an invalid key (%s)',
     async (key) => {
       const res = await DELETE(makeRequest(key));

@@ -16,6 +16,7 @@ import { ROLES_PERMITIDOS, type AppRole } from '@/lib/roles';
 import { LUGARES_RETIRO, esLugarRetiro } from '@/lib/utils/viandas';
 import { contextoAccion, type ContextoClub } from '@/lib/tenant/contexto';
 import { getDb } from '@/lib/tenant/db';
+import { mensajeDeError } from '@/lib/tenant/errores';
 import { getMiembrosDelClub } from '@/lib/tenant/miembros';
 import { nuevoTokenInvitacion } from '@/lib/tenant/invitaciones';
 
@@ -233,8 +234,7 @@ export async function invitarUsuario(data: {
 
     return { ok: true };
   } catch (error) {
-    if (error instanceof Error) return { ok: false, error: error.message };
-    return { ok: false, error: 'Error al enviar la invitación' };
+    return { ok: false, error: mensajeDeError(error, 'Error al enviar la invitación') };
   }
 }
 
@@ -277,8 +277,7 @@ export async function reenviarInvitacion(invitacionId: string): Promise<Resultad
 
     return { ok: true };
   } catch (error) {
-    if (error instanceof Error) return { ok: false, error: error.message };
-    return { ok: false, error: 'Error al reenviar la invitación' };
+    return { ok: false, error: mensajeDeError(error, 'Error al reenviar la invitación') };
   }
 }
 
@@ -297,8 +296,7 @@ async function setActivo(userId: string, activo: boolean, propia: string, fallba
     if (count === 0) return { ok: false, error: 'Usuario no encontrado' };
     return { ok: true };
   } catch (error) {
-    if (error instanceof Error) return { ok: false, error: error.message };
-    return { ok: false, error: fallback };
+    return { ok: false, error: mensajeDeError(error, fallback) };
   }
 }
 
@@ -341,8 +339,7 @@ export async function eliminarUsuario(id: string, status: EstadoUsuario): Promis
 
     return { ok: true };
   } catch (error) {
-    if (error instanceof Error) return { ok: false, error: error.message };
-    return { ok: false, error: 'Error al eliminar el usuario' };
+    return { ok: false, error: mensajeDeError(error, 'Error al eliminar el usuario') };
   }
 }
 
@@ -376,8 +373,7 @@ export async function cambiarRol(userId: string, nuevoRol: string): Promise<Resu
 
     return { ok: true };
   } catch (error) {
-    if (error instanceof Error) return { ok: false, error: error.message };
-    return { ok: false, error: 'Error al actualizar el rol' };
+    return { ok: false, error: mensajeDeError(error, 'Error al actualizar el rol') };
   }
 }
 
@@ -402,7 +398,6 @@ export async function asignarLugarRetiro(userId: string, lugar: string | null): 
     if (count === 0) return { ok: false, error: 'Usuario no encontrado' };
     return { ok: true };
   } catch (error) {
-    if (error instanceof Error) return { ok: false, error: error.message };
-    return { ok: false, error: 'Error al asignar el lugar de retiro' };
+    return { ok: false, error: mensajeDeError(error, 'Error al asignar el lugar de retiro') };
   }
 }

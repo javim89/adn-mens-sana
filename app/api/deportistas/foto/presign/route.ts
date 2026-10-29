@@ -78,7 +78,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { uploadUrl, key } = await createUploadUrl(parsed.data.data.attributes);
+    const { uploadUrl, key } = await createUploadUrl({
+      ...parsed.data.data.attributes,
+      clubId: acceso.contexto.clubId,
+    });
     return new Response(
       JSON.stringify({ data: { type: 'foto-upload', attributes: { uploadUrl, key } } }),
       { status: 200, headers: { 'Content-Type': JSON_API_CONTENT_TYPE } },

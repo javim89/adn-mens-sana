@@ -1,6 +1,8 @@
 import { contextoApi } from '@/lib/tenant/contexto';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
+import { dbDelClub } from '@/lib/tenant/db';
+import { CrossTenantError } from '@/lib/tenant/errores';
+import { mensajeDuplicadoDeportista } from '@/lib/utils/prisma-errores';
 import { getFotoUrl, isValidFotoKey } from '@/lib/s3';
 import { FOTO_KEY_EN_USO, fotoKeyErrorBody, isFotoKeyUniqueViolation, validarFotoKeyNueva } from '@/lib/foto-deportista';
 import { getDeportistas } from '@/lib/queries/deportistas';
@@ -399,6 +401,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const acceso = await contextoApi();
   if (!acceso.ok) return acceso.response;
+  const db = dbDelClub(acceso.contexto.clubId);
 
   const contentType = request.headers.get('Content-Type') ?? '';
   if (!contentType.includes('application/vnd.api+json')) {
@@ -450,7 +453,7 @@ export async function POST(request: Request) {
 
   try {
     if (attrs.fotoKey) {
-      const fotoError = await validarFotoKeyNueva(attrs.fotoKey);
+      const fotoError = await validarFotoKeyNueva(attrs.fotoKey, acceso.contexto.clubId);
       if (fotoError) {
         return new Response(JSON.stringify(fotoKeyErrorBody(fotoError)), {
           status: 422,
@@ -485,7 +488,7 @@ export async function POST(request: Request) {
       fotoKey: attrs.fotoKey ?? null,
     };
 
-    const deportista = await prisma.deportista.create({ data: deportistaData });
+    const deportista = await db.deportista.create({ data: deportistaData });
     const deportistaId = deportista.id;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -493,7 +496,7 @@ export async function POST(request: Request) {
 
     if (attrs.clubesAnteriores && attrs.clubesAnteriores.length > 0) {
       satOps.push(
-        prisma.clubAnterior.createMany({
+        db.clubAnterior.createMany({
           data: attrs.clubesAnteriores.map((c) => ({
             deportistaId,
             nombre: c.nombre,
@@ -506,7 +509,7 @@ export async function POST(request: Request) {
     const de = attrs.datosEscolares;
     if (de && (de.nivelEstudio || de.nombreColegio || de.anoCursa != null || de.materiasAdeudadas)) {
       satOps.push(
-        prisma.datosEscolares.create({
+        db.datosEscolares.create({
           data: {
             deportistaId,
             nivelEstudio: de.nivelEstudio || null,
@@ -521,7 +524,7 @@ export async function POST(request: Request) {
     const ds = attrs.datosSociales;
     if (ds && (ds.trabaja != null || ds.situacionLaboralHogar || ds.conQuienVive || ds.composicionGrupoFamiliar)) {
       satOps.push(
-        prisma.datosSociales.create({
+        db.datosSociales.create({
           data: {
             deportistaId,
             trabaja: ds.trabaja ?? null,
@@ -540,7 +543,7 @@ export async function POST(request: Request) {
         df.madreNombre || df.madreApellido || df.madreNacionalidad || df.madreOcupacion)
     ) {
       satOps.push(
-        prisma.datosFamiliares.create({
+        db.datosFamiliares.create({
           data: {
             deportistaId,
             padreNombre: df.padreNombre?.trim() || null,
@@ -566,7 +569,7 @@ export async function POST(request: Request) {
         (vf.servicios && vf.servicios.length > 0))
     ) {
       satOps.push(
-        prisma.viviendaFamiliar.create({
+        db.viviendaFamiliar.create({
           data: {
             deportistaId,
             personasDependientes: vf.personasDependientes ?? null,
@@ -597,7 +600,7 @@ export async function POST(request: Request) {
         (na.apoyosRequeridos && na.apoyosRequeridos.length > 0))
     ) {
       satOps.push(
-        prisma.necesidadesApoyo.create({
+        db.necesidadesApoyo.create({
           data: {
             deportistaId,
             dificultadAlimentacion: na.dificultadAlimentacion || null,
@@ -632,7 +635,7 @@ export async function POST(request: Request) {
         (sal.antecedentesEnfermedadesFam && sal.antecedentesEnfermedadesFam.length > 0))
     ) {
       satOps.push(
-        prisma.datosSalud.create({
+        db.datosSalud.create({
           data: {
             deportistaId,
             grupoSanguineo: sal.grupoSanguineo?.trim() || null,
@@ -670,7 +673,7 @@ export async function POST(request: Request) {
     }
 
     // Fetch the full record to return it
-    const full = await prisma.deportista.findUnique({
+    const full = await db.deportista.findUnique({
       where: { id: deportistaId },
       include: {
         disciplina: { select: { id: true, nombre: true } },
@@ -705,6 +708,26 @@ export async function POST(request: Request) {
     if (isFotoKeyUniqueViolation(error)) {
       return new Response(JSON.stringify(fotoKeyErrorBody(FOTO_KEY_EN_USO)), {
         status: 422,
+        headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
+      });
+    }
+    const duplicado = mensajeDuplicadoDeportista(error);
+    if (duplicado) {
+      const body: JsonApiErrors = {
+        errors: [{ status: '409', code: 'CONFLICT', title: 'Deportista duplicado', detail: duplicado }],
+      };
+      return new Response(JSON.stringify(body), {
+        status: 409,
+        headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
+      });
+    }
+    // Una disciplina/categoría de otro club se trata como inexistente.
+    if (error instanceof CrossTenantError) {
+      const body: JsonApiErrors = {
+        errors: [{ status: '404', code: 'NOT_FOUND', title: 'Recurso no encontrado' }],
+      };
+      return new Response(JSON.stringify(body), {
+        status: 404,
         headers: { 'Content-Type': JSON_API_CONTENT_TYPE },
       });
     }

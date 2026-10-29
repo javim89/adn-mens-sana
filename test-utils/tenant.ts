@@ -90,10 +90,12 @@ export function moduloContextoMock(inicial: ContextoClub | null = mockContexto()
 /**
  * Reemplazo de `@/lib/tenant/db`: `getDb()` y `dbDelClub()` devuelven `db` (el
  * mismo objeto de mocks que antes se pasaba a `vi.mock('@/lib/db')`). Si `db` no
- * trae `$transaction`, se agrega uno que corre el callback con `db` como `tx`.
+ * trae `$transaction`, se agrega uno que corre el callback con `db` como `tx`; si
+ * no trae `$clubId`, devuelve el id de `CLUB_TEST`.
  */
 export function moduloDbMock<T extends object>(db: T) {
-  const conTx = db as T & { $transaction?: unknown };
+  const conTx = db as T & { $transaction?: unknown; $clubId?: unknown };
+  if (!conTx.$clubId) conTx.$clubId = () => CLUB_TEST.id;
   if (!conTx.$transaction) {
     conTx.$transaction = vi.fn(async (arg: unknown) =>
       typeof arg === 'function' ? arg(db) : Promise.all(arg as Promise<unknown>[]),

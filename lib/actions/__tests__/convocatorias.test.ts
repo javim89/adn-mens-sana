@@ -21,7 +21,9 @@ const { mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
 vi.mock('@/lib/tenant/contexto', async () =>
   (await import('@/test-utils/tenant')).moduloContextoMock(),
 );
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock(mockPrisma),
+);
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
 // El módulo de queries es importado por la action; lo mockeamos para aislar la lógica.
@@ -36,7 +38,9 @@ import {
   deleteConvocatoria,
 } from '../convocatorias';
 import type { ConvocatoriaFormData } from '@/lib/types/convocatorias';
-import { mockContexto, setContexto } from '@/test-utils/tenant';
+import { CLUB_TEST, mockContexto, setContexto } from '@/test-utils/tenant';
+import { dbDelClub } from '@/lib/tenant/db';
+import { CrossTenantError } from '@/lib/tenant/errores';
 
 const validData: ConvocatoriaFormData = {
   eventoTorneoId: 'evento-1',
@@ -291,5 +295,38 @@ describe('deleteConvocatoria', () => {
     expect(result.success).toBe(true);
     expect(mockPrisma.convocatoria.delete).toHaveBeenCalledWith({ where: { id: 'existing-id' } });
     expect(mockRevalidatePath).toHaveBeenCalledWith('/convocatorias');
+  });
+});
+
+// ─── Aislamiento por club ─────────────────────────────────────────────────────
+
+describe('convocatorias — cliente del club', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setCallerAsEntrenador();
+    mockPrisma.convocatoria.findUnique.mockResolvedValue(null);
+  });
+
+  test('escribe con el cliente acotado al club de la sesión', async () => {
+    mockPrisma.convocatoria.create.mockResolvedValue({ id: 'new-convocatoria-id' });
+    await createConvocatoria(validData);
+    expect(dbDelClub).toHaveBeenCalledWith(CLUB_TEST.id);
+  });
+
+  test('un partido o deportista de otro club (CrossTenantError) vuelve como "No encontrado"', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockPrisma.convocatoria.create.mockRejectedValue(
+      new CrossTenantError('Convocatoria: la escritura referencia una fila de otro club'),
+    );
+
+    const result = await createConvocatoria(validData);
+
+    expect(result).toEqual({ success: false, error: 'No encontrado' });
+  });
+
+  test('sin club activo no llega a crear el cliente', async () => {
+    setContexto(null);
+    await createConvocatoria(validData);
+    expect(dbDelClub).not.toHaveBeenCalled();
   });
 });

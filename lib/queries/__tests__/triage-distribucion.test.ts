@@ -14,9 +14,12 @@ const { mockPrisma } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock(mockPrisma),
+);
 
 import { getDistribucionTriage } from '../triage';
+import { CLUB_TEST } from '@/test-utils/tenant';
 
 const CORTE = new Date('2026-03-09T03:00:00.000Z');
 
@@ -78,8 +81,8 @@ describe('getDistribucionTriage — el SQL', () => {
     await getDistribucionTriage(CORTE);
 
     const [query] = mockPrisma.$queryRaw.mock.calls[0];
-    expect(query.sql).toContain('WHERE triage.calculated_at < ?');
-    expect(query.values).toEqual([CORTE]);
+    expect(query.sql).toContain('AND triage.calculated_at < ?');
+    expect(query.values).toContain(CORTE);
     expect(query.sql).not.toContain('2026-03-09');
   });
 
@@ -92,12 +95,24 @@ describe('getDistribucionTriage — el SQL', () => {
     await getDistribucionTriage(CORTE);
 
     const [query] = mockPrisma.$queryRaw.mock.calls[0];
-    expect(query.sql).toContain("SELECT id FROM deportistas WHERE estado = 'ACTIVO'");
+    expect(query.sql).toContain("SELECT id FROM deportistas WHERE club_id = ? AND estado = 'ACTIVO'");
     expect(query.sql).toContain('JOIN activos ON activos.id = triage.deportista_id');
   });
 
   // El mismo par indivisible que usa `getNivelTriageActual`: si se invierte, los
   // dos CTEs devuelven el snapshot más VIEJO de cada deportista.
+  /**
+   * El SQL crudo no pasa por el cliente del club: sin el `club_id` explícito, la
+   * card de un club contaría el triage de todos.
+   */
+  test('filtra por el club del cliente en deportistas y en los dos CTEs de triage', async () => {
+    await getDistribucionTriage(CORTE);
+
+    const [query] = mockPrisma.$queryRaw.mock.calls[0];
+    expect(query.sql.match(/club_id = \?/g)).toHaveLength(3);
+    expect(query.values).toEqual([CLUB_TEST.id, CLUB_TEST.id, CLUB_TEST.id, CORTE]);
+  });
+
   test('los dos CTEs ordenan por deportista_id y calculated_at DESC', async () => {
     await getDistribucionTriage(CORTE);
 

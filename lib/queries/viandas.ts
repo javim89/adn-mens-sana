@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 import { fechaDbDesdeClave } from '@/lib/utils/fecha';
 import { recibeMerienda } from '@/lib/utils/viandas';
 import type { DeportistaVianda, EntregaView } from '@/lib/types/viandas';
@@ -16,9 +16,10 @@ export async function getPlantelViandas(
   categoriaId: string,
   fecha: string,
 ): Promise<DeportistaVianda[]> {
+  const db = await getDb();
   // SIN filtro de `estado`: un LESIONADO o SUSPENDIDO sigue comiendo. Mismo
   // criterio que `getDeportistasParaConvocar`, no el de presentismo.
-  const deportistas = await prisma.deportista.findMany({
+  const deportistas = await db.deportista.findMany({
     where: { disciplinaId, categoriaId },
     select: {
       id: true,
@@ -35,7 +36,7 @@ export async function getPlantelViandas(
 
   if (deportistas.length === 0) return [];
 
-  const entregas = await prisma.entregaComida.findMany({
+  const entregas = await db.entregaComida.findMany({
     where: {
       fecha: fechaDbDesdeClave(fecha),
       deportistaId: { in: deportistas.map((d) => d.id) },

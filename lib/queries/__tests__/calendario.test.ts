@@ -9,7 +9,9 @@ const { mockPrisma } = vi.hoisted(() => {
   return { mockPrisma };
 });
 
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock(mockPrisma),
+);
 
 import { getCalendarioData, toDateString } from '../calendario';
 

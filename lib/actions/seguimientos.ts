@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { prisma } from '@/lib/db';
+import { dbDelClub, type DbClub } from '@/lib/tenant/db';
+import { mensajeDeError } from '@/lib/tenant/errores';
 import type { AppRole } from '@/lib/roles';
 import { getContextoClub } from '@/lib/tenant/contexto';
 import { getMiembrosDelClub } from '@/lib/tenant/miembros';
@@ -44,11 +45,11 @@ function getTiposPermitidos(role: string): TipoSeguimiento[] {
 /** Usuario y rol en el club activo. Sin club accesible, `userId` es null. */
 async function getCallerInfo() {
   const contexto = await getContextoClub();
-  if (!contexto) return { userId: null, role: null, isAdmin: false };
-  return { userId: contexto.userId, role: contexto.rol, isAdmin: contexto.rol === 'admin' };
+  if (!contexto) return { userId: null, clubId: null, role: null, isAdmin: false } as const;
+  return { userId: contexto.userId, clubId: contexto.clubId, role: contexto.rol, isAdmin: contexto.rol === 'admin' };
 }
 
-type PrismaTx = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+type PrismaTx = Omit<DbClub, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
 /**
  * Construye el payload persistible de antropometría recalculando imc/sumatoriaPliegues
@@ -240,8 +241,9 @@ export async function createSeguimiento(
   data: SeguimientoFormData,
 ): Promise<{ success: true; id: string } | { success: false; error: string }> {
   try {
-    const { userId, role, isAdmin } = await getCallerInfo();
+    const { userId, clubId, role, isAdmin } = await getCallerInfo();
     if (!userId) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(clubId);
 
     if (!CAN_WRITE_ROLES.includes(role ?? '')) {
       return { success: false, error: 'No autorizado' };
@@ -286,7 +288,7 @@ export async function createSeguimiento(
         ? new Date(data.proximaCita)
         : null;
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       const seguimiento = await tx.seguimiento.create({
         data: {
           profesionalId,
@@ -323,7 +325,7 @@ export async function createSeguimiento(
     console.error('createSeguimiento error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al crear el seguimiento',
+      error: mensajeDeError(error, 'Error al crear el seguimiento'),
     };
   }
 }
@@ -333,10 +335,11 @@ export async function updateSeguimiento(
   data: SeguimientoFormData,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const { userId, role, isAdmin } = await getCallerInfo();
+    const { userId, clubId, role, isAdmin } = await getCallerInfo();
     if (!userId) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(clubId);
 
-    const existing = await prisma.seguimiento.findUnique({ where: { id } });
+    const existing = await db.seguimiento.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Seguimiento no encontrado' };
 
     if (!data.deportistaIds?.length) {
@@ -385,7 +388,7 @@ export async function updateSeguimiento(
 
     const previousTipo = (existing.tipoSeguimiento as TipoSeguimiento | null) ?? null;
 
-    await prisma.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       await tx.seguimiento.update({
         where: { id },
         data: {
@@ -430,7 +433,7 @@ export async function updateSeguimiento(
     console.error('updateSeguimiento error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al actualizar el seguimiento',
+      error: mensajeDeError(error, 'Error al actualizar el seguimiento'),
     };
   }
 }
@@ -439,10 +442,11 @@ export async function deleteSeguimiento(
   id: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const { userId, isAdmin } = await getCallerInfo();
+    const { userId, clubId, isAdmin } = await getCallerInfo();
     if (!userId) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(clubId);
 
-    const existing = await prisma.seguimiento.findUnique({ where: { id } });
+    const existing = await db.seguimiento.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Seguimiento no encontrado' };
 
     // Ownership rule: only the owner or admin can delete
@@ -456,7 +460,7 @@ export async function deleteSeguimiento(
       };
     }
 
-    await prisma.seguimiento.delete({ where: { id } });
+    await db.seguimiento.delete({ where: { id } });
 
     revalidatePath('/seguimientos');
     return { success: true };
@@ -464,7 +468,7 @@ export async function deleteSeguimiento(
     console.error('deleteSeguimiento error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al eliminar el seguimiento',
+      error: mensajeDeError(error, 'Error al eliminar el seguimiento'),
     };
   }
 }

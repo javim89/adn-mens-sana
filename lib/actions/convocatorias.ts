@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { prisma } from '@/lib/db';
+import { dbDelClub } from '@/lib/tenant/db';
+import { mensajeDeError } from '@/lib/tenant/errores';
 import { getContextoClub } from '@/lib/tenant/contexto';
 import {
   getProximoPartido,
@@ -16,8 +17,8 @@ import type {
 /** Usuario y rol en el club activo. Sin club accesible, `userId` es null. */
 async function getCallerInfo() {
   const contexto = await getContextoClub();
-  if (!contexto) return { userId: null, role: null };
-  return { userId: contexto.userId, role: contexto.rol };
+  if (!contexto) return { userId: null, clubId: null, role: null } as const;
+  return { userId: contexto.userId, clubId: contexto.clubId, role: contexto.rol };
 }
 
 export async function getProximoPartidoAction(
@@ -44,8 +45,9 @@ export async function createConvocatoria(
   data: ConvocatoriaFormData,
 ): Promise<{ success: true; id: string } | { success: false; error: string }> {
   try {
-    const { userId, role } = await getCallerInfo();
+    const { userId, clubId, role } = await getCallerInfo();
     if (!userId) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(clubId);
 
     const isAdmin = role === 'admin';
     // El form no expone selector de entrenador; por defecto es el usuario que crea.
@@ -60,14 +62,14 @@ export async function createConvocatoria(
       return { success: false, error: 'Debe convocar al menos un deportista' };
     }
 
-    const existing = await prisma.convocatoria.findUnique({
+    const existing = await db.convocatoria.findUnique({
       where: { eventoTorneoId: data.eventoTorneoId },
     });
     if (existing) {
       return { success: false, error: 'Ya existe una convocatoria para este partido' };
     }
 
-    const convocatoria = await prisma.convocatoria.create({
+    const convocatoria = await db.convocatoria.create({
       data: {
         eventoTorneoId: data.eventoTorneoId,
         disciplinaId: data.disciplinaId,
@@ -91,7 +93,7 @@ export async function createConvocatoria(
     console.error('createConvocatoria error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al crear la convocatoria',
+      error: mensajeDeError(error, 'Error al crear la convocatoria'),
     };
   }
 }
@@ -101,10 +103,11 @@ export async function updateConvocatoria(
   data: ConvocatoriaFormData,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const { userId, role } = await getCallerInfo();
+    const { userId, clubId, role } = await getCallerInfo();
     if (!userId) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(clubId);
 
-    const existing = await prisma.convocatoria.findUnique({ where: { id } });
+    const existing = await db.convocatoria.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Convocatoria no encontrada' };
 
     const isAdmin = role === 'admin';
@@ -122,9 +125,9 @@ export async function updateConvocatoria(
       ? data.entrenadorId || existing.entrenadorId
       : existing.entrenadorId;
 
-    await prisma.convocatoriaDeportista.deleteMany({ where: { convocatoriaId: id } });
+    await db.convocatoriaDeportista.deleteMany({ where: { convocatoriaId: id } });
 
-    await prisma.convocatoria.update({
+    await db.convocatoria.update({
       where: { id },
       data: {
         disciplinaId: data.disciplinaId,
@@ -147,7 +150,7 @@ export async function updateConvocatoria(
     console.error('updateConvocatoria error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al actualizar la convocatoria',
+      error: mensajeDeError(error, 'Error al actualizar la convocatoria'),
     };
   }
 }
@@ -156,17 +159,18 @@ export async function deleteConvocatoria(
   id: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const { userId, role } = await getCallerInfo();
+    const { userId, clubId, role } = await getCallerInfo();
     if (!userId) return { success: false, error: 'No autorizado' };
+    const db = dbDelClub(clubId);
 
-    const existing = await prisma.convocatoria.findUnique({ where: { id } });
+    const existing = await db.convocatoria.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Convocatoria no encontrada' };
 
     if (role !== 'admin' && existing.registradoPor !== userId) {
       return { success: false, error: 'Acceso denegado' };
     }
 
-    await prisma.convocatoria.delete({ where: { id } });
+    await db.convocatoria.delete({ where: { id } });
 
     revalidatePath('/convocatorias');
     return { success: true };
@@ -174,7 +178,7 @@ export async function deleteConvocatoria(
     console.error('deleteConvocatoria error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al eliminar la convocatoria',
+      error: mensajeDeError(error, 'Error al eliminar la convocatoria'),
     };
   }
 }

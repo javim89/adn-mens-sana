@@ -1,7 +1,9 @@
 import { getCalendarioData } from '@/lib/queries/calendario';
+import { requireContexto } from '@/lib/tenant/contexto';
 import CalendarioView from './_components/CalendarioView';
 
 export default async function CalendarioPage() {
+  await requireContexto();
   const { categorias, dias, eventos } = await getCalendarioData();
 
   return (

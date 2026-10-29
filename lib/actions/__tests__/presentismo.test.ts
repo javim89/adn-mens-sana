@@ -1,14 +1,10 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // All mocks must be hoisted before vi.mock calls
-const { mockRevalidatePath, mockPrisma, mockClerkClient } = vi.hoisted(
+const { mockRevalidatePath, mockPrisma, mockGetMiembros } = vi.hoisted(
   () => {
     const mockRevalidatePath = vi.fn();
-    const mockClerkClient = vi.fn().mockResolvedValue({
-      users: {
-        getUserList: vi.fn().mockResolvedValue({ data: [] }),
-      },
-    });
+    const mockGetMiembros = vi.fn().mockResolvedValue([]);
 
     const mockPrisma = {
       entrenamiento: {
@@ -25,20 +21,20 @@ const { mockRevalidatePath, mockPrisma, mockClerkClient } = vi.hoisted(
         deleteMany: vi.fn().mockResolvedValue({}),
       },
     };
-    return { mockRevalidatePath, mockPrisma, mockClerkClient };
+    return { mockRevalidatePath, mockPrisma, mockGetMiembros };
   },
 );
 
 vi.mock('@/lib/tenant/contexto', async () =>
   (await import('@/test-utils/tenant')).moduloContextoMock(),
 );
-vi.mock('@clerk/nextjs/server', () => ({
-  clerkClient: mockClerkClient,
-}));
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
+vi.mock('@/lib/tenant/miembros', () => ({ getMiembrosDelClub: mockGetMiembros }));
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock(mockPrisma),
+);
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
-import { createEntrenamiento, updateEntrenamiento, deleteEntrenamiento } from '../presentismo';
+import { createEntrenamiento, updateEntrenamiento, deleteEntrenamiento, getEntrenadores } from '../presentismo';
 import type { EntrenamientoFormData } from '@/lib/types/presentismo';
 import { mockContexto, setContexto } from '@/test-utils/tenant';
 
@@ -268,5 +264,36 @@ describe('deleteEntrenamiento', () => {
     const result = await deleteEntrenamiento('existing-id');
     expect(result.success).toBe(true);
     expect(mockPrisma.entrenamiento.delete).toHaveBeenCalledWith({ where: { id: 'existing-id' } });
+  });
+});
+
+// ─── getEntrenadores ─────────────────────────────────────────────────────────────
+
+describe('getEntrenadores', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('lista solo miembros del club activo con los roles del módulo', async () => {
+    setContexto(mockContexto('admin'));
+    mockGetMiembros.mockResolvedValue([
+      { userId: 'u1', rol: 'medico', nombre: 'Ana', apellido: 'Paz', email: 'a@x.com' },
+    ]);
+
+    const lista = await getEntrenadores();
+
+    expect(mockGetMiembros).toHaveBeenCalledWith({ roles: ['entrenador', 'admin'] });
+    expect(lista).toEqual([{ id: 'u1', nombre: 'Ana', apellido: 'Paz', rol: 'medico' }]);
+  });
+
+  test('un no-admin recibe una lista vacía sin consultar miembros', async () => {
+    setContexto(mockContexto('entrenador'));
+    await expect(getEntrenadores()).resolves.toEqual([]);
+    expect(mockGetMiembros).not.toHaveBeenCalled();
+  });
+
+  test('sin club activo, lista vacía', async () => {
+    setContexto(null);
+    await expect(getEntrenadores()).resolves.toEqual([]);
   });
 });

@@ -12,6 +12,7 @@ vi.mock('@/lib/s3', async () => {
   const actual = await vi.importActual<typeof import('@/lib/s3')>('@/lib/s3');
   return {
     isValidFotoKey: actual.isValidFotoKey,
+    keyEsDelClub: actual.keyEsDelClub,
     getFotoUrl: vi.fn(async (key: string | null) => (key ? `https://signed.example/${key}` : null)),
     deleteFoto: vi.fn(),
     fotoExiste: vi.fn(),
@@ -48,13 +49,20 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
+// El route usa el cliente del club; `foto-deportista` (ownership global de la
+// key) sigue usando el base. Los dos apuntan al mismo objeto de mocks.
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock((await import('@/lib/db')).prisma),
+);
+
 import { prisma } from '@/lib/db';
 import { deleteFoto, fotoExiste } from '@/lib/s3';
 import { GET, PATCH, DELETE } from '../[id]/route';
-import { mockContexto, setContexto } from '@/test-utils/tenant';
+import { CLUB_TEST, mockContexto, setContexto } from '@/test-utils/tenant';
 
 const OLD_KEY = 'deportistas/11111111-1111-1111-1111-111111111111.jpg';
-const NEW_KEY = 'deportistas/22222222-2222-2222-2222-222222222222.png';
+// La foto vieja puede ser legacy; la nueva siempre es una subida del club de la sesión.
+const NEW_KEY = `clubes/${CLUB_TEST.id}/deportistas/22222222-2222-2222-2222-222222222222.png`;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -483,6 +491,26 @@ describe('PATCH /api/deportistas/[id]', () => {
       expect(body.errors[0].source.pointer).toBe('/data/attributes/fotoKey');
       expect(prisma.deportista.update).not.toHaveBeenCalled();
       expect(deleteFoto).not.toHaveBeenCalled();
+    });
+
+    it('rejects a new fotoKey from another club with 422, without touching S3 or the old foto', async () => {
+      vi.mocked(prisma.deportista.findUnique).mockResolvedValueOnce({ id: 'cuid1', fotoKey: OLD_KEY } as never);
+
+      const res = await patchFoto('clubes/club_otro/deportistas/33333333-3333-3333-3333-333333333333.jpg');
+
+      expect(res.status).toBe(422);
+      expect(fotoExiste).not.toHaveBeenCalled();
+      expect(prisma.deportista.update).not.toHaveBeenCalled();
+      expect(deleteFoto).not.toHaveBeenCalled();
+    });
+
+    it('a deportista of another club is a 404 (the scoped client does not see it)', async () => {
+      vi.mocked(prisma.deportista.findUnique).mockResolvedValueOnce(null);
+
+      const res = await patchFoto(NEW_KEY);
+
+      expect(res.status).toBe(404);
+      expect(prisma.deportista.update).not.toHaveBeenCalled();
     });
 
     it('maps a P2002 race on foto_key to 422 and keeps the old foto', async () => {

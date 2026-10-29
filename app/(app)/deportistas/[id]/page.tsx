@@ -7,7 +7,8 @@ import { getCategorias } from '@/lib/queries/categorias';
 import DeportistaDetailTabs from '../_components/DeportistaDetailTabs';
 import DeleteDeportistaModal from '../_components/DeleteDeportistaModal';
 import { ESTADO_LABELS } from '@/lib/utils/enum-labels';
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getFotoUrl } from '@/lib/s3';
 import { Avatar } from '@/app/components/ui/avatar';
 import type { EstadoDeportista } from '@/lib/generated/prisma/enums';
@@ -26,6 +27,8 @@ export default async function DeportistaDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  // Antes de cualquier query: sin club, a /bienvenida (y no un SinContextoError).
+  await requireContexto();
   const deportista = await getDeportistaById(id);
 
   const [{ items: seguimientosRaw }, fotoUrl] = await Promise.all([
@@ -47,7 +50,8 @@ export default async function DeportistaDetailPage({
   const disciplinas = disciplinasCatalogo.map((d) => ({ id: d.id, nombre: d.nombre }));
   const categorias = categoriasCatalogo.map((c) => ({ id: c.id, nombre: c.nombre }));
 
-  const triageRow = await prisma.triage.findFirst({
+  const db = await getDb();
+  const triageRow = await db.triage.findFirst({
     where: { deportistaId: id },
     orderBy: { calculatedAt: 'desc' },
   });

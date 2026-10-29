@@ -10,9 +10,11 @@ const { mockPrisma } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
-
 import { getTriageInput } from '../data';
+import type { DbClub } from '@/lib/tenant/db';
+
+/** El cliente del club entra por parámetro (request o cron): acá, los mocks. */
+const db = mockPrisma as unknown as DbClub;
 
 const NOW = new Date('2026-03-14T12:00:00.000Z');
 
@@ -51,7 +53,7 @@ describe('derivación de recibeVianda desde los dos flags', () => {
     mockPrisma.deportista.findUnique.mockResolvedValue(
       deportistaCon({ dificultadAlimentacion: null, recibeAlmuerzo: true, recibeCena: false, apoyosRequeridos: [] }),
     );
-    const input = await getTriageInput('d1', NOW);
+    const input = await getTriageInput(db, 'd1', NOW);
     expect(input.recibeVianda).toBe(true);
   });
 
@@ -59,7 +61,7 @@ describe('derivación de recibeVianda desde los dos flags', () => {
     mockPrisma.deportista.findUnique.mockResolvedValue(
       deportistaCon({ dificultadAlimentacion: null, recibeAlmuerzo: false, recibeCena: true, apoyosRequeridos: [] }),
     );
-    const input = await getTriageInput('d1', NOW);
+    const input = await getTriageInput(db, 'd1', NOW);
     expect(input.recibeVianda).toBe(true);
   });
 
@@ -67,7 +69,7 @@ describe('derivación de recibeVianda desde los dos flags', () => {
     mockPrisma.deportista.findUnique.mockResolvedValue(
       deportistaCon({ dificultadAlimentacion: null, recibeAlmuerzo: true, recibeCena: true, apoyosRequeridos: [] }),
     );
-    const input = await getTriageInput('d1', NOW);
+    const input = await getTriageInput(db, 'd1', NOW);
     expect(input.recibeVianda).toBe(true);
   });
 
@@ -75,13 +77,13 @@ describe('derivación de recibeVianda desde los dos flags', () => {
     mockPrisma.deportista.findUnique.mockResolvedValue(
       deportistaCon({ dificultadAlimentacion: null, recibeAlmuerzo: false, recibeCena: false, apoyosRequeridos: [] }),
     );
-    const input = await getTriageInput('d1', NOW);
+    const input = await getTriageInput(db, 'd1', NOW);
     expect(input.recibeVianda).toBe(false);
   });
 
   test('sin satélite de necesidades de apoyo tampoco', async () => {
     mockPrisma.deportista.findUnique.mockResolvedValue(deportistaCon(null));
-    const input = await getTriageInput('d1', NOW);
+    const input = await getTriageInput(db, 'd1', NOW);
     expect(input.recibeVianda).toBe(false);
   });
 });

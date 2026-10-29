@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 import { notFound } from 'next/navigation';
 import type { EstadoDeportista, NivelTriage } from '@/lib/generated/prisma/enums';
 import type { Prisma } from '@/lib/generated/prisma/client';
@@ -25,6 +25,7 @@ export interface GetDeportistasResult {
 export async function getDeportistas(
   filters: GetDeportistasFilters = {},
 ): Promise<GetDeportistasResult> {
+  const db = await getDb();
   const { search, disciplinaId, categoriaId, estado, nivelTriage, page = 1, pageSize = 20 } = filters;
 
   // Con filtro de triage hay que resolver los niveles ANTES de paginar, para que
@@ -60,7 +61,7 @@ export async function getDeportistas(
   };
 
   const [rows, total] = await Promise.all([
-    prisma.deportista.findMany({
+    db.deportista.findMany({
       where,
       select: {
         id: true,
@@ -77,7 +78,7 @@ export async function getDeportistas(
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    prisma.deportista.count({ where }),
+    db.deportista.count({ where }),
   ]);
 
   const niveles = nivelPorDeportista ?? (await getNivelTriageActual(rows.map((d) => d.id)));
@@ -91,7 +92,8 @@ export async function getDeportistas(
 }
 
 export async function getDeportistaById(id: string): Promise<DeportistaWithRelations> {
-  const deportista = await prisma.deportista.findUnique({
+  const db = await getDb();
+  const deportista = await db.deportista.findUnique({
     where: { id },
     include: {
       disciplina: { select: { id: true, nombre: true } },

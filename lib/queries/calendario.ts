@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 
 export type GrupoCategoria = 'CUARTA_QUINTA_SEXTA' | 'SEPTIMA_OCTAVA_NOVENA';
 export type TipoDia = 'TORNEO' | 'RECESO' | 'RECUPERO' | 'SIN_ACTIVIDAD';
@@ -53,14 +53,15 @@ function grupoDeCategoria(nombre: string): GrupoCategoria {
 }
 
 export async function getCalendarioData(): Promise<CalendarioData> {
+  const db = await getDb();
   const [categoriasRaw, diasRaw, eventosRaw] = await Promise.all([
-    prisma.categoria.findMany({
+    db.categoria.findMany({
       orderBy: { orden: 'asc' },
     }),
-    prisma.diaCalendario.findMany({
+    db.diaCalendario.findMany({
       orderBy: { fecha: 'asc' },
     }),
-    prisma.eventoTorneo.findMany({
+    db.eventoTorneo.findMany({
       include: { dia: true, categoria: true, local: true, visitante: true },
       orderBy: { dia: { fecha: 'asc' } },
     }),

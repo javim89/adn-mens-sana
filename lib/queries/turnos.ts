@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 import type { Prisma } from '@/lib/generated/prisma/client';
 
 export interface GetTurnosParams {
@@ -54,26 +54,28 @@ function buildWhere(params: GetTurnosParams): Prisma.TurnoWhereInput {
 export async function getTurnos(
   params: GetTurnosParams = {},
 ): Promise<{ items: TurnoRow[]; total: number }> {
+  const db = await getDb();
   const page = params.page ?? 0;
   const pageSize = params.pageSize ?? 50;
   const where = buildWhere(params);
 
-  const [items, total] = await prisma.$transaction([
-    prisma.turno.findMany({
+  const [items, total] = await db.$transaction([
+    db.turno.findMany({
       where,
       include: TURNO_INCLUDE,
       orderBy: [{ fecha: 'asc' }, { hora: 'asc' }],
       take: pageSize,
       skip: page * pageSize,
     }),
-    prisma.turno.count({ where }),
+    db.turno.count({ where }),
   ]);
 
   return { items, total };
 }
 
 export async function getTurnoById(id: string) {
-  return prisma.turno.findUnique({
+  const db = await getDb();
+  return db.turno.findUnique({
     where: { id },
     include: TURNO_INCLUDE,
   });

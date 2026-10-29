@@ -14,7 +14,7 @@ vi.mock('@/lib/s3', () => ({
 
 import { createUploadUrl } from '@/lib/s3';
 import { POST } from '../foto/presign/route';
-import { mockContexto, setContexto } from '@/test-utils/tenant';
+import { CLUB_TEST, mockContexto, setContexto } from '@/test-utils/tenant';
 import type { AppRole } from '@/lib/roles';
 
 
@@ -110,7 +110,12 @@ describe('POST /api/deportistas/foto/presign', () => {
         },
       },
     });
-    expect(createUploadUrl).toHaveBeenCalledWith({ contentType: 'image/png', size: 2048 });
+    // El club sale de la sesión, nunca del body: la key queda bajo su prefijo.
+    expect(createUploadUrl).toHaveBeenCalledWith({
+      contentType: 'image/png',
+      size: 2048,
+      clubId: CLUB_TEST.id,
+    });
   });
 
   it('returns 500 without leaking details when presigning fails', async () => {

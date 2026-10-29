@@ -39,7 +39,9 @@ const { mockRevalidatePath, mockPrisma, mockTx } =
 vi.mock('@/lib/tenant/contexto', async () =>
   (await import('@/test-utils/tenant')).moduloContextoMock(),
 );
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock(mockPrisma),
+);
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
 import {

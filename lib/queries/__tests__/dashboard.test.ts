@@ -11,7 +11,9 @@ const { mockPrisma } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock(mockPrisma),
+);
 
 import {
   getResumenViandas,
@@ -22,6 +24,7 @@ import {
   getProximosEventos,
 } from '../dashboard';
 import { CATEGORIAS_SIN_MERIENDA } from '@/lib/utils/viandas';
+import { CLUB_TEST } from '@/test-utils/tenant';
 
 /**
  * Semana del 9 al 15 de marzo de 2026 (lunes a domingo), tal como la devuelve
@@ -148,13 +151,24 @@ describe('getResumenViandas', () => {
     await getResumenViandas({ rango: SEMANA });
 
     const [query] = mockPrisma.$queryRaw.mock.calls[0];
-    expect(query.sql).toContain('WHERE e.fecha >= ? AND e.fecha < ?');
+    expect(query.sql).toContain('AND e.fecha >= ? AND e.fecha < ?');
     // Los primeros parámetros son las categorías sin merienda del FILTER.
     expect(query.values).toEqual([
       ...CATEGORIAS_SIN_MERIENDA,
+      CLUB_TEST.id,
       SEMANA.desdeDb,
       SEMANA.finExclusivoDb,
     ]);
+  });
+
+  // El SQL crudo no pasa por el cliente del club: el club va explícito y por parámetro.
+  test('filtra las entregas por el club del cliente', async () => {
+    await getResumenViandas({ rango: SEMANA });
+
+    const [query] = mockPrisma.$queryRaw.mock.calls[0];
+    expect(query.sql).toContain('WHERE e.club_id = ?');
+    expect(query.values).toContain(CLUB_TEST.id);
+    expect(query.sql).not.toContain(CLUB_TEST.id);
   });
 
   // Scoping de viandas: el responsable ve solo SU lugar, que es el único que opera.
@@ -165,6 +179,7 @@ describe('getResumenViandas', () => {
     expect(query.sql).toContain('AND e.lugar::text = ?');
     expect(query.values).toEqual([
       ...CATEGORIAS_SIN_MERIENDA,
+      CLUB_TEST.id,
       SEMANA.desdeDb,
       SEMANA.finExclusivoDb,
       'SEDE',
@@ -176,7 +191,7 @@ describe('getResumenViandas', () => {
 
     const [query] = mockPrisma.$queryRaw.mock.calls[0];
     expect(query.sql).not.toContain('e.lugar');
-    expect(query.values).toHaveLength(CATEGORIAS_SIN_MERIENDA.length + 2);
+    expect(query.values).toHaveLength(CATEGORIAS_SIN_MERIENDA.length + 3);
   });
 
   test('lugar null se trata como admin, no como filtro vacío', async () => {
@@ -583,7 +598,7 @@ describe('getResumenPresentismo', () => {
 
       const [query] = mockPrisma.$queryRaw.mock.calls[0];
       const sql = query.sql.replace(/\s+/g, ' ');
-      expect(sql).toContain('WHERE en.fecha >= ? AND en.fecha < ?');
+      expect(sql).toContain('WHERE en.club_id = ? AND en.fecha >= ? AND en.fecha < ?');
       expect(sql).not.toContain('<=');
       expect(sql).toContain('JOIN entrenamientos en ON en.id = a.entrenamiento_id');
       expect(sql).toContain('GROUP BY en.fecha');
@@ -626,7 +641,15 @@ describe('getResumenPresentismo', () => {
 
       const [query] = mockPrisma.$queryRaw.mock.calls[0];
       expect(query.sql).not.toContain('entrenador_id');
-      expect(query.values).toHaveLength(5);
+      expect(query.values).toHaveLength(6);
+    });
+
+    test('filtra los entrenamientos por el club del cliente', async () => {
+      await getResumenPresentismo({ rango: SEMANA, rangoPrevio: SEMANA_PREVIA });
+
+      const [query] = mockPrisma.$queryRaw.mock.calls[0];
+      expect(query.values[3]).toBe(CLUB_TEST.id);
+      expect(query.sql).not.toContain(CLUB_TEST.id);
     });
   });
 });

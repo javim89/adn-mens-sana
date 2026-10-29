@@ -4,9 +4,12 @@ const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: { $queryRaw: vi.fn() },
 }));
 
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock(mockPrisma),
+);
 
 import { getNivelTriageActual } from '../triage';
+import { CLUB_TEST } from '@/test-utils/tenant';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -26,15 +29,16 @@ describe('getNivelTriageActual', () => {
     expect(map.size).toBe(2);
   });
 
-  test('sin ids consulta toda la tabla', async () => {
+  test('sin ids consulta todo el triage del club (y solo del club)', async () => {
     mockPrisma.$queryRaw.mockResolvedValue([]);
     await getNivelTriageActual();
 
     expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
     const [query] = mockPrisma.$queryRaw.mock.calls[0];
-    expect(query.values).toEqual([]);
+    expect(query.values).toEqual([CLUB_TEST.id]);
     expect(query.sql).toContain('DISTINCT ON (triage.deportista_id)');
-    expect(query.sql).not.toContain('WHERE');
+    expect(query.sql).toContain('WHERE triage.club_id = ?');
+    expect(query.sql).not.toContain('IN (');
   });
 
   // El nivel vigente es el snapshot MÁS reciente: el `DESC` sobre calculated_at
@@ -53,8 +57,9 @@ describe('getNivelTriageActual', () => {
     await getNivelTriageActual(['d1', 'd2']);
 
     const [query] = mockPrisma.$queryRaw.mock.calls[0];
-    expect(query.values).toEqual(['d1', 'd2']);
-    expect(query.sql).toContain('WHERE triage.deportista_id IN (?,?)');
+    expect(query.values).toEqual([CLUB_TEST.id, 'd1', 'd2']);
+    expect(query.sql).toContain('WHERE triage.club_id = ?');
+    expect(query.sql).toContain('AND triage.deportista_id IN (?,?)');
   });
 
   test('con un array vacío devuelve Map vacío sin tocar la DB', async () => {
