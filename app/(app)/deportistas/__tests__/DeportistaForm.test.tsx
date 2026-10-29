@@ -211,6 +211,7 @@ describe('DeportistaForm — mode=create', () => {
 describe('DeportistaForm — mode=edit', () => {
   const mockDeportista: DeportistaWithRelations = {
     id: 'edit-id-123',
+    clubId: 'club_test',
     apellido: 'González',
     nombre: 'Pedro',
     dni: '98765432',
