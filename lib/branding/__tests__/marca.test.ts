@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { inicialesDelClub, urlIconoDelClub, urlLogoDelClub } from '../marca';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { inicialesDelClub, urlIconoDelClub, urlLoginDelClub, urlLogoDelClub } from '../marca';
 import { versionTema } from '../tema';
 
 describe('inicialesDelClub', () => {
@@ -34,5 +34,19 @@ describe('URLs de marca', () => {
 
   it('el slug va codificado', () => {
     expect(urlIconoDelClub({ slug: 'a b' }, 32)).toMatch(/^\/api\/clubes\/a%20b\/icono/);
+  });
+});
+
+describe('urlLoginDelClub', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('arma /c/<slug>/sign-in sobre la URL de la app', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.bioteam.test/');
+    expect(urlLoginDelClub('gimnasia-la-plata')).toBe('https://app.bioteam.test/c/gimnasia-la-plata/sign-in');
+  });
+
+  it('sin URL de la app queda la ruta relativa', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    expect(urlLoginDelClub('club prueba')).toBe('/c/club%20prueba/sign-in');
   });
 });

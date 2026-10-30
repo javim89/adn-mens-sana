@@ -53,3 +53,13 @@ export function urlLogoDelClub(club: ClubConMarca): string | null {
 export function urlIconoDelClub(club: ClubConMarca, tam: TamanioIcono): string {
   return `/api/clubes/${encodeURIComponent(club.slug)}/icono?tam=${tam}&v=${versionTema(club)}`;
 }
+
+/**
+ * URL de login con la marca del club, para compartir con su gente. Por ahora es la
+ * ruta `/c/<slug>/sign-in` del dominio de la app; con subdominios por club pasa a ser
+ * `<slug>.<dominio>/sign-in` (se cambia solo acá).
+ */
+export function urlLoginDelClub(slug: string): string {
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '');
+  return `${base}/c/${encodeURIComponent(slug)}/sign-in`;
+}
