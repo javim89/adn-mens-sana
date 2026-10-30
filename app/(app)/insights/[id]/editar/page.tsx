@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { getDashboard } from '@/lib/actions/insights';
+import { requireContexto } from '@/lib/tenant/contexto';
 import DashboardEditor from '../../_components/DashboardEditor';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,7 @@ export default async function EditarDashboardPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const result = await getDashboard(id);
+  const [result, contexto] = await Promise.all([getDashboard(id), requireContexto(['admin'])]);
 
   if (!result.success) {
     notFound();
@@ -39,7 +40,7 @@ export default async function EditarDashboardPage({
         Arrastrá y redimensioná los widgets. Los cambios se guardan todos juntos.
       </p>
 
-      <DashboardEditor dashboard={dashboard} />
+      <DashboardEditor dashboard={dashboard} permiteSql={contexto.esSuperadmin} />
     </div>
   );
 }

@@ -44,6 +44,11 @@ interface Props {
   widget?: WidgetDraft;
   dashboardNombre: string;
   onSave: (draft: WidgetDraft) => void;
+  /**
+   * Habilita el modo SQL. Por ahora solo para el staff de BioTeam (el servidor
+   * aplica el mismo gate); un widget SQL existente se ve pero no se edita.
+   */
+  permiteSql?: boolean;
 }
 
 function emptyDraft(): WidgetDraft {
@@ -77,6 +82,7 @@ export default function WidgetEditorDialog({
   widget,
   dashboardNombre,
   onSave,
+  permiteSql = false,
 }: Props) {
   const [draft, setDraft] = useState<WidgetDraft>(widget ?? emptyDraft());
   const [tab, setTab] = useState<'data' | 'custom'>('data');
@@ -266,34 +272,36 @@ export default function WidgetEditorDialog({
                   />
                 </div>
 
-                <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
-                  {(
-                    [
-                      ['builder', 'Constructor visual'],
-                      ['sql', 'SQL'],
-                    ] as const
-                  ).map(([mode, label]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      aria-pressed={draft.querySpec.mode === mode}
-                      onClick={() =>
-                        setSpec(
-                          mode === 'sql'
-                            ? ({ mode: 'sql', sql: '' } satisfies RawSqlSpec)
-                            : (emptyDraft().querySpec as QuerySpec),
-                        )
-                      }
-                      className={`px-3 py-1.5 text-xs transition-colors ${
-                        draft.querySpec.mode === mode
-                          ? 'bg-[#121A61] text-white'
-                          : 'bg-white text-[#6B7280]'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                {permiteSql && (
+                  <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
+                    {(
+                      [
+                        ['builder', 'Constructor visual'],
+                        ['sql', 'SQL'],
+                      ] as const
+                    ).map(([mode, label]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        aria-pressed={draft.querySpec.mode === mode}
+                        onClick={() =>
+                          setSpec(
+                            mode === 'sql'
+                              ? ({ mode: 'sql', sql: '' } satisfies RawSqlSpec)
+                              : (emptyDraft().querySpec as QuerySpec),
+                          )
+                        }
+                        className={`px-3 py-1.5 text-xs transition-colors ${
+                          draft.querySpec.mode === mode
+                            ? 'bg-[#121A61] text-white'
+                            : 'bg-white text-[#6B7280]'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {isBuilder ? (
                   <VisualBuilder
@@ -301,10 +309,18 @@ export default function WidgetEditorDialog({
                     onChange={(spec) => setSpec(spec)}
                   />
                 ) : (
-                  <SqlEditor
-                    sql={(draft.querySpec as RawSqlSpec).sql}
-                    onChange={(sql) => setSpec({ mode: 'sql', sql })}
-                  />
+                  <>
+                    {!permiteSql && (
+                      <p role="note" className="rounded-md bg-[#F3F4F6] px-3 py-2 text-xs text-[#6B7280]">
+                        Este widget usa una consulta SQL. Solo el equipo de BioTeam puede editarla.
+                      </p>
+                    )}
+                    <SqlEditor
+                      sql={(draft.querySpec as RawSqlSpec).sql}
+                      onChange={(sql) => setSpec({ mode: 'sql', sql })}
+                      readOnly={!permiteSql}
+                    />
+                  </>
                 )}
               </>
             ) : (

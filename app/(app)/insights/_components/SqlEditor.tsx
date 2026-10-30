@@ -7,6 +7,8 @@ import { validateRawSql } from '@/lib/insights/sql-guard';
 interface Props {
   sql: string;
   onChange: (sql: string) => void;
+  /** Se muestra la consulta sin poder editarla (modo SQL no habilitado). */
+  readOnly?: boolean;
 }
 
 const EJEMPLO = `SELECT
@@ -25,7 +27,7 @@ ORDER BY 2 DESC`;
  * solo comodidad: la validación que manda corre en el servidor, junto con la
  * transacción de solo lectura. Nada de lo que se muestre acá autoriza nada.
  */
-export default function SqlEditor({ sql, onChange }: Props) {
+export default function SqlEditor({ sql, onChange, readOnly = false }: Props) {
   const validation = useMemo(() => (sql.trim() ? validateRawSql(sql) : null), [sql]);
 
   return (
@@ -38,6 +40,7 @@ export default function SqlEditor({ sql, onChange }: Props) {
           id="insights-sql"
           value={sql}
           onChange={(e) => onChange(e.target.value)}
+          readOnly={readOnly}
           spellCheck={false}
           rows={12}
           placeholder={EJEMPLO}
@@ -73,6 +76,7 @@ export default function SqlEditor({ sql, onChange }: Props) {
           <code className="font-mono">WITH</code>. La consulta corre dentro de una transacción de
           solo lectura, con un límite de 10 segundos y 1000 filas.
         </p>
+        <p>Las tablas ya vienen filtradas por el club activo: solo se ven sus datos.</p>
       </div>
     </div>
   );

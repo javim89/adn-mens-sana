@@ -10,10 +10,11 @@
  * un rol de Postgres que solo tiene `SELECT`, el motor rechaza cualquier
  * escritura aunque todo lo demás falle.
  *
- * Es OPCIONAL: sin la variable seteada se cae al cliente normal y las otras dos
- * capas siguen operando. `isReadOnlyConfigured()` permite saber si está activa,
- * porque una capa de seguridad que uno cree tener y no tiene es peor que no
- * tenerla.
+ * En desarrollo es opcional: sin la variable se cae al cliente normal y las
+ * otras capas siguen operando. En PRODUCCIÓN es obligatoria y falla cerrado: con
+ * multi-tenant, las RLS por club de `insights_ro` son la capa que contiene a un
+ * SQL que salte el prelude (`public.deportistas`), y el cliente normal (dueño de
+ * las tablas) las bypasea. `isReadOnlyConfigured()` permite saber si está activa.
  *
  * Para crearlo en Neon (una sola vez, con el usuario dueño de la base —
  * normalmente `neondb_owner`):
@@ -35,8 +36,12 @@
  *    migraciones, las tablas nuevas no quedan legibles y el módulo falla recién
  *    al agregar un modelo — un error silencioso y molesto de diagnosticar.
  *
- * La última sentencia es la que hace que las tablas futuras también queden
- * legibles sin repetir el GRANT en cada migración.
+ * Multi-tenant: después de crear el rol hay que correr
+ * `node scripts/setup-insights-rls.mjs`, que habilita las RLS por club, deja
+ * SELECT solo en las tablas de `lib/insights/tenant-tablas.json` y QUITA el
+ * `ALTER DEFAULT PRIVILEGES` de arriba: una tabla nueva queda ilegible para
+ * Insights hasta clasificarla y volver a correr el script. Se verifica con
+ * `node scripts/check-insights-readonly.mjs`.
  */
 
 import { PrismaNeon } from '@prisma/adapter-neon';
@@ -63,11 +68,16 @@ function createReadOnlyClient(): PrismaClient | null {
  * Cliente para las lecturas de Insights.
  *
  * Devuelve el cliente de solo lectura si está configurado, y el singleton
- * normal si no. El resultado se cachea en `globalThis` por el mismo motivo que
+ * normal si no (solo fuera de producción). El resultado se cachea en `globalThis` por el mismo motivo que
  * en `lib/db.ts`: sin eso, cada recarga de HMR abriría un Pool nuevo y agotaría
  * el límite de conexiones.
  */
 export function getReadOnlyPrisma(): PrismaClient {
+  if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL_READONLY) {
+    throw new Error(
+      'DATABASE_URL_READONLY no está configurada: Insights no corre en producción sin el rol insights_ro',
+    );
+  }
   if (globalForReadOnly.prismaReadOnly === undefined) {
     globalForReadOnly.prismaReadOnly = createReadOnlyClient();
   }

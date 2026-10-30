@@ -8,6 +8,7 @@
  */
 
 import { getDataset } from './catalog';
+import { withTenantPrelude } from './tenant-prelude';
 import {
   MAX_DIMENSIONS,
   MAX_LIMIT,
@@ -440,7 +441,19 @@ function clampLimit(limit: number | undefined): number {
   return Math.min(MAX_LIMIT, Math.max(1, Math.floor(limit)));
 }
 
-export function compile(spec: QuerySpec, now: Date = new Date()): CompiledQuery {
+export interface CompileOptions {
+  /** Club de la sesión: viaja como `$1` y acota todas las tablas (ver `tenant-prelude.ts`). */
+  clubId: string;
+}
+
+export function compile(
+  spec: QuerySpec,
+  now: Date,
+  { clubId }: CompileOptions,
+): CompiledQuery {
+  if (typeof clubId !== 'string' || clubId.length === 0) {
+    throw new Error('compile: falta el club de la sesión');
+  }
   if (!spec || spec.mode !== 'builder') {
     throw new Error('QuerySpec inválido: se esperaba mode "builder"');
   }
@@ -462,7 +475,8 @@ export function compile(spec: QuerySpec, now: Date = new Date()): CompiledQuery 
     throw new Error('La query debe tener al menos una dimensión o una medida');
   }
 
-  const params: unknown[] = [];
+  // `$1` es el club, que usa el prelude; el resto de los valores arranca en `$2`.
+  const params: unknown[] = [clubId];
   const push: PushParam = (value) => `$${params.push(value)}`;
 
   // 1. Resolución del time grain contra las dimensiones seleccionadas.
@@ -568,7 +582,7 @@ export function compile(spec: QuerySpec, now: Date = new Date()): CompiledQuery 
   // 8. LIMIT clampeado.
   lines.push(`LIMIT ${push(clampLimit(spec.limit))}`);
 
-  return { sql: lines.join('\n'), params, columns };
+  return { sql: withTenantPrelude(lines.join('\n')), params, columns };
 }
 
 function dedupe(ids: string[]): string[] {

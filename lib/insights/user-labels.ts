@@ -11,17 +11,21 @@
  * charts y la tabla) y el export a CSV ya traducen por ahí, así que ningún
  * renderer necesita enterarse de que estos labels tienen otro origen.
  *
+ * Multi-tenant: solo se resuelven miembros del club (incluidas las membresías
+ * desactivadas). Un id que no es del club queda como id: el resultado de una
+ * query no puede servir para averiguar el nombre de un usuario de otro club.
+ *
  * Si Clerk falla, se devuelve el resultado intacto: se ven los ids, que es el
  * comportamiento que había antes. Un dashboard no se cae por esto.
  */
 
-import { clerkClient } from '@clerk/nextjs/server';
+import { getMiembrosDelClub, nombreVisible } from '@/lib/tenant/miembros';
 import type { ColumnMeta, QueryResult } from './types';
 
 /**
- * Tope de ids a resolver en una query. `getUserList` admite hasta 500 y ningún
- * widget legible tiene tantos responsables distintos; el tope está para que una
- * columna con cardinalidad inesperada no se convierta en un pedido gigante.
+ * Tope de ids a resolver en una query. Ningún widget legible tiene tantos
+ * responsables distintos; el tope está para que una columna con cardinalidad
+ * inesperada no se convierta en un pedido gigante.
  */
 const MAX_USER_IDS = 300;
 
@@ -49,31 +53,21 @@ export function collectUserIds(
 }
 
 /**
- * Nombre visible de cada id. Mismo criterio que el resto del repo (viandas,
- * turnos, seguimientos): nombre y apellido, con el mail como respaldo y el id
- * como último recurso, para que la celda nunca quede vacía.
+ * Nombre visible de cada id que sea miembro del club. Mismo criterio que el
+ * resto del repo (`nombreVisible`): nombre y apellido, con el mail como respaldo
+ * y el id como último recurso, para que la celda nunca quede vacía.
  */
-async function fetchUserNames(ids: string[]): Promise<Record<string, string>> {
+async function fetchUserNames(ids: string[], clubId: string): Promise<Record<string, string>> {
   try {
-    const client = await clerkClient();
-    const { data } = await client.users.getUserList({
-      userId: ids,
-      limit: ids.length,
-    });
-
+    const buscados = new Set(ids);
+    const miembros = await getMiembrosDelClub({ clubId, incluirInactivos: true });
     const nombres: Record<string, string> = {};
-    for (const user of data) {
-      const meta = (user.publicMetadata ?? {}) as Record<string, unknown>;
-      const nombre = user.firstName || String(meta.firstName ?? '');
-      const apellido = user.lastName || String(meta.lastName ?? '');
-      nombres[user.id] =
-        `${nombre} ${apellido}`.trim() ||
-        user.emailAddresses?.[0]?.emailAddress ||
-        user.id;
+    for (const miembro of miembros) {
+      if (buscados.has(miembro.userId)) nombres[miembro.userId] = nombreVisible(miembro);
     }
     return nombres;
   } catch (error) {
-    console.error('resolveUserLabels: falló la consulta a Clerk:', error);
+    console.error('resolveUserLabels: falló la consulta de miembros:', error);
     return {};
   }
 }
@@ -82,11 +76,11 @@ async function fetchUserNames(ids: string[]): Promise<Record<string, string>> {
  * Devuelve el mismo resultado con `enumLabels` completado en las columnas que
  * lo pidan. Sin columnas a resolver no toca Clerk ni el objeto original.
  */
-export async function resolveUserLabels(result: QueryResult): Promise<QueryResult> {
+export async function resolveUserLabels(result: QueryResult, clubId: string): Promise<QueryResult> {
   const ids = collectUserIds(result.columns, result.rows);
   if (ids.length === 0) return result;
 
-  const nombres = await fetchUserNames(ids);
+  const nombres = await fetchUserNames(ids, clubId);
   if (Object.keys(nombres).length === 0) return result;
 
   return {

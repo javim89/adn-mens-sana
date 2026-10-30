@@ -38,6 +38,7 @@ const { readOnlyClient, principal, getReadOnlyPrisma } = vi.hoisted(() => {
 });
 
 vi.mock('@/lib/db', () => ({ prisma: principal }));
+vi.mock('@/lib/tenant/insights-sesion', () => ({ tokenDeInsights: vi.fn(async () => 'token') }));
 vi.mock('@/lib/db-readonly', () => ({
   getReadOnlyPrisma,
   isReadOnlyConfigured: () => true,
@@ -62,21 +63,22 @@ beforeEach(() => {
 
 describe('runQuery', () => {
   it('consulta con el cliente de solo lectura', async () => {
-    await runQuery(spec);
+    await runQuery(spec, 'club_a');
 
     expect(getReadOnlyPrisma).toHaveBeenCalled();
     expect(readOnlyClient.$queryRawUnsafe).toHaveBeenCalled();
   });
 
   it('no usa el cliente principal', async () => {
-    await runQuery(spec);
+    await runQuery(spec, 'club_a');
     expect(principal.$queryRawUnsafe).not.toHaveBeenCalled();
+    expect(principal.$transaction).not.toHaveBeenCalled();
   });
 });
 
 describe('runRawSql', () => {
   it('abre la transacción con el cliente de solo lectura', async () => {
-    await runRawSql('SELECT 1 AS n');
+    await runRawSql('SELECT 1 AS n', 'club_a');
 
     expect(getReadOnlyPrisma).toHaveBeenCalled();
     expect(readOnlyClient.$transaction).toHaveBeenCalled();
@@ -86,7 +88,7 @@ describe('runRawSql', () => {
   // Las tres capas tienen que seguir apiladas: cambiar de cliente no reemplaza
   // a la transacción de solo lectura ni al timeout.
   it('mantiene READ ONLY y el statement_timeout dentro de la transacción', async () => {
-    await runRawSql('SELECT 1 AS n');
+    await runRawSql('SELECT 1 AS n', 'club_a');
 
     const ejecutados = readOnlyClient.$executeRawUnsafe.mock.calls.map((c) => c[0]);
     expect(ejecutados).toContain('SET TRANSACTION READ ONLY');
@@ -94,7 +96,7 @@ describe('runRawSql', () => {
   });
 
   it('el guard sigue rechazando antes de tocar la base', async () => {
-    await expect(runRawSql('DELETE FROM deportistas')).rejects.toThrow();
+    await expect(runRawSql('DELETE FROM deportistas', 'club_a')).rejects.toThrow();
     expect(readOnlyClient.$transaction).not.toHaveBeenCalled();
   });
 });

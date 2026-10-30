@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const { mockClubFindMany, mockDbDelClub } = vi.hoisted(() => ({
+const { mockClubFindMany, mockDbDelClub, mockLimpiar } = vi.hoisted(() => ({
   mockClubFindMany: vi.fn(),
+  mockLimpiar: vi.fn(),
   // Un "cliente" distinguible por club, para ver que cada club usa el suyo.
   mockDbDelClub: vi.fn((clubId: string) => ({ __club: clubId })),
 }));
 
 vi.mock('@/lib/db', () => ({ prisma: { club: { findMany: mockClubFindMany } } }));
 vi.mock('@/lib/tenant/db', () => ({ dbDelClub: mockDbDelClub }));
+vi.mock('@/lib/tenant/insights-sesion', () => ({
+  limpiarSesionesInsightsVencidas: mockLimpiar,
+}));
 vi.mock('@/lib/triage/recompute', () => ({
   recomputeAll: vi.fn(),
 }));
@@ -34,6 +38,7 @@ describe('POST /api/cron/triage', () => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = 'test-secret';
     mockClubFindMany.mockResolvedValue([{ id: 'club_a' }, { id: 'club_b' }]);
+    mockLimpiar.mockResolvedValue(0);
   });
 
   it('returns 401 without the secret', async () => {
@@ -99,8 +104,35 @@ describe('POST /api/cron/triage', () => {
     const res = await POST(conSecreto());
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ procesados: 0, clubes: [] });
+    await expect(res.json()).resolves.toEqual({ procesados: 0, clubes: [], sesionesInsightsBorradas: 0 });
     expect(recomputeAll).not.toHaveBeenCalled();
+  });
+
+  it('borra los tokens vencidos de insights_sesiones', async () => {
+    vi.mocked(recomputeAll).mockResolvedValue(RESUMEN(1));
+    mockLimpiar.mockResolvedValue(7);
+
+    const res = await POST(conSecreto());
+
+    expect(mockLimpiar).toHaveBeenCalledWith(expect.any(Date));
+    await expect(res.json()).resolves.toMatchObject({ sesionesInsightsBorradas: 7 });
+  });
+
+  it('si falla la limpieza, el triage igual responde 200', async () => {
+    vi.mocked(recomputeAll).mockResolvedValue(RESUMEN(1));
+    mockLimpiar.mockRejectedValue(new Error('boom'));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await POST(conSecreto());
+
+    expect(res.status).toBe(200);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('sin el secreto no limpia nada', async () => {
+    await POST(new Request('http://localhost/api/cron/triage', { method: 'POST' }));
+    expect(mockLimpiar).not.toHaveBeenCalled();
   });
 
   afterEach(() => {

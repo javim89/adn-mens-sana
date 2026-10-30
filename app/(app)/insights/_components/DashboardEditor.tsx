@@ -34,7 +34,14 @@ function nextPosition(widgets: DashboardWidget[]) {
   return { x: 0, y: bottom, w: 6, h: 8 };
 }
 
-export default function DashboardEditor({ dashboard }: { dashboard: DashboardDetail }) {
+export default function DashboardEditor({
+  dashboard,
+  permiteSql = false,
+}: {
+  dashboard: DashboardDetail;
+  /** Habilita el modo SQL en el editor de widgets (staff de BioTeam). */
+  permiteSql?: boolean;
+}) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
 
@@ -288,6 +295,7 @@ export default function DashboardEditor({ dashboard }: { dashboard: DashboardDet
           if (!open) setEditing(undefined);
         }}
         dashboardNombre={dashboard.nombre}
+        permiteSql={permiteSql}
         widget={
           editing
             ? {

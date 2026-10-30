@@ -1,4 +1,4 @@
-import { describe, test, it, expect, vi, beforeEach } from 'vitest';
+import { describe, test, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const { mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
   const mockRevalidatePath = vi.fn();
@@ -293,6 +293,99 @@ describe('validación del querySpec al persistir', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Modo SQL: solo superadmin
+// ---------------------------------------------------------------------------
+
+describe('modo SQL — solo para el staff de BioTeam', () => {
+  const sqlSpec = { mode: 'sql' as const, sql: 'SELECT 1 AS uno' };
+  const widgetSql = {
+    titulo: 'SQL',
+    tipo: 'table' as const,
+    vizConfig: { type: 'table' as const },
+    querySpec: sqlSpec,
+    x: 0,
+    y: 0,
+    w: 6,
+    h: 6,
+  };
+  const MENSAJE = 'El modo SQL está disponible solo para el equipo de BioTeam';
+
+  beforeEach(() => {
+    mockPrisma.insightsDashboard.findUnique.mockResolvedValue({ id: 'dash_1', esSistema: false });
+  });
+
+  afterEach(() => {
+    mockPrisma.insightsWidget.findUnique.mockResolvedValue(null);
+    mockPrisma.insightsWidget.findMany.mockResolvedValue([]);
+  });
+
+  it('un admin del club no puede crear un widget SQL', async () => {
+    const result = await saveWidget('dash_1', widgetSql);
+
+    expect(result).toEqual({ success: false, error: MENSAJE });
+    expect(mockPrisma.insightsWidget.create).not.toHaveBeenCalled();
+  });
+
+  it('un admin del club no puede cambiar el SQL de un widget existente', async () => {
+    mockPrisma.insightsWidget.findUnique.mockResolvedValue({
+      id: 'w_1',
+      dashboardId: 'dash_1',
+      querySpec: { sql: 'SELECT 2', mode: 'sql' },
+    });
+
+    const result = await saveWidget('dash_1', { ...widgetSql, id: 'w_1' });
+
+    expect(result).toEqual({ success: false, error: MENSAJE });
+    expect(mockPrisma.insightsWidget.update).not.toHaveBeenCalled();
+  });
+
+  it('un widget SQL existente sin cambios en la consulta se puede volver a guardar', async () => {
+    // jsonb devuelve las claves en otro orden: se compara el SQL, no el JSON.
+    mockPrisma.insightsWidget.findUnique.mockResolvedValue({
+      id: 'w_1',
+      dashboardId: 'dash_1',
+      querySpec: { sql: 'SELECT 1 AS uno', mode: 'sql' },
+    });
+    mockPrisma.insightsWidget.update.mockResolvedValue({ id: 'w_1', ...widgetSql });
+
+    const result = await saveWidget('dash_1', { ...widgetSql, id: 'w_1', titulo: 'Renombrado' });
+
+    expect(result.success).toBe(true);
+    expect(mockPrisma.insightsWidget.update).toHaveBeenCalled();
+  });
+
+  it('el superadmin sí puede crear un widget SQL', async () => {
+    setContexto(mockContexto('admin', { userId: 'user_staff', esSuperadmin: true }));
+    mockPrisma.insightsWidget.create.mockResolvedValue({ id: 'w_new', ...widgetSql });
+
+    const result = await saveWidget('dash_1', widgetSql);
+
+    expect(result.success).toBe(true);
+    expect(mockPrisma.insightsWidget.create).toHaveBeenCalled();
+  });
+
+  it('el layout de un admin del club no puede meter un widget SQL nuevo', async () => {
+    mockPrisma.insightsWidget.findMany.mockResolvedValue([]);
+
+    const result = await saveDashboardLayout('dash_1', [widgetSql]);
+
+    expect(result).toEqual({ success: false, error: MENSAJE });
+    expect(mockPrisma.insightsWidget.create).not.toHaveBeenCalled();
+  });
+
+  it('el layout de un admin del club conserva un widget SQL existente sin cambios', async () => {
+    mockPrisma.insightsWidget.findMany.mockResolvedValue([
+      { id: 'w_sql', querySpec: { sql: 'SELECT 1 AS uno', mode: 'sql' } },
+    ]);
+    mockPrisma.insightsWidget.update.mockResolvedValue({ id: 'w_sql', ...widgetSql });
+
+    const result = await saveDashboardLayout('dash_1', [{ ...widgetSql, id: 'w_sql', x: 6 }]);
+
+    expect(result.success).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Guardado del layout
 // ---------------------------------------------------------------------------
 
@@ -490,7 +583,7 @@ describe('seed "Panorama general"', () => {
       expect(
         parsed.success ? null : `${w.titulo}: ${JSON.stringify(parsed.error.issues)}`,
       ).toBeNull();
-      expect(() => compile(querySpecSchema.parse(w.querySpec))).not.toThrow();
+      expect(() => compile(querySpecSchema.parse(w.querySpec), new Date(), { clubId: 'club_test' })).not.toThrow();
     }
   });
 
@@ -513,7 +606,7 @@ describe('seed "Viandas"', () => {
       expect(
         parsed.success ? null : `${w.titulo}: ${JSON.stringify(parsed.error.issues)}`,
       ).toBeNull();
-      expect(() => compile(querySpecSchema.parse(w.querySpec))).not.toThrow();
+      expect(() => compile(querySpecSchema.parse(w.querySpec), new Date(), { clubId: 'club_test' })).not.toThrow();
     }
   });
 

@@ -103,6 +103,27 @@ describe('con DATABASE_URL_READONLY', () => {
   });
 });
 
+describe('en producción', () => {
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'production');
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  // Sin el rol de solo lectura, el fallback sería el cliente dueño de las
+  // tablas, que bypasea las RLS por club de `insights_ro`: falla cerrado.
+  it('sin DATABASE_URL_READONLY tira en vez de caer al cliente principal', () => {
+    expect(() => getReadOnlyPrisma()).toThrow(/DATABASE_URL_READONLY/);
+    expect(PrismaClientMock).not.toHaveBeenCalled();
+  });
+
+  it('con DATABASE_URL_READONLY devuelve el cliente de solo lectura', () => {
+    process.env.DATABASE_URL_READONLY = 'postgresql://insights_ro:secreto@host/neondb';
+    expect((getReadOnlyPrisma() as unknown as { __id: string }).__id).toBe('readonly');
+  });
+});
+
 describe('cache negativo', () => {
   it('no reintenta construir cuando ya resolvió que no hay variable', () => {
     getReadOnlyPrisma();

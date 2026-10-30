@@ -88,14 +88,48 @@ export type DashboardDetail = {
 // Guard
 // ---------------------------------------------------------------------------
 
-async function assertAdmin(): Promise<Fail | { success: true; userId: string; db: DbClub }> {
+async function assertAdmin(): Promise<
+  Fail | { success: true; userId: string; db: DbClub; esSuperadmin: boolean }
+> {
   const contexto = await getContextoClub();
   if (!contexto) return { success: false, error: 'No autorizado' };
   if (contexto.rol !== 'admin') {
     return { success: false, error: 'Acceso denegado: se requiere rol admin' };
   }
   // Los dashboards son por club: todo el CRUD va por el cliente acotado.
-  return { success: true, userId: contexto.userId, db: dbDelClub(contexto.clubId) };
+  return {
+    success: true,
+    userId: contexto.userId,
+    db: dbDelClub(contexto.clubId),
+    esSuperadmin: contexto.esSuperadmin,
+  };
+}
+
+/**
+ * El modo SQL es solo para el staff de BioTeam hasta verificar las RLS de
+ * `insights_ro` en producción (el mismo gate está en `POST /api/insights/query`).
+ * Un admin del club no puede crear ni editar un widget SQL; uno que ya existía
+ * se conserva tal cual.
+ */
+const SQL_SOLO_SUPERADMIN = 'El modo SQL está disponible solo para el equipo de BioTeam';
+
+class SqlSoloSuperadminError extends Error {
+  constructor() {
+    super(SQL_SOLO_SUPERADMIN);
+  }
+}
+
+function esSql(spec: unknown): boolean {
+  return (spec as { mode?: unknown } | null)?.mode === 'sql';
+}
+
+/** Mismo SQL guardado (no se compara el JSON entero: jsonb reordena las claves). */
+function mismoSpec(guardado: unknown, nuevo: unknown): boolean {
+  return (
+    esSql(guardado) &&
+    esSql(nuevo) &&
+    (guardado as { sql?: unknown }).sql === (nuevo as { sql?: unknown }).sql
+  );
 }
 
 function fail(error: unknown, fallback: string): Fail {
@@ -483,9 +517,20 @@ export async function saveDashboardLayout(
     const saved = await db.$transaction(async (tx) => {
       const existing = await tx.insightsWidget.findMany({
         where: { dashboardId: id },
-        select: { id: true },
+        select: { id: true, querySpec: true },
       });
       const existingIds = new Set(existing.map((w) => w.id));
+      const specGuardado = new Map(existing.map((w) => [w.id, w.querySpec]));
+
+      if (!guard.esSuperadmin) {
+        const sqlNuevo = parsed.data.some(
+          (widget) =>
+            esSql(widget.querySpec) &&
+            !(widget.id && existingIds.has(widget.id) && mismoSpec(specGuardado.get(widget.id), widget.querySpec)),
+        );
+        if (sqlNuevo) throw new SqlSoloSuperadminError();
+      }
+
       const keptIds = new Set<string>();
       const result: DashboardWidget[] = [];
 
@@ -566,6 +611,14 @@ export async function saveWidget(
     const existing = input.id
       ? await db.insightsWidget.findUnique({ where: { id: input.id } })
       : null;
+
+    if (
+      !guard.esSuperadmin &&
+      esSql(input.querySpec) &&
+      !(existing && existing.dashboardId === dashboardId && mismoSpec(existing.querySpec, input.querySpec))
+    ) {
+      return { success: false, error: SQL_SOLO_SUPERADMIN };
+    }
 
     const saved =
       existing && existing.dashboardId === dashboardId
