@@ -1,25 +1,33 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
-const { mockPrisma, mockCookieSet } = vi.hoisted(() => ({
+const { mockPrisma, mockCookieSet, mockCookieDelete } = vi.hoisted(() => ({
   mockPrisma: {
     membresia: { findFirst: vi.fn(), findMany: vi.fn() },
     superadmin: { findUnique: vi.fn() },
-    club: { findFirst: vi.fn() },
+    club: { findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
   },
   mockCookieSet: vi.fn(),
+  mockCookieDelete: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
-vi.mock('next/headers', () => ({ cookies: async () => ({ set: mockCookieSet }) }));
+vi.mock('next/headers', () => ({ cookies: async () => ({ set: mockCookieSet, delete: mockCookieDelete }) }));
 vi.mock('../contexto', () => ({ CLUB_COOKIE: 'bt_club' }));
 
-import { getMisClubes, puedeEntrarAlClub, guardarClubActivo } from '../clubes';
+import {
+  getMisClubes,
+  puedeEntrarAlClub,
+  guardarClubActivo,
+  getBrandingPublico,
+  actualizarBrandingDelClub,
+} from '../clubes';
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockPrisma.membresia.findFirst.mockResolvedValue(null);
   mockPrisma.superadmin.findUnique.mockResolvedValue(null);
   mockPrisma.club.findFirst.mockResolvedValue(null);
+  mockPrisma.club.findUnique.mockResolvedValue(null);
 });
 
 describe('puedeEntrarAlClub', () => {
@@ -72,15 +80,95 @@ describe('getMisClubes', () => {
   });
 });
 
+const OPCIONES_COOKIE = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: false,
+  path: '/',
+  maxAge: 60 * 60 * 24 * 365,
+};
+
 describe('guardarClubActivo', () => {
   test('cookie httpOnly, sameSite lax, un año', async () => {
     await guardarClubActivo('club_a');
-    expect(mockCookieSet).toHaveBeenCalledWith('bt_club', 'club_a', {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
-      path: '/',
-      maxAge: 60 * 60 * 24 * 365,
+    expect(mockCookieSet).toHaveBeenCalledWith('bt_club', 'club_a', OPCIONES_COOKIE);
+  });
+
+  test('también guarda el slug del club en bt_club_slug', async () => {
+    mockPrisma.club.findUnique.mockResolvedValue({ slug: 'club-a' });
+    await guardarClubActivo('club_a');
+    expect(mockPrisma.club.findUnique).toHaveBeenCalledWith({ where: { id: 'club_a' }, select: { slug: true } });
+    expect(mockCookieSet).toHaveBeenCalledWith('bt_club_slug', 'club-a', OPCIONES_COOKIE);
+  });
+
+  test('si el club no existe, borra bt_club_slug', async () => {
+    mockPrisma.club.findUnique.mockResolvedValue(null);
+    await guardarClubActivo('club_x');
+    expect(mockCookieDelete).toHaveBeenCalledWith('bt_club_slug');
+    expect(mockCookieSet).not.toHaveBeenCalledWith('bt_club_slug', expect.anything(), expect.anything());
+  });
+});
+
+describe('getBrandingPublico', () => {
+  test('busca solo clubes activos por slug', async () => {
+    const club = { id: 'club_a', nombre: 'A', slug: 'a', logoKey: null, colorPrimario: null, colorSecundario: null, colorAcento: null };
+    mockPrisma.club.findFirst.mockResolvedValue(club);
+    await expect(getBrandingPublico('a')).resolves.toEqual(club);
+    const arg = mockPrisma.club.findFirst.mock.calls[0][0];
+    expect(arg.where).toEqual({ slug: 'a', activo: true });
+    expect(arg.select).toEqual({
+      id: true,
+      nombre: true,
+      slug: true,
+      logoKey: true,
+      colorPrimario: true,
+      colorSecundario: true,
+      colorAcento: true,
     });
+  });
+
+  test('club inexistente o desactivado: null', async () => {
+    await expect(getBrandingPublico('no-existe')).resolves.toBeNull();
+  });
+
+  test('slug vacío: null sin consultar', async () => {
+    await expect(getBrandingPublico('')).resolves.toBeNull();
+    expect(mockPrisma.club.findFirst).not.toHaveBeenCalled();
+  });
+});
+
+describe('actualizarBrandingDelClub', () => {
+  test('actualiza solo el club pedido, con los colores normalizados', async () => {
+    mockPrisma.club.update.mockResolvedValue({ id: 'club_a' });
+    await actualizarBrandingDelClub('club_a', {
+      nombre: '  Club A  ',
+      colorPrimario: '#8B0000',
+      colorSecundario: 'abc',
+      colorAcento: null,
+    });
+    const arg = mockPrisma.club.update.mock.calls[0][0];
+    expect(arg.where).toEqual({ id: 'club_a' });
+    expect(arg.data).toEqual({
+      nombre: 'Club A',
+      colorPrimario: '#8b0000',
+      colorSecundario: '#aabbcc',
+      colorAcento: null,
+    });
+  });
+
+  test('los campos ausentes no se tocan', async () => {
+    mockPrisma.club.update.mockResolvedValue({ id: 'club_a' });
+    await actualizarBrandingDelClub('club_a', { logoKey: 'clubes/club_a/logo/x.png' });
+    expect(mockPrisma.club.update.mock.calls[0][0].data).toEqual({ logoKey: 'clubes/club_a/logo/x.png' });
+  });
+
+  test('un color inválido tira y no escribe', async () => {
+    await expect(actualizarBrandingDelClub('club_a', { colorPrimario: 'red;}body{' })).rejects.toThrow(/Color inválido/);
+    expect(mockPrisma.club.update).not.toHaveBeenCalled();
+  });
+
+  test('sin clubId tira', async () => {
+    await expect(actualizarBrandingDelClub('', { nombre: 'X' })).rejects.toThrow();
+    expect(mockPrisma.club.update).not.toHaveBeenCalled();
   });
 });

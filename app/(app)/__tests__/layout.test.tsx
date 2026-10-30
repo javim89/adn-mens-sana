@@ -97,6 +97,25 @@ describe('AppLayout: nav según el rol de la membresía', () => {
     expect(container.querySelector('aside')).toHaveAttribute('data-club-id', CLUB_TEST.id)
   })
 
+  it('inyecta el tema del club activo', async () => {
+    setContexto(mockContexto('admin', { club: { ...CLUB_TEST, colorPrimario: '#8b0000' } }))
+
+    const result = await AppLayout({ children: <div /> })
+    const { container } = render(result)
+
+    const style = container.querySelector('style[data-tema-club]')
+    expect(style?.textContent).toContain('--club-primario:#8b0000;')
+  })
+
+  it('club sin colores: el tema es el default (BioTeam)', async () => {
+    comoRol('admin')
+
+    const result = await AppLayout({ children: <div /> })
+    const { container } = render(result)
+
+    expect(container.querySelector('style[data-tema-club]')?.textContent).toContain('--club-primario:#121a61;')
+  })
+
   it('sin club accesible redirige a /bienvenida', async () => {
     setContexto(null)
 

@@ -1,6 +1,8 @@
 import { getNavItemsForRole } from '../../lib/roles';
 import { requireContexto } from '@/lib/tenant/contexto';
 import { getMisClubes } from '@/lib/tenant/clubes';
+import { temaDelClub } from '@/lib/branding/tema';
+import TemaClub from '@/app/components/branding/TemaClub';
 import Providers from './providers';
 import AppShell from './_components/AppShell';
 
@@ -18,6 +20,7 @@ export default async function AppLayout({
 
   return (
     <Providers clubId={club.id}>
+      <TemaClub tema={temaDelClub(club)} />
       <div className="flex flex-col min-h-screen flex-1 min-w-0">
         <AppShell
           navItems={navItems}

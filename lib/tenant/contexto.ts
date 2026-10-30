@@ -24,7 +24,7 @@ export const CLUB_COOKIE = 'bt_club';
 
 export type ClubDelContexto = Pick<
   Club,
-  'id' | 'nombre' | 'slug' | 'logoKey' | 'logoUrl' | 'colorPrimario' | 'colorSecundario'
+  'id' | 'nombre' | 'slug' | 'logoKey' | 'colorPrimario' | 'colorSecundario' | 'colorAcento'
 >;
 
 export type ContextoClub = {
@@ -44,9 +44,9 @@ const SELECT_CLUB = {
   nombre: true,
   slug: true,
   logoKey: true,
-  logoUrl: true,
   colorPrimario: true,
   colorSecundario: true,
+  colorAcento: true,
 } as const;
 
 async function resolverContexto(userId: string, clubPedido: string | undefined): Promise<ContextoClub | null> {

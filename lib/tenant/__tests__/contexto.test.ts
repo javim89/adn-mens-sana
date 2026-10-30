@@ -21,7 +21,7 @@ vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
 const { getContextoClub, requireContexto, contextoAccion, contextoApi, CLUB_COOKIE } = await import('../contexto');
 
 function club(id: string) {
-  return { id, nombre: `Club ${id}`, slug: id, logoKey: null, logoUrl: null, colorPrimario: null, colorSecundario: null };
+  return { id, nombre: `Club ${id}`, slug: id, logoKey: null, colorPrimario: null, colorSecundario: null, colorAcento: null };
 }
 
 function membresia(clubId: string, rol = 'entrenador', lugarRetiro: string | null = null) {

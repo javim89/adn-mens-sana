@@ -132,10 +132,12 @@ model Club {
   nombre          String
   slug            String  @unique
   logoKey         String? @map("logo_key")
+  /// En desuso: se reemplazó por `logoKey` y se dropea en una limpieza posterior.
   logoUrl         String? @map("logo_url")
-  /// Reservados para el branding por club (fase 2).
+  /// Colores del tema del club: `#rrggbb` en minúscula (CHECK en la base). Nulo = default.
   colorPrimario   String? @map("color_primario")
   colorSecundario String? @map("color_secundario")
+  colorAcento     String? @map("color_acento")
   activo          Boolean @default(true)
 
   membresias         Membresia[]

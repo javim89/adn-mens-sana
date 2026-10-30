@@ -23,9 +23,9 @@ export const CLUB_TEST = {
   nombre: 'Club de prueba',
   slug: 'club-de-prueba',
   logoKey: null,
-  logoUrl: null,
   colorPrimario: null,
   colorSecundario: null,
+  colorAcento: null,
 } satisfies ContextoClub['club'];
 
 /** Un contexto válido con el rol pedido. */
