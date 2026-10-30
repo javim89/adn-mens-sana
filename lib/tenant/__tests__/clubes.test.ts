@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
-const { mockPrisma, mockCookieSet, mockCookieDelete } = vi.hoisted(() => ({
+const { mockPrisma, mockCookieSet, mockCookieDelete, mockHost } = vi.hoisted(() => ({
+  mockHost: { valor: 'localhost:3000' as string | null },
   mockPrisma: {
     membresia: { findFirst: vi.fn(), findMany: vi.fn() },
     superadmin: { findUnique: vi.fn() },
@@ -11,7 +12,10 @@ const { mockPrisma, mockCookieSet, mockCookieDelete } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
-vi.mock('next/headers', () => ({ cookies: async () => ({ set: mockCookieSet, delete: mockCookieDelete }) }));
+vi.mock('next/headers', () => ({
+  cookies: async () => ({ set: mockCookieSet, delete: mockCookieDelete }),
+  headers: async () => new Headers(mockHost.valor ? { host: mockHost.valor } : {}),
+}));
 vi.mock('../contexto', () => ({ CLUB_COOKIE: 'bt_club' }));
 
 import {
@@ -99,6 +103,25 @@ describe('guardarClubActivo', () => {
     await guardarClubActivo('club_a');
     expect(mockPrisma.club.findUnique).toHaveBeenCalledWith({ where: { id: 'club_a' }, select: { slug: true } });
     expect(mockCookieSet).toHaveBeenCalledWith('bt_club_slug', 'club-a', OPCIONES_COOKIE);
+  });
+
+  test('devuelve el slug del club (para ir a su subdominio), o null si no existe', async () => {
+    mockPrisma.club.findUnique.mockResolvedValue({ slug: 'club-a' });
+    await expect(guardarClubActivo('club_a')).resolves.toBe('club-a');
+    mockPrisma.club.findUnique.mockResolvedValue(null);
+    await expect(guardarClubActivo('club_x')).resolves.toBeNull();
+  });
+
+  test('con subdominios, bt_club_slug se comparte con todo el dominio raíz', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    mockHost.valor = 'gimnasia.bioteam.app';
+    mockPrisma.club.findUnique.mockResolvedValue({ slug: 'club-a' });
+    await guardarClubActivo('club_a');
+    expect(mockCookieSet).toHaveBeenCalledWith('bt_club_slug', 'club-a', { ...OPCIONES_COOKIE, domain: 'bioteam.app' });
+    // `bt_club` no: con subdominios el club lo decide el host.
+    expect(mockCookieSet).toHaveBeenCalledWith('bt_club', 'club_a', OPCIONES_COOKIE);
+    vi.unstubAllEnvs();
+    mockHost.valor = 'localhost:3000';
   });
 
   test('si el club no existe, borra bt_club_slug', async () => {

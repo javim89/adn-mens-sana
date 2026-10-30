@@ -2,7 +2,7 @@
  * Destino del login de un club (`forceRedirectUrl` de su `<SignIn>` / `<SignUp>`).
  * Exige sesión (`proxy.ts`). Acepta las invitaciones pendientes (típicamente: acaba
  * de crear la cuenta desde la del club) y, si el usuario puede entrar al club, lo
- * deja como activo y sigue a `/dashboard`. Si no, `/bienvenida` decide: otro club
+ * deja como activo y sigue a `/dashboard` (la de su subdominio, si hay). Si no, `/bienvenida` decide: otro club
  * suyo o "sin acceso".
  */
 
@@ -11,6 +11,7 @@ import { redirect } from 'next/navigation';
 import { rutaLoginDelClub } from '@/lib/branding/login';
 import { aceptarInvitacionesPendientes } from '@/lib/tenant/invitaciones';
 import { getBrandingPublico, guardarClubActivo, puedeEntrarAlClub } from '@/lib/tenant/clubes';
+import { urlDelClub } from '@/lib/tenant/host';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   const club = await getBrandingPublico(slug);
   if (club && (await puedeEntrarAlClub(userId, club.id))) {
     await guardarClubActivo(club.id);
-    redirect('/dashboard');
+    redirect(urlDelClub(club.slug, '/dashboard') ?? '/dashboard');
   }
   redirect('/bienvenida');
 }

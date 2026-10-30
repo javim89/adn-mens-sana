@@ -17,6 +17,7 @@ import type { Prisma } from '@/lib/generated/prisma/client';
 import { esViolacionDeUnique } from '@/lib/utils/prisma-errores';
 import { guardarClubActivo, esSuperadmin } from '@/lib/tenant/clubes';
 import { DIAS_INVITACION, buscarCuentaVerificada, invitacionClerkPara, venceEn } from '@/lib/tenant/cuentas';
+import { SUBDOMINIOS_RESERVADOS, urlDelClub } from '@/lib/tenant/host';
 import { nuevoTokenInvitacion } from '@/lib/tenant/invitaciones';
 import {
   CATEGORIAS_DEFAULT,
@@ -75,7 +76,9 @@ const crearClubSchema = z.object({
     .trim()
     .min(SLUG_MIN, `El slug necesita al menos ${SLUG_MIN} caracteres`)
     .max(SLUG_MAX, `El slug admite hasta ${SLUG_MAX} caracteres`)
-    .regex(SLUG_REGEX, 'Solo minúsculas, números y guiones (ej.: club-atletico)'),
+    .regex(SLUG_REGEX, 'Solo minúsculas, números y guiones (ej.: club-atletico)')
+    // Es el subdominio del club: los de la infraestructura (www, clerk, …) no se pueden usar.
+    .refine((slug) => !SUBDOMINIOS_RESERVADOS.has(slug), 'Ese slug está reservado'),
   adminEmail: z.string().trim().toLowerCase().email('El email no es válido'),
   adminNombre: z.string().trim().min(1, 'El nombre es requerido'),
   adminApellido: z.string().trim().min(1, 'El apellido es requerido'),
@@ -208,11 +211,12 @@ export async function crearClub(input: CrearClubInput): Promise<ResultadoCrearCl
 export async function entrarAClub(clubId: string): Promise<Error_> {
   if (!(await superadminActual())) return { ok: false, error: NO_AUTORIZADO };
 
-  const club = await prisma.club.findFirst({ where: { id: clubId, activo: true }, select: { id: true } });
+  const club = await prisma.club.findFirst({ where: { id: clubId, activo: true }, select: { id: true, slug: true } });
   if (!club) return { ok: false, error: 'El club no existe o está desactivado' };
 
   await guardarClubActivo(club.id);
-  redirect('/dashboard');
+  // Con subdominios, al del club (ahí el host decide el club, no la cookie).
+  redirect(urlDelClub(club.slug, '/dashboard') ?? '/dashboard');
 }
 
 /** Activa o desactiva un club. Desactivado, nadie entra (ni sus miembros ni el cron). */

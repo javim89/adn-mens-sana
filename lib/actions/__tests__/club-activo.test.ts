@@ -28,6 +28,20 @@ describe('cambiarClubActivo', () => {
     expect(mockGuardar).toHaveBeenCalledWith('club_b');
   });
 
+  test('con subdominios, el selector navega al /dashboard del subdominio del club elegido', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    mockGuardar.mockResolvedValue('club-b');
+    await expect(cambiarClubActivo('club_b')).rejects.toThrow('NEXT_REDIRECT:https://club-b.bioteam.app/dashboard');
+    vi.unstubAllEnvs();
+  });
+
+  test('en local con subdominios (localhost) usa http y el puerto', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'localhost:3000');
+    mockGuardar.mockResolvedValue('club-b');
+    await expect(cambiarClubActivo('club_b')).rejects.toThrow('NEXT_REDIRECT:http://club-b.localhost:3000/dashboard');
+    vi.unstubAllEnvs();
+  });
+
   test('sin acceso al club: error y no toca la cookie', async () => {
     mockPuede.mockResolvedValue(false);
     await expect(cambiarClubActivo('club_ajeno')).resolves.toEqual({

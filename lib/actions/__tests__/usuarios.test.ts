@@ -321,6 +321,15 @@ describe('invitarUsuario', () => {
     expect(mockClerk.invitations.createInvitation.mock.calls[0][0].redirectUrl).toMatch(
       new RegExp(`/c/${CLUB_TEST.slug}/sign-up$`),
     );
+
+    // Con subdominios, el del club.
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    mockDb.invitacion.findFirst.mockResolvedValue(null);
+    await invitarUsuario({ ...base, email: 'otra@club.com' });
+    expect(mockClerk.invitations.createInvitation.mock.calls.at(-1)![0].redirectUrl).toBe(
+      `https://${CLUB_TEST.slug}.bioteam.app/sign-up`,
+    );
+    vi.unstubAllEnvs();
     // La invitación de Clerk ya no lleva el rol: el acceso lo da la fila del club.
     expect(mockClerk.invitations.createInvitation.mock.calls[0][0]).not.toHaveProperty('publicMetadata');
     expect(mockDb.invitacion.create).toHaveBeenCalledWith({

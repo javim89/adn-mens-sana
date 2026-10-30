@@ -85,6 +85,12 @@ describe('autorización', () => {
 });
 
 describe('crearClub', () => {
+  test('rechaza un slug reservado para la infraestructura (es el subdominio del club)', async () => {
+    const res = await crearClub({ ...INPUT, slug: 'www' });
+    expect(res).toMatchObject({ ok: false, campos: { slug: 'Ese slug está reservado' } });
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
   test('en una tx crea club, catálogos, dashboards de sistema e invitación al admin', async () => {
     const res = await crearClub(INPUT);
 
@@ -209,14 +215,21 @@ describe('crearClub', () => {
 
 describe('entrarAClub', () => {
   test('club activo: guarda la cookie y redirige a /dashboard', async () => {
-    mockPrisma.club.findFirst.mockResolvedValue({ id: 'club_a' });
+    mockPrisma.club.findFirst.mockResolvedValue({ id: 'club_a', slug: 'club-a' });
 
     await expect(entrarAClub('club_a')).rejects.toThrow('NEXT_REDIRECT:/dashboard');
     expect(mockPrisma.club.findFirst).toHaveBeenCalledWith({
       where: { id: 'club_a', activo: true },
-      select: { id: true },
+      select: { id: true, slug: true },
     });
     expect(mockGuardar).toHaveBeenCalledWith('club_a');
+  });
+
+  test('con subdominios, va al /dashboard del subdominio del club', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    mockPrisma.club.findFirst.mockResolvedValue({ id: 'club_a', slug: 'club-a' });
+    await expect(entrarAClub('club_a')).rejects.toThrow('NEXT_REDIRECT:https://club-a.bioteam.app/dashboard');
+    vi.unstubAllEnvs();
   });
 
   test('club inexistente o desactivado: error, sin cookie', async () => {

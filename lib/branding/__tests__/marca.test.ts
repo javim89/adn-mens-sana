@@ -49,4 +49,10 @@ describe('urlLoginDelClub', () => {
     vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
     expect(urlLoginDelClub('club prueba')).toBe('/c/club%20prueba/sign-in');
   });
+
+  it('con subdominios es <slug>.<raíz>/sign-in', () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.bioteam.test/');
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    expect(urlLoginDelClub('gimnasia-la-plata')).toBe('https://gimnasia-la-plata.bioteam.app/sign-in');
+  });
 });

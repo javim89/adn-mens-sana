@@ -2,10 +2,13 @@
  * Club activo de la sesión y rol del usuario en ese club.
  *
  * El rol ya no sale de Clerk (`publicMetadata.role`): vive en `Membresia`, que es
- * por club. El club activo lo elige la cookie `bt_club`, pero la cookie solo
- * propone: se valida contra las membresías activas del usuario (o contra
- * `Superadmin`). Si no valida, se cae en la primera membresía; sin ninguna, no
- * hay contexto (`null`).
+ * por club. El club activo lo propone:
+ * - en un subdominio de club, el host (header `x-club-slug`, que escribe solo el
+ *   proxy). Es estricto: sin acceso a ESE club no hay contexto (`requireContexto`
+ *   manda a `/bienvenida` del dominio raíz), nunca se cae en otro club.
+ * - si no, la cookie `bt_club`. Si no valida, se cae en la primera membresía.
+ * Siempre se valida contra las membresías activas del usuario (o contra
+ * `Superadmin`); sin ninguna, no hay contexto (`null`).
  *
  * `getContextoClub` lee siempre el cliente base: las membresías de un usuario
  * cruzan clubes, que es justo lo que el cliente acotado no deja ver.
@@ -13,11 +16,12 @@
 
 import { cache } from 'react';
 import { auth } from '@clerk/nextjs/server';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import type { AppRole, Club, LugarRetiro } from '@/lib/generated/prisma/client';
 import type { JsonApiErrors } from '@/lib/types/jsonapi';
+import { HEADER_CLUB_SLUG, HEADER_RUTA, esDominioRaiz, urlDelClub, urlDelDominioRaiz } from './host';
 
 /** Cookie httpOnly con el id del club activo. La setea `cambiarClubActivo`. */
 export const CLUB_COOKIE = 'bt_club';
@@ -49,7 +53,10 @@ const SELECT_CLUB = {
   colorAcento: true,
 } as const;
 
-async function resolverContexto(userId: string, clubPedido: string | undefined): Promise<ContextoClub | null> {
+/** El club pedido: por id (cookie, cae en la primera membresía) o por slug (host, estricto). */
+type ClubPedido = { id: string | undefined } | { slug: string };
+
+async function resolverContexto(userId: string, pedido: ClubPedido): Promise<ContextoClub | null> {
   const [membresias, superadmin] = await Promise.all([
     prisma.membresia.findMany({
       where: { userId, activo: true, club: { activo: true } },
@@ -70,13 +77,16 @@ async function resolverContexto(userId: string, clubPedido: string | undefined):
     comoSuperadmin: false,
   });
 
-  if (clubPedido) {
-    const membresia = membresias.find((m) => m.clubId === clubPedido);
+  const porSlug = 'slug' in pedido;
+  const clave = porSlug ? pedido.slug : pedido.id;
+
+  if (clave) {
+    const membresia = membresias.find((m) => (porSlug ? m.club.slug === clave : m.clubId === clave));
     if (membresia) return desdeMembresia(membresia);
 
     if (esSuperadmin) {
       const club = await prisma.club.findFirst({
-        where: { id: clubPedido, activo: true },
+        where: porSlug ? { slug: clave, activo: true } : { id: clave, activo: true },
         select: SELECT_CLUB,
       });
       if (club) {
@@ -93,6 +103,8 @@ async function resolverContexto(userId: string, clubPedido: string | undefined):
     }
   }
 
+  // En el subdominio de un club no se cae en otro: se vería la marca de uno y los datos de otro.
+  if (porSlug) return null;
   return membresias[0] ? desdeMembresia(membresias[0]) : null;
 }
 
@@ -100,17 +112,29 @@ async function resolverContexto(userId: string, clubPedido: string | undefined):
 export const getContextoClub = cache(async (): Promise<ContextoClub | null> => {
   const { userId } = await auth();
   if (!userId) return null;
+  const slugHost = (await headers()).get(HEADER_CLUB_SLUG);
+  if (slugHost) return resolverContexto(userId, { slug: slugHost });
   const store = await cookies();
-  return resolverContexto(userId, store.get(CLUB_COOKIE)?.value);
+  return resolverContexto(userId, { id: store.get(CLUB_COOKIE)?.value });
 });
 
 /**
  * Para páginas y layouts. Sin contexto manda a `/bienvenida` (que acepta
- * invitaciones o avisa que no hay acceso); con un rol no permitido, a `/dashboard`.
+ * invitaciones o avisa que no hay acceso), la del dominio raíz si se está en el
+ * subdominio de un club; con un rol no permitido, a `/dashboard`. En el dominio
+ * raíz (con subdominios configurados), manda a la misma ruta en el subdominio del
+ * club del usuario.
  */
 export async function requireContexto(roles?: readonly AppRole[]): Promise<ContextoClub> {
   const contexto = await getContextoClub();
-  if (!contexto) redirect('/bienvenida');
+  const h = await headers();
+  if (!contexto) {
+    redirect(h.get(HEADER_CLUB_SLUG) ? (urlDelDominioRaiz('/bienvenida') ?? '/bienvenida') : '/bienvenida');
+  }
+  if (!h.get(HEADER_CLUB_SLUG) && esDominioRaiz(h.get('host'))) {
+    const destino = urlDelClub(contexto.club.slug, h.get(HEADER_RUTA) ?? '/dashboard');
+    if (destino) redirect(destino);
+  }
   if (roles && !roles.includes(contexto.rol)) redirect('/dashboard');
   return contexto;
 }

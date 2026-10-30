@@ -1,9 +1,10 @@
 import { SignIn } from '@clerk/nextjs';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { appearanceLogin, destinoLoginDelClub } from '@/lib/branding/login';
 import { TEMA_NEUTRO } from '@/lib/branding/tokens';
 import { CLUB_SLUG_COOKIE, getBrandingPublico } from '@/lib/tenant/clubes';
+import { esDominioRaiz } from '@/lib/tenant/host';
 
 const appearance = appearanceLogin(TEMA_NEUTRO, { pantalla: 'sign-in', ocultarHeader: false });
 
@@ -22,6 +23,7 @@ export default async function SignInPage({ params, searchParams }: Props) {
       store.get(CLUB_SLUG_COOKIE)?.value,
       getBrandingPublico,
       await searchParams,
+      { enDominioRaiz: esDominioRaiz((await headers()).get('host')) },
     );
     if (destino) redirect(destino);
   }

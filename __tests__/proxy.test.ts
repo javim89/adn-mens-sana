@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { isPublicRoute } from '@/proxy';
+import { isPublicRoute, ruteoPorHost } from '@/proxy';
 
 const req = (path: string) => new NextRequest(`http://localhost${path}`);
 
@@ -47,5 +47,79 @@ describe('isPublicRoute', () => {
     expect(isPublicRoute(req('/deportistas'))).toBe(false);
     expect(isPublicRoute(req('/api/deportistas'))).toBe(false);
     expect(isPublicRoute(req('/viandas'))).toBe(false);
+  });
+});
+
+describe('ruteoPorHost', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  const enHost = (host: string, path: string, headers: Record<string, string> = {}) =>
+    ruteoPorHost(new NextRequest(`http://${host}${path}`, { headers: { host, ...headers } }));
+
+  function seguir(r: ReturnType<typeof ruteoPorHost>) {
+    if (r.tipo !== 'seguir') throw new Error(`se esperaba seguir, vino ${r.tipo}`);
+    return r;
+  }
+
+  it('sin dominio raíz: no hay club en el host y el x-club-slug del cliente se borra', () => {
+    const r = seguir(enHost('localhost:3000', '/dashboard', { 'x-club-slug': 'club-ajeno' }));
+    expect(r.headers.get('x-club-slug')).toBeNull();
+    expect(r.rewrite).toBeNull();
+    expect(r.headers.get('x-bt-ruta')).toBe('/dashboard');
+  });
+
+  it('en el dominio raíz el x-club-slug del cliente se borra', () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    const r = seguir(enHost('bioteam.app', '/dashboard', { 'x-club-slug': 'club-ajeno' }));
+    expect(r.headers.get('x-club-slug')).toBeNull();
+  });
+
+  it('en el subdominio de un club pisa el x-club-slug del cliente con el del host', () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    const r = seguir(enHost('gimnasia-la-plata.bioteam.app', '/deportistas?q=1', { 'x-club-slug': 'club-ajeno' }));
+    expect(r.headers.get('x-club-slug')).toBe('gimnasia-la-plata');
+    expect(r.rewrite).toBeNull();
+    expect(r.headers.get('x-bt-ruta')).toBe('/deportistas?q=1');
+  });
+
+  it('x-bt-ruta tampoco se puede inyectar, y no lleva el _rsc de las requests RSC', () => {
+    const r = seguir(enHost('localhost:3000', '/turnos?_rsc=abc&mes=3', { 'x-bt-ruta': 'https://evil.com' }));
+    expect(r.headers.get('x-bt-ruta')).toBe('/turnos?mes=3');
+  });
+
+  it('en el subdominio, /sign-in* y /sign-up* se reescriben al login del club', () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    expect(seguir(enHost('club-prueba.bioteam.app', '/sign-in')).rewrite?.pathname).toBe('/c/club-prueba/sign-in');
+    expect(seguir(enHost('club-prueba.bioteam.app', '/sign-in/factor-one')).rewrite?.pathname).toBe(
+      '/c/club-prueba/sign-in/factor-one',
+    );
+    const signUp = seguir(enHost('club-prueba.bioteam.app', '/sign-up?__clerk_ticket=tk'));
+    expect(signUp.rewrite?.pathname).toBe('/c/club-prueba/sign-up');
+    expect(signUp.rewrite?.search).toBe('?__clerk_ticket=tk');
+    // Solo esas rutas: /sign-inx no es el login.
+    expect(seguir(enHost('club-prueba.bioteam.app', '/sign-inx')).rewrite).toBeNull();
+  });
+
+  it('en local, <slug>.localhost con ROOT_DOMAIN=localhost:3000', () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'localhost:3000');
+    const r = seguir(enHost('club-prueba.localhost:3000', '/sign-in'));
+    expect(r.headers.get('x-club-slug')).toBe('club-prueba');
+    expect(r.rewrite?.pathname).toBe('/c/club-prueba/sign-in');
+  });
+
+  it('en el subdominio de un club, /c/<otro>/... manda al subdominio del otro', () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    expect(enHost('club-prueba.bioteam.app', '/c/gimnasia-la-plata/sign-in?x=1')).toEqual({
+      tipo: 'redirect',
+      url: 'https://gimnasia-la-plata.bioteam.app/sign-in?x=1',
+    });
+    // /c/<el mismo>/entrar (destino del login) sigue de largo.
+    expect(seguir(enHost('club-prueba.bioteam.app', '/c/club-prueba/entrar')).rewrite).toBeNull();
+  });
+
+  it('el login genérico y las rutas /c/<slug> por path siguen andando en el dominio raíz', () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    expect(seguir(enHost('bioteam.app', '/sign-in')).rewrite).toBeNull();
+    expect(seguir(enHost('bioteam.app', '/c/club-prueba/sign-in')).rewrite).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockAuth, mockCookieGet, mockRedirect, mockPrisma } = vi.hoisted(() => ({
+const { mockAuth, mockCookieGet, mockRedirect, mockPrisma, mockHeaders } = vi.hoisted(() => ({
+  mockHeaders: { valor: {} as Record<string, string> },
   mockAuth: vi.fn(),
   mockCookieGet: vi.fn(),
   mockRedirect: vi.fn((destino: string) => {
@@ -14,7 +15,10 @@ const { mockAuth, mockCookieGet, mockRedirect, mockPrisma } = vi.hoisted(() => (
 }));
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: mockAuth }));
-vi.mock('next/headers', () => ({ cookies: async () => ({ get: mockCookieGet }) }));
+vi.mock('next/headers', () => ({
+  cookies: async () => ({ get: mockCookieGet }),
+  headers: async () => new Headers(mockHeaders.valor),
+}));
 vi.mock('next/navigation', () => ({ redirect: mockRedirect }));
 vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
 
@@ -49,6 +53,8 @@ function sesion({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
+  mockHeaders.valor = { host: 'localhost:3000' };
   mockPrisma.club.findFirst.mockResolvedValue(null);
 });
 
@@ -141,6 +147,69 @@ describe('getContextoClub', () => {
     sesion({ cookie: 'club_a', membresias: [membresia('club_a', 'entrenador')], superadmin: true });
     const contexto = await getContextoClub();
     expect(contexto).toMatchObject({ rol: 'entrenador', comoSuperadmin: false, esSuperadmin: true });
+  });
+});
+
+describe('getContextoClub en el subdominio de un club (x-club-slug)', () => {
+  const enHost = (slug: string) => {
+    mockHeaders.valor = { host: `${slug}.bioteam.app`, 'x-club-slug': slug };
+  };
+
+  it('el host decide el club, no la cookie', async () => {
+    sesion({ cookie: 'club_a', membresias: [membresia('club_a', 'admin'), membresia('club_b', 'medico')] });
+    enHost('club_b');
+    await expect(getContextoClub()).resolves.toMatchObject({ clubId: 'club_b', rol: 'medico', comoSuperadmin: false });
+  });
+
+  it('sin membresía en el club del host no hay contexto (no cae en otro club suyo)', async () => {
+    sesion({ membresias: [membresia('club_a', 'admin')] });
+    enHost('club_ajeno');
+    await expect(getContextoClub()).resolves.toBeNull();
+    expect(mockPrisma.club.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('un superadmin entra a un club activo por su slug, como admin', async () => {
+    sesion({ membresias: [], superadmin: true });
+    mockPrisma.club.findFirst.mockResolvedValue(club('club_z'));
+    enHost('club_z');
+    await expect(getContextoClub()).resolves.toMatchObject({ clubId: 'club_z', rol: 'admin', comoSuperadmin: true });
+    expect(mockPrisma.club.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { slug: 'club_z', activo: true } }),
+    );
+  });
+
+  it('un superadmin en el host de un club inexistente o inactivo no tiene contexto', async () => {
+    sesion({ membresias: [membresia('club_a')], superadmin: true });
+    enHost('club_inactivo');
+    await expect(getContextoClub()).resolves.toBeNull();
+  });
+
+  it('requireContexto sin acceso al club del host manda a /bienvenida del dominio raíz', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    sesion({ membresias: [membresia('club_a')] });
+    enHost('club-ajeno');
+    await expect(requireContexto()).rejects.toThrow('NEXT_REDIRECT:https://bioteam.app/bienvenida');
+  });
+});
+
+describe('requireContexto en el dominio raíz con subdominios', () => {
+  it('manda a la misma ruta en el subdominio del club del usuario', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    mockHeaders.valor = { host: 'bioteam.app', 'x-bt-ruta': '/deportistas?q=1' };
+    sesion({ membresias: [{ ...membresia('club_a'), club: { ...club('club_a'), slug: 'club-a' } }] });
+    await expect(requireContexto()).rejects.toThrow('NEXT_REDIRECT:https://club-a.bioteam.app/deportistas?q=1');
+  });
+
+  it('en otro host (preview de Netlify) no redirige', async () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    mockHeaders.valor = { host: 'deploy-preview-1--bioteam.netlify.app' };
+    sesion({ membresias: [membresia('club_a')] });
+    await expect(requireContexto()).resolves.toMatchObject({ clubId: 'club_a' });
+  });
+
+  it('sin subdominios configurados no redirige', async () => {
+    sesion({ membresias: [membresia('club_a')] });
+    await expect(requireContexto()).resolves.toMatchObject({ clubId: 'club_a' });
   });
 });
 

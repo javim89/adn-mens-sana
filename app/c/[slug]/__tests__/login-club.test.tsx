@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
-const { mockBranding, mockNotFound, mockSignIn, mockSignUp } = vi.hoisted(() => ({
+const { mockBranding, mockNotFound, mockSignIn, mockSignUp, mockHeaders } = vi.hoisted(() => ({
+  mockHeaders: { valor: {} as Record<string, string> },
   mockBranding: vi.fn(),
   mockNotFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
@@ -12,6 +13,7 @@ const { mockBranding, mockNotFound, mockSignIn, mockSignUp } = vi.hoisted(() => 
 
 vi.mock('@/lib/tenant/clubes', () => ({ getBrandingPublico: mockBranding }));
 vi.mock('next/navigation', () => ({ notFound: mockNotFound }));
+vi.mock('next/headers', () => ({ headers: async () => new Headers(mockHeaders.valor) }));
 vi.mock('@clerk/nextjs', () => ({ SignIn: mockSignIn, SignUp: mockSignUp }));
 
 import LoginClubLayout, { generateMetadata } from '../layout';
@@ -31,6 +33,7 @@ const params = (slug: string) => Promise.resolve({ slug });
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockHeaders.valor = {};
   mockBranding.mockImplementation(async (slug: string) => (slug === CLUB.slug ? CLUB : null));
 });
 
@@ -81,6 +84,18 @@ describe('páginas de Clerk del club', () => {
       signInUrl: '/c/club-ejemplo/sign-in',
       forceRedirectUrl: '/c/club-ejemplo/entrar',
     });
+  });
+
+  it('en el subdominio del club, Clerk usa las rutas que ve el navegador (/sign-in)', async () => {
+    mockHeaders.valor = { 'x-club-slug': CLUB.slug };
+    const signIn = await SignInClubPage({ params: params(CLUB.slug) });
+    expect(signIn.props).toMatchObject({
+      path: '/sign-in',
+      signUpUrl: '/sign-up',
+      forceRedirectUrl: '/c/club-ejemplo/entrar',
+    });
+    const signUp = await SignUpClubPage({ params: params(CLUB.slug) });
+    expect(signUp.props).toMatchObject({ path: '/sign-up', signInUrl: '/sign-in' });
   });
 
   it('un club inexistente da 404', async () => {

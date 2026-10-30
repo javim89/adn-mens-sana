@@ -7,10 +7,11 @@
  */
 
 import { cache } from 'react';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { prisma } from '@/lib/db';
 import { normalizarHex } from '@/lib/branding/colores';
 import { CLUB_COOKIE } from './contexto';
+import { dominioCookieCompartida } from './host';
 
 export type ClubDeUsuario = { id: string; nombre: string; slug: string };
 
@@ -73,9 +74,13 @@ export async function puedeEntrarAlClub(userId: string, clubId: string): Promise
 
 /**
  * Guarda el club activo. Solo lo llaman actions que ya validaron el acceso; igual
- * `getContextoClub` vuelve a validar la cookie en cada request.
+ * `getContextoClub` vuelve a validar la cookie en cada request. Devuelve el slug del
+ * club (para mandar a su subdominio), o `null` si no existe.
+ *
+ * `bt_club_slug` va con `Domain=<raíz>` cuando hay subdominios: así el login del
+ * dominio raíz también sabe cuál fue el último club.
  */
-export async function guardarClubActivo(clubId: string): Promise<void> {
+export async function guardarClubActivo(clubId: string): Promise<string | null> {
   const store = await cookies();
   const opciones = {
     httpOnly: true,
@@ -87,8 +92,13 @@ export async function guardarClubActivo(clubId: string): Promise<void> {
   store.set(CLUB_COOKIE, clubId, opciones);
 
   const club = await prisma.club.findUnique({ where: { id: clubId }, select: { slug: true } });
-  if (club) store.set(CLUB_SLUG_COOKIE, club.slug, opciones);
-  else store.delete(CLUB_SLUG_COOKIE);
+  if (!club) {
+    store.delete(CLUB_SLUG_COOKIE);
+    return null;
+  }
+  const domain = dominioCookieCompartida((await headers()).get('host'));
+  store.set(CLUB_SLUG_COOKIE, club.slug, domain ? { ...opciones, domain } : opciones);
+  return club.slug;
 }
 
 /** Branding de un club activo por su slug, o `null` si no existe o está desactivado. */

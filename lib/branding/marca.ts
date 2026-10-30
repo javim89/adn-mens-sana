@@ -3,6 +3,7 @@
  * y los íconos. Funciones puras: se usan en el servidor y en el cliente.
  */
 import { versionTema, type ClubConColores } from './tema';
+import { urlDelClub } from '@/lib/tenant/host';
 
 type ClubConMarca = ClubConColores & { slug: string; logoKey?: string | null };
 
@@ -55,11 +56,12 @@ export function urlIconoDelClub(club: ClubConMarca, tam: TamanioIcono): string {
 }
 
 /**
- * URL de login con la marca del club, para compartir con su gente. Por ahora es la
- * ruta `/c/<slug>/sign-in` del dominio de la app; con subdominios por club pasa a ser
- * `<slug>.<dominio>/sign-in` (se cambia solo acá).
+ * URL de login con la marca del club, para compartir con su gente: `<slug>.<raíz>/sign-in`
+ * con subdominios, y si no la ruta `/c/<slug>/sign-in` del dominio de la app.
  */
 export function urlLoginDelClub(slug: string): string {
+  const enSubdominio = urlDelClub(slug, '/sign-in');
+  if (enSubdominio) return enSubdominio;
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '');
   return `${base}/c/${encodeURIComponent(slug)}/sign-in`;
 }

@@ -9,6 +9,7 @@
 
 import { clerkClient } from '@clerk/nextjs/server';
 import { rutaLoginDelClub } from '@/lib/branding/login';
+import { urlDelClub } from './host';
 
 /** Vigencia de una invitación al club (y de la invitación de Clerk que la acompaña). */
 export const DIAS_INVITACION = 30;
@@ -17,8 +18,13 @@ export function venceEn(dias: number): Date {
   return new Date(Date.now() + dias * 24 * 60 * 60 * 1000);
 }
 
-/** El link del mail de Clerk abre el alta con la marca del club que invita. */
+/**
+ * El link del mail de Clerk abre el alta con la marca del club que invita: en su
+ * subdominio si hay, y si no `/c/<slug>/sign-up` del dominio de la app.
+ */
 export function redirectUrlSignUp(slug: string): string {
+  const enSubdominio = urlDelClub(slug, '/sign-up');
+  if (enSubdominio) return enSubdominio;
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '');
   return `${base}${rutaLoginDelClub(slug, 'sign-up')}`;
 }
