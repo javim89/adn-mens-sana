@@ -143,7 +143,7 @@ export default function DashboardFilterDialog({
           <div>
             <label
               htmlFor="filtro-label"
-              className="block text-sm font-medium text-[#1C1C1C] mb-1.5"
+              className="block text-sm font-medium text-foreground mb-1.5"
             >
               Etiqueta
             </label>
@@ -157,7 +157,7 @@ export default function DashboardFilterDialog({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">Dataset</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Dataset</label>
             <CustomSelect
               value={draft.dataset}
               onChange={setDataset}
@@ -168,7 +168,7 @@ export default function DashboardFilterDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">Campo</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Campo</label>
               <CustomSelect
                 value={draft.dimension}
                 onChange={setDimension}
@@ -179,7 +179,7 @@ export default function DashboardFilterDialog({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">Operador</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Operador</label>
               <CustomSelect
                 value={draft.operator}
                 onChange={(op) =>
@@ -195,9 +195,9 @@ export default function DashboardFilterDialog({
 
           {necesitaValor && (
             <div>
-              <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 Valor por defecto{' '}
-                <span className="text-[#6B7280] font-normal">(opcional)</span>
+                <span className="text-muted-foreground font-normal">(opcional)</span>
               </label>
               {dimension?.enumLabels ? (
                 <CustomSelect
@@ -223,13 +223,13 @@ export default function DashboardFilterDialog({
           )}
 
           <div>
-            <p className="text-sm font-medium text-[#1C1C1C]">Widgets afectados</p>
-            <p className="text-xs text-[#6B7280] mb-2">
+            <p className="text-sm font-medium text-foreground">Widgets afectados</p>
+            <p className="text-xs text-muted-foreground mb-2">
               La lista se actualiza según el dataset elegido.
             </p>
 
             {compatibles.length === 0 ? (
-              <p className="text-xs text-[#6B7280] italic rounded-md bg-[#F3F4F6] px-3 py-2">
+              <p className="text-xs text-muted-foreground italic rounded-md bg-muted px-3 py-2">
                 Ningún widget de este dashboard consulta ese dataset.
               </p>
             ) : (
@@ -237,13 +237,13 @@ export default function DashboardFilterDialog({
                 {compatibles.map((w) => (
                   <label
                     key={w.id}
-                    className="flex items-center gap-2 text-sm text-[#1C1C1C] cursor-pointer"
+                    className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
                   >
                     <input
                       type="checkbox"
                       checked={draft.widgetIds.includes(w.id)}
                       onChange={() => toggleWidget(w.id)}
-                      className="rounded border-gray-300 text-[#121A61] focus:ring-[#3346CC]"
+                      className="rounded border-gray-300 text-primario focus:ring-secundario"
                     />
                     <span className="truncate">{w.titulo}</span>
                   </label>
@@ -257,7 +257,7 @@ export default function DashboardFilterDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="px-4 py-2 text-sm text-[#6B7280] hover:text-[#1C1C1C]"
+            className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
           >
             Cancelar
           </button>
@@ -268,7 +268,7 @@ export default function DashboardFilterDialog({
               onSave(draft);
               onOpenChange(false);
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#121A61] text-white text-sm hover:bg-[#1E2A8A] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primario text-white text-sm hover:bg-primario-hover disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Filter size={15} /> {filter ? 'Guardar' : 'Agregar filtro'}
           </button>

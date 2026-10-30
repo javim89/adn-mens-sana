@@ -31,7 +31,7 @@ function Field({
     <div className={className}>
       <label
         htmlFor={id}
-        className="block text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-1"
+        className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
       >
         {label}
       </label>
@@ -42,7 +42,7 @@ function Field({
 
 const inputCls = (disabled: boolean) =>
   [
-    'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30',
+    'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30',
     disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : '',
   ]
     .filter(Boolean)
@@ -149,9 +149,9 @@ export default function TabDeportivo({
             checked={data.tieneRepresentante}
             onChange={(e) => onChange({ tieneRepresentante: e.target.checked })}
             disabled={disabled}
-            className="w-4 h-4 text-[#121A61] rounded border-gray-300 focus:ring-[#3346CC]/30"
+            className="w-4 h-4 text-primario rounded border-gray-300 focus:ring-secundario/30"
           />
-          <span className="text-sm text-[#1C1C1C]">Tiene representante</span>
+          <span className="text-sm text-foreground">Tiene representante</span>
         </label>
       </div>
 

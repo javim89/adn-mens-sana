@@ -38,7 +38,7 @@ export function ChartTooltip({ active, payload, label, format, seriesLabels }: C
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100 px-3 py-2 text-xs">
       {(typeof label === 'string' || typeof label === 'number') && label !== '' && (
-        <p className="font-medium text-[#1C1C1C] mb-1.5">{label}</p>
+        <p className="font-medium text-foreground mb-1.5">{label}</p>
       )}
       <ul className="space-y-1">
         {payload.map((entry, i) => {
@@ -50,8 +50,8 @@ export function ChartTooltip({ active, payload, label, format, seriesLabels }: C
                 className="inline-block w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="text-[#6B7280]">{seriesLabels?.[key] ?? entry.name ?? key}</span>
-              <span className="ml-auto font-medium text-[#1C1C1C] tabular-nums">
+              <span className="text-muted-foreground">{seriesLabels?.[key] ?? entry.name ?? key}</span>
+              <span className="ml-auto font-medium text-foreground tabular-nums">
                 {formatValue(entry.value, format)}
               </span>
             </li>
@@ -81,7 +81,7 @@ export const LEGEND_PROPS = {
 
 export function ChartEmpty({ children = 'Sin datos para mostrar' }: { children?: ReactNode }) {
   return (
-    <div className="h-full w-full flex items-center justify-center text-sm text-[#6B7280] px-4 text-center">
+    <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground px-4 text-center">
       {children}
     </div>
   );

@@ -124,14 +124,14 @@ export default function TriagePanel({ triage, deportistaId }: Props) {
   if (triage === null) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <Activity size={40} className="text-[#6B7280] mb-3" />
+        <Activity size={40} className="text-muted-foreground mb-3" />
         <h3
-          className="text-xl font-bold text-[#121A61]"
+          className="text-xl font-bold text-primario"
           style={{ fontFamily: 'Oswald, sans-serif' }}
         >
           Sin triage calculado aún
         </h3>
-        <p className="text-sm text-[#6B7280] mt-1 max-w-md">
+        <p className="text-sm text-muted-foreground mt-1 max-w-md">
           El triage se calcula automáticamente cada semana (lunes). También podés
           recalcularlo ahora mismo.
         </p>
@@ -158,7 +158,7 @@ export default function TriagePanel({ triage, deportistaId }: Props) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-3">
           <h2
-            className="text-2xl font-bold text-[#121A61]"
+            className="text-2xl font-bold text-primario"
             style={{ fontFamily: 'Oswald, sans-serif' }}
           >
             Triage
@@ -172,12 +172,12 @@ export default function TriagePanel({ triage, deportistaId }: Props) {
             >
               {meta.label}
             </span>
-            <span className="text-sm font-medium text-[#1C1C1C]">
+            <span className="text-sm font-medium text-foreground">
               Puntaje total: {triage.puntajeTotal}
             </span>
           </div>
-          <p className="text-sm text-[#6B7280] max-w-xl">{meta.description}</p>
-          <p className="text-xs text-[#6B7280]">
+          <p className="text-sm text-muted-foreground max-w-xl">{meta.description}</p>
+          <p className="text-xs text-muted-foreground">
             Última actualización: {formatDateTime(triage.calculatedAt)}
           </p>
         </div>
@@ -193,7 +193,7 @@ export default function TriagePanel({ triage, deportistaId }: Props) {
 
       {/* Desglose por área */}
       {grupos.length === 0 ? (
-        <p className="text-sm text-[#6B7280]">
+        <p className="text-sm text-muted-foreground">
           No hay indicadores que hayan sumado puntos en este cálculo.
         </p>
       ) : (
@@ -201,10 +201,10 @@ export default function TriagePanel({ triage, deportistaId }: Props) {
           {grupos.map((grupo) => (
             <Card key={grupo.area}>
               <CardHeader className="flex-row items-center justify-between space-y-0 p-4 pb-2">
-                <CardTitle className="text-base text-[#121A61]">
+                <CardTitle className="text-base text-primario">
                   {AREA_LABELS[grupo.area]}
                 </CardTitle>
-                <span className="text-xs font-semibold text-[#6B7280]">
+                <span className="text-xs font-semibold text-muted-foreground">
                   Subtotal +{grupo.subtotal}
                 </span>
               </CardHeader>
@@ -215,10 +215,10 @@ export default function TriagePanel({ triage, deportistaId }: Props) {
                       key={`${grupo.area}-${idx}`}
                       className="flex items-center justify-between gap-3 py-2"
                     >
-                      <span className="text-sm text-[#1C1C1C]">
+                      <span className="text-sm text-foreground">
                         {item.regla}
                       </span>
-                      <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-[#EEF0FB] text-[#121A61]">
+                      <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-primario-suave text-primario">
                         +{item.puntos}
                       </span>
                     </li>

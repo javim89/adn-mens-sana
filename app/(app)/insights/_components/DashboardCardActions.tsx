@@ -67,7 +67,7 @@ export default function DashboardCardActions({
           <button
             type="button"
             aria-label={`Acciones de ${nombre}`}
-            className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#1C1C1C] transition-colors"
+            className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <MoreHorizontal size={16} />
           </button>
@@ -97,7 +97,7 @@ export default function DashboardCardActions({
             </DialogTitle>
             <DialogDescription>
               Se va a eliminar{' '}
-              <span className="font-semibold text-[#1C1C1C]">
+              <span className="font-semibold text-foreground">
                 &quot;{nombre}&quot;
               </span>{' '}
               con todos sus widgets y filtros. Esta acción no se puede deshacer.
@@ -115,7 +115,7 @@ export default function DashboardCardActions({
               type="button"
               onClick={() => setOpen(false)}
               disabled={isPending}
-              className="px-4 py-2 text-sm text-[#6B7280] hover:text-[#1C1C1C] disabled:opacity-40"
+              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground disabled:opacity-40"
             >
               Cancelar
             </button>

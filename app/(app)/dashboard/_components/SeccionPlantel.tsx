@@ -54,7 +54,7 @@ export default async function SeccionPlantel() {
           label: ESTADO_LABELS[estado],
           cantidad: datos.porEstado[estado],
           clase: ESTILO[estado].barra,
-          claseTexto: estado === 'ACTIVO' ? 'text-green-950' : 'text-[#1C1C1C]',
+          claseTexto: estado === 'ACTIVO' ? 'text-green-950' : 'text-foreground',
         }))}
         etiquetaMayor={(s, pct) => `${pct}% ${s.label.toLowerCase()}s`}
       />

@@ -33,7 +33,7 @@ export default function SqlEditor({ sql, onChange, readOnly = false }: Props) {
   return (
     <div className="space-y-3">
       <div>
-        <label htmlFor="insights-sql" className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+        <label htmlFor="insights-sql" className="block text-sm font-medium text-foreground mb-1.5">
           Consulta SQL
         </label>
         <textarea
@@ -44,7 +44,7 @@ export default function SqlEditor({ sql, onChange, readOnly = false }: Props) {
           spellCheck={false}
           rows={12}
           placeholder={EJEMPLO}
-          className="w-full rounded-md border border-gray-200 p-3 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#3346CC]/40"
+          className="w-full rounded-md border border-gray-200 p-3 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-secundario/40"
         />
       </div>
 
@@ -69,8 +69,8 @@ export default function SqlEditor({ sql, onChange, readOnly = false }: Props) {
         </div>
       )}
 
-      <div className="rounded-md bg-[#F3F4F6] px-3 py-2 text-xs text-[#6B7280] space-y-1">
-        <p className="font-medium text-[#1C1C1C]">Solo lectura</p>
+      <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground space-y-1">
+        <p className="font-medium text-foreground">Solo lectura</p>
         <p>
           Se admite una única sentencia <code className="font-mono">SELECT</code> o{' '}
           <code className="font-mono">WITH</code>. La consulta corre dentro de una transacción de

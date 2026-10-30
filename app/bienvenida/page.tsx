@@ -41,7 +41,7 @@ export default async function BienvenidaPage() {
   const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses[0]?.emailAddress;
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-linear-to-br from-[#1E2A8A] to-[#121A61]">
+    <div className="flex min-h-screen w-full items-center justify-center bg-linear-to-br from-primario-hover to-primario">
       <div className="flex w-full flex-col items-center gap-6 px-4 py-12">
         <div className="flex items-center gap-3 text-center">
           <LogoBioTeam variante="inverso" className="h-12" eager />
@@ -51,23 +51,23 @@ export default async function BienvenidaPage() {
         </div>
 
         <main className="w-full max-w-md rounded-2xl bg-white px-6 py-8 text-center shadow-sm">
-          <ShieldAlert size={28} className="mx-auto mb-3 text-[#121A61]" aria-hidden="true" />
-          <h1 className="mb-2 font-[family-name:var(--font-oswald)] text-2xl font-bold text-[#121A61]">
+          <ShieldAlert size={28} className="mx-auto mb-3 text-primario" aria-hidden="true" />
+          <h1 className="mb-2 font-[family-name:var(--font-oswald)] text-2xl font-bold text-primario">
             No tenés acceso a ningún club
           </h1>
-          <p className="mb-1 text-sm text-[#6B7280]">
+          <p className="mb-1 text-sm text-muted-foreground">
             Tu cuenta todavía no forma parte de ningún club en BioTeam. Pedile al
             administrador de tu club que te invite.
           </p>
           {email && (
-            <p className="mb-6 text-sm text-[#6B7280]">
-              Ingresaste como <span className="font-medium text-[#1C1C1C]">{email}</span>.
+            <p className="mb-6 text-sm text-muted-foreground">
+              Ingresaste como <span className="font-medium text-foreground">{email}</span>.
             </p>
           )}
           <SignOutButton redirectUrl="/sign-in">
             <button
               type="button"
-              className="w-full rounded-lg bg-[#121A61] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#1E2A8A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3346CC]/40"
+              className="w-full rounded-lg bg-primario px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primario-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secundario/40"
             >
               Cerrar sesión
             </button>

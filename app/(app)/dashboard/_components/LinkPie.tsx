@@ -16,7 +16,7 @@ export default function LinkPie({
     <Link
       href={href}
       aria-label={ariaLabel}
-      className={`inline-block rounded text-sm font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 ${claro ? 'text-white hover:text-white/80 focus-visible:outline-white' : 'text-[#3346CC] hover:text-[#121A61] focus-visible:outline-[#3346CC]'}`}
+      className={`inline-block rounded text-sm font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 ${claro ? 'text-white hover:text-white/80 focus-visible:outline-white' : 'text-secundario hover:text-primario focus-visible:outline-secundario'}`}
     >
       {children} →
     </Link>

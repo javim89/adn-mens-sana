@@ -33,9 +33,9 @@ async function DashboardsContent() {
   if (dashboards.length === 0) {
     return (
       <div className="rounded-xl border border-gray-100 bg-white px-6 py-12 text-center">
-        <ChartColumn size={28} className="mx-auto text-[#6B7280] mb-3" />
-        <p className="text-[#1C1C1C] font-medium mb-1">Todavía no hay dashboards</p>
-        <p className="text-sm text-[#6B7280] mb-5">
+        <ChartColumn size={28} className="mx-auto text-muted-foreground mb-3" />
+        <p className="text-foreground font-medium mb-1">Todavía no hay dashboards</p>
+        <p className="text-sm text-muted-foreground mb-5">
           Creá el primero para empezar a armar gráficos sobre los datos del club.
         </p>
         <NuevoDashboardButton />
@@ -57,18 +57,18 @@ async function DashboardsContent() {
           <Link
             href={`/insights/${d.id}`}
             aria-label={d.nombre}
-            className="absolute inset-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3346CC]"
+            className="absolute inset-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secundario"
           />
           <div className="flex items-start justify-between gap-2 mb-2">
             <h2
-              className="text-lg font-semibold text-[#121A61] group-hover:text-[#1E2A8A]"
+              className="text-lg font-semibold text-primario group-hover:text-primario-hover"
               style={{ fontFamily: 'Oswald, sans-serif' }}
             >
               {d.nombre}
             </h2>
             <div className="relative z-10 flex shrink-0 items-center gap-1.5">
               {d.esSistema ? (
-                <span className="px-2 py-0.5 rounded-full bg-[#C9A84C]/15 text-[#8C6D1F] text-xs font-medium">
+                <span className="px-2 py-0.5 rounded-full bg-acento/15 text-[#8C6D1F] text-xs font-medium">
                   Sistema
                 </span>
               ) : (
@@ -77,9 +77,9 @@ async function DashboardsContent() {
             </div>
           </div>
           {d.descripcion && (
-            <p className="text-sm text-[#6B7280] mb-3 line-clamp-2">{d.descripcion}</p>
+            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{d.descripcion}</p>
           )}
-          <p className="text-xs text-[#6B7280]">
+          <p className="text-xs text-muted-foreground">
             {d.widgetCount} {d.widgetCount === 1 ? 'widget' : 'widgets'}
             <span className="mx-1.5 text-gray-300">·</span>
             {formatFecha(d.updatedAt)}
@@ -109,14 +109,14 @@ export default function InsightsPage() {
     <div className="p-8">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-1">
         <h1
-          className="text-3xl font-bold text-[#121A61]"
+          className="text-3xl font-bold text-primario"
           style={{ fontFamily: 'Oswald, sans-serif' }}
         >
           Insights
         </h1>
         <NuevoDashboardButton />
       </div>
-      <p className="text-[#6B7280] mb-6">
+      <p className="text-muted-foreground mb-6">
         Dashboards y gráficos personalizados sobre los datos del club.
       </p>
 

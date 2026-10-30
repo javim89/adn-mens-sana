@@ -60,8 +60,8 @@ export const PRIORIDAD_LABELS: Record<PrioridadSeguimiento, string> = {
 };
 
 export const PRIORIDAD_STYLES: Record<PrioridadSeguimiento, string> = {
-  BAJA: 'bg-[#D1FAE5] text-[#065F46]',
-  MEDIA: 'bg-[#FEF9C3] text-[#713F12]',
-  ALTA: 'bg-[#FED7AA] text-[#7C2D12]',
-  URGENTE: 'bg-[#FEE2E2] text-[#7F1D1D]',
+  BAJA: 'bg-emerald-100 text-emerald-800',
+  MEDIA: 'bg-yellow-100 text-yellow-900',
+  ALTA: 'bg-orange-200 text-orange-900',
+  URGENTE: 'bg-red-100 text-red-900',
 };

@@ -12,7 +12,7 @@ import {
 
 export type VarianteKpi = 'default' | 'hero' | 'alerta-ambar' | 'alerta-rosa';
 
-const LINK_DEFAULT = 'text-[#3346CC] hover:text-[#121A61]';
+const LINK_DEFAULT = 'text-secundario hover:text-primario';
 
 /** Las clases de cada variante. Literales: Tailwind no ve clases concatenadas. */
 function clasesDe(variante: VarianteKpi, bordeSuperior: string) {
@@ -26,12 +26,12 @@ function clasesDe(variante: VarianteKpi, bordeSuperior: string) {
     default:
       return {
         card: `bg-white border border-gray-100 ${bordeSuperior}`,
-        label: 'text-[#6B7280]',
-        valor: 'text-[#121A61]',
-        detalle: 'text-[#6B7280]',
+        label: 'text-muted-foreground',
+        valor: 'text-primario',
+        detalle: 'text-muted-foreground',
         link: LINK_DEFAULT,
-        badge: 'bg-gray-100 text-[#1C1C1C]',
-        foco: 'focus-visible:outline-[#3346CC]',
+        badge: 'bg-gray-100 text-foreground',
+        foco: 'focus-visible:outline-secundario',
       };
   }
 }

@@ -53,14 +53,14 @@ export default function DeleteDeportistaModal({
         <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
           <h2
             id="delete-modal-title"
-            className="text-lg font-bold text-[#1C1C1C] mb-2"
+            className="text-lg font-bold text-foreground mb-2"
             style={{ fontFamily: 'Oswald, sans-serif' }}
           >
             Confirmar eliminación
           </h2>
-          <p className="text-sm text-[#6B7280] mb-6">
+          <p className="text-sm text-muted-foreground mb-6">
             ¿Estás seguro que querés eliminar a{' '}
-            <span className="font-semibold text-[#1C1C1C]">{deportistaNombre}</span>? Esta acción
+            <span className="font-semibold text-foreground">{deportistaNombre}</span>? Esta acción
             no se puede deshacer.
           </p>
 
@@ -75,7 +75,7 @@ export default function DeleteDeportistaModal({
               type="button"
               onClick={() => setIsOpen(false)}
               disabled={isPending}
-              className="text-sm text-[#6B7280] hover:text-[#1C1C1C] border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
+              className="text-sm text-muted-foreground hover:text-foreground border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>

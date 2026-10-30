@@ -106,7 +106,7 @@ export default async function SeccionPresentismo({
                     <li key={estado} className="flex items-center gap-1.5 text-xs text-[#5B6478]">
                       <span className={`h-2 w-2 shrink-0 rounded-full ${clase}`} aria-hidden />
                       {ESTADO_ASISTENCIA_LABELS[estado]}
-                      <span className="font-semibold tabular-nums text-[#1C1C1C]">
+                      <span className="font-semibold tabular-nums text-foreground">
                         {actual.porEstado[estado]}
                       </span>
                     </li>
@@ -155,7 +155,7 @@ export default async function SeccionPresentismo({
                     aria-label={`Ver la ficha de ${d.nombre} ${d.apellido} (${d.ausencias} ausencias)`}
                     className="group flex h-full items-center justify-between gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-rose-100 hover:ring-rose-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-900"
                   >
-                    <span className="min-w-0 truncate text-sm font-semibold text-[#1C1C1C] group-hover:underline">
+                    <span className="min-w-0 truncate text-sm font-semibold text-foreground group-hover:underline">
                       {d.apellido}, {d.nombre}
                     </span>
                     <span className="flex shrink-0 items-baseline gap-1">

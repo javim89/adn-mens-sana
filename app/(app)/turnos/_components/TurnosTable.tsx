@@ -117,23 +117,23 @@ export default function TurnosTable({
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <h1
-          className="text-3xl font-bold text-[#121A61]"
+          className="text-3xl font-bold text-primario"
           style={{ fontFamily: 'Oswald, sans-serif' }}
         >
           Turnos
         </h1>
         <Link
           href="/turnos/nuevo"
-          className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors shrink-0"
+          className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover transition-colors shrink-0"
         >
           <Plus size={16} />
           Nuevo turno
         </Link>
       </div>
-      <p className="text-[#6B7280] mb-6">
+      <p className="text-muted-foreground mb-6">
         Agenda de evaluaciones y seguimiento
         {total > 0 && (
-          <span className="ml-2 text-xs font-medium bg-gray-100 text-[#6B7280] px-2 py-0.5 rounded-full">
+          <span className="ml-2 text-xs font-medium bg-gray-100 text-muted-foreground px-2 py-0.5 rounded-full">
             {total} {total === 1 ? 'turno' : 'turnos'}
           </span>
         )}
@@ -144,14 +144,14 @@ export default function TurnosTable({
         <div className="relative flex-1 min-w-[180px]">
           <Search
             size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <input
             type="text"
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Buscar por título, lugar o deportista..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 bg-white"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30 bg-white"
           />
         </div>
 
@@ -175,9 +175,9 @@ export default function TurnosTable({
         {/* Mobile card list */}
         <ul className="lg:hidden divide-y divide-gray-100">
           {turnos.length === 0 ? (
-            <li className="px-4 py-12 text-center text-sm text-[#6B7280]">
+            <li className="px-4 py-12 text-center text-sm text-muted-foreground">
               No hay turnos cargados.{' '}
-              <Link href="/turnos/nuevo" className="text-[#121A61] underline hover:no-underline">
+              <Link href="/turnos/nuevo" className="text-primario underline hover:no-underline">
                 Crear el primero
               </Link>
             </li>
@@ -186,17 +186,17 @@ export default function TurnosTable({
               <li key={t.id} className="px-4 py-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#1C1C1C] truncate">{t.titulo}</p>
-                    <p className="text-xs text-[#6B7280] mt-0.5">
+                    <p className="text-sm font-semibold text-foreground truncate">{t.titulo}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {formatDate(t.fecha)} — {t.hora}hs — {t.lugar}
                     </p>
                     {isAdmin && (
-                      <p className="text-xs text-[#6B7280] mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         Responsable: {t.profesionalNombre}
                       </p>
                     )}
                     {t.deportistas.length > 0 && (
-                      <p className="text-xs text-[#6B7280] mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {t.deportistas.map((d) => `${d.apellido}, ${d.nombre}`).join(' · ')}
                       </p>
                     )}
@@ -204,7 +204,7 @@ export default function TurnosTable({
                   <div className="flex items-center gap-1 shrink-0">
                     <Link
                       href={`/turnos/${t.id}/editar`}
-                      className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
+                      className="text-muted-foreground hover:text-primario transition-colors p-1"
                       title="Editar turno"
                     >
                       <Pencil size={15} />
@@ -225,7 +225,7 @@ export default function TurnosTable({
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-xs uppercase text-[#6B7280] bg-[#F3F4F6] border-b border-gray-100">
+              <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-gray-100">
                 <th className="px-5 py-3 text-left">Título</th>
                 <th className="px-5 py-3 text-left">Fecha</th>
                 <th className="px-5 py-3 text-left">Hora</th>
@@ -241,12 +241,12 @@ export default function TurnosTable({
                 <tr>
                   <td
                     colSpan={isAdmin ? 8 : 7}
-                    className="px-5 py-12 text-center text-sm text-[#6B7280]"
+                    className="px-5 py-12 text-center text-sm text-muted-foreground"
                   >
                     No hay turnos cargados.{' '}
                     <Link
                       href="/turnos/nuevo"
-                      className="text-[#121A61] underline hover:no-underline"
+                      className="text-primario underline hover:no-underline"
                     >
                       Crear el primero
                     </Link>
@@ -256,30 +256,30 @@ export default function TurnosTable({
                 turnos.map((t) => (
                   <tr
                     key={t.id}
-                    className="border-b border-gray-50 hover:bg-[#F3F4F6] transition-colors"
+                    className="border-b border-gray-50 hover:bg-muted transition-colors"
                   >
-                    <td className="px-5 py-3.5 text-sm font-medium text-[#1C1C1C] max-w-[180px]">
+                    <td className="px-5 py-3.5 text-sm font-medium text-foreground max-w-[180px]">
                       <span className="block truncate" title={t.titulo}>
                         {t.titulo}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-sm text-[#6B7280] whitespace-nowrap">
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
                       {formatDate(t.fecha)}
                     </td>
-                    <td className="px-5 py-3.5 text-sm text-[#6B7280] whitespace-nowrap">
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
                       {t.hora}hs
                     </td>
-                    <td className="px-5 py-3.5 text-sm text-[#6B7280] max-w-[160px]">
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground max-w-[160px]">
                       <span className="block truncate" title={t.lugar}>
                         {t.lugar}
                       </span>
                     </td>
                     {isAdmin && (
-                      <td className="px-5 py-3.5 text-sm text-[#6B7280]">
+                      <td className="px-5 py-3.5 text-sm text-muted-foreground">
                         {t.profesionalNombre}
                       </td>
                     )}
-                    <td className="px-5 py-3.5 text-sm text-[#6B7280] max-w-[200px]">
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground max-w-[200px]">
                       {t.deportistas.length === 0 ? (
                         <span className="text-gray-300">—</span>
                       ) : (
@@ -288,7 +288,7 @@ export default function TurnosTable({
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-sm text-[#6B7280] max-w-[200px]">
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground max-w-[200px]">
                       {t.descripcion ? (
                         <span className="block truncate" title={t.descripcion}>
                           {t.descripcion}
@@ -301,7 +301,7 @@ export default function TurnosTable({
                       <div className="flex items-center gap-1 justify-end">
                         <Link
                           href={`/turnos/${t.id}/editar`}
-                          className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
+                          className="text-muted-foreground hover:text-primario transition-colors p-1"
                           title="Editar turno"
                         >
                           <Pencil size={15} />
@@ -324,7 +324,7 @@ export default function TurnosTable({
       {/* Pagination controls */}
       {total > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
-          <p className="text-xs text-[#6B7280]">
+          <p className="text-xs text-muted-foreground">
             Mostrando {from}–{to} de {total}
           </p>
           <div className="flex items-center gap-2">
@@ -332,20 +332,20 @@ export default function TurnosTable({
               type="button"
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage <= 0 || isPending}
-              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página anterior"
             >
               <ChevronLeft size={14} />
               Anterior
             </button>
-            <span className="text-xs text-[#6B7280] whitespace-nowrap">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
               Página {currentPage + 1} de {totalPages}
             </span>
             <button
               type="button"
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage >= totalPages - 1 || isPending}
-              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página siguiente"
             >
               Siguiente

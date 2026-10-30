@@ -19,7 +19,7 @@ function Etiquetas({ evento, sobreOscuro }: { evento: EventoProximo; sobreOscuro
       )}
       {!evento.tieneConvocatoria && (
         <span
-          className={`rounded-full px-2 py-0.5 text-xs font-medium ${sobreOscuro ? 'bg-white/15 text-white' : 'bg-gray-200 text-[#1C1C1C]'}`}
+          className={`rounded-full px-2 py-0.5 text-xs font-medium ${sobreOscuro ? 'bg-white/15 text-white' : 'bg-gray-200 text-foreground'}`}
         >
           sin convocatoria
         </span>
@@ -55,13 +55,13 @@ export default async function SeccionEventos({ hoyDb }: { hoyDb: Date }) {
         />
       ) : (
         <>
-          <div className="flex min-w-0 items-center gap-4 rounded-xl bg-[#121A61] p-3 text-white">
+          <div className="flex min-w-0 items-center gap-4 rounded-xl bg-primario p-3 text-white">
             <TileFecha
               tamano="grande"
               arriba={diaCortoDb(proximo.fecha)}
               abajo={diaYMesCortoDb(proximo.fecha)}
-              fondo="bg-[#C9A84C]"
-              texto="text-[#121A61]"
+              fondo="bg-acento"
+              texto="text-primario"
             />
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-white/70">
@@ -84,7 +84,7 @@ export default async function SeccionEventos({ hoyDb }: { hoyDb: Date }) {
                 >
                   <TileFecha arriba={diaCortoDb(e.fecha)} abajo={diaYMesCortoDb(e.fecha)} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[#1C1C1C]">
+                    <p className="truncate text-sm font-semibold text-foreground">
                       {e.local} vs. {e.visitante}
                     </p>
                     <p className="truncate text-xs text-[#5B6478]">{e.categoria}</p>

@@ -8,7 +8,7 @@ import { entrarAClub, setClubActivo, type ClubListado } from '@/lib/actions/supe
 import ConfirmarAccionModal from '@/app/(app)/usuarios/ConfirmarAccionModal';
 
 const BOTON =
-  'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3346CC]/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+  'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secundario/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
 function EstadoBadge({ activo }: { activo: boolean }) {
   return activo ? (
@@ -55,7 +55,7 @@ export default function ClubesTable({ clubes }: { clubes: ClubListado[] }) {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-xs uppercase text-[#6B7280] bg-[#F3F4F6] border-b border-gray-100">
+              <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-gray-100">
                 <th className="px-4 py-3 text-left">Club</th>
                 <th className="px-4 py-3 text-left">Estado</th>
                 <th className="px-4 py-3 text-right">Miembros</th>
@@ -66,7 +66,7 @@ export default function ClubesTable({ clubes }: { clubes: ClubListado[] }) {
             <tbody>
               {clubes.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center text-sm text-[#6B7280]">
+                  <td colSpan={5} className="px-5 py-12 text-center text-sm text-muted-foreground">
                     Todavía no hay clubes
                   </td>
                 </tr>
@@ -74,10 +74,10 @@ export default function ClubesTable({ clubes }: { clubes: ClubListado[] }) {
                 clubes.map((club) => {
                   const ocupado = isPending && pendienteId === club.id;
                   return (
-                    <tr key={club.id} className="border-b border-gray-50 hover:bg-[#F3F4F6] transition-colors">
+                    <tr key={club.id} className="border-b border-gray-50 hover:bg-muted transition-colors">
                       <td className="px-4 py-3.5">
-                        <p className="text-sm font-medium text-[#1C1C1C]">{club.nombre}</p>
-                        <p className="text-xs text-[#6B7280]">{club.slug}</p>
+                        <p className="text-sm font-medium text-foreground">{club.nombre}</p>
+                        <p className="text-xs text-muted-foreground">{club.slug}</p>
                       </td>
                       <td className="px-4 py-3.5">
                         <EstadoBadge activo={club.activo} />

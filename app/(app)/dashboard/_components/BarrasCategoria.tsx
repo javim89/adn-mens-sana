@@ -44,7 +44,7 @@ export default function BarrasCategoria({
         const alto = maximo > 0 ? (valor / maximo) * 100 : 0;
         return (
           <div key={c.clave} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-            <span className="text-xs font-semibold tabular-nums text-[#1C1C1C]">
+            <span className="text-xs font-semibold tabular-nums text-foreground">
               {c.valor === null ? '—' : formatear(c.valor)}
             </span>
             <div className="flex h-28 w-full items-end rounded-md bg-gray-50">

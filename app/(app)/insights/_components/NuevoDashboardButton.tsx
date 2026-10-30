@@ -47,7 +47,7 @@ export default function NuevoDashboardButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#121A61] text-white text-sm hover:bg-[#1E2A8A] transition-colors"
+        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primario text-white text-sm hover:bg-primario-hover transition-colors"
       >
         <Plus size={16} /> Nuevo dashboard
       </button>
@@ -67,7 +67,7 @@ export default function NuevoDashboardButton() {
             <div>
               <label
                 htmlFor="dashboard-nombre"
-                className="block text-sm font-medium text-[#1C1C1C] mb-1.5"
+                className="block text-sm font-medium text-foreground mb-1.5"
               >
                 Nombre
               </label>
@@ -86,9 +86,9 @@ export default function NuevoDashboardButton() {
             <div>
               <label
                 htmlFor="dashboard-desc"
-                className="block text-sm font-medium text-[#1C1C1C] mb-1.5"
+                className="block text-sm font-medium text-foreground mb-1.5"
               >
-                Descripción <span className="text-[#6B7280] font-normal">(opcional)</span>
+                Descripción <span className="text-muted-foreground font-normal">(opcional)</span>
               </label>
               <textarea
                 id="dashboard-desc"
@@ -104,7 +104,7 @@ export default function NuevoDashboardButton() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="px-4 py-2 text-sm text-[#6B7280] hover:text-[#1C1C1C]"
+              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
             >
               Cancelar
             </button>
@@ -112,7 +112,7 @@ export default function NuevoDashboardButton() {
               type="button"
               onClick={submit}
               disabled={!nombre.trim() || isPending}
-              className="px-4 py-2 rounded-lg bg-[#121A61] text-white text-sm hover:bg-[#1E2A8A] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg bg-primario text-white text-sm hover:bg-primario-hover disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isPending ? 'Creando…' : 'Crear'}
             </button>

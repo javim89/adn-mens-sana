@@ -34,7 +34,7 @@ function formatDate(dateStr: string) {
 function DetailCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
-      <h2 className="text-xs font-semibold uppercase text-[#6B7280] mb-2 tracking-wide">
+      <h2 className="text-xs font-semibold uppercase text-muted-foreground mb-2 tracking-wide">
         {title}
       </h2>
       {children}
@@ -63,7 +63,7 @@ export default async function ConvocatoriaDetallePage({ params }: Props) {
       <div className="mb-4">
         <Link
           href="/convocatorias"
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Convocatorias
         </Link>
@@ -74,7 +74,7 @@ export default async function ConvocatoriaDetallePage({ params }: Props) {
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3 mb-1">
             <h1
-              className="text-3xl font-bold text-[#121A61]"
+              className="text-3xl font-bold text-primario"
               style={{ fontFamily: 'Oswald, sans-serif' }}
             >
               {partido.local} vs {partido.visitante}
@@ -87,14 +87,14 @@ export default async function ConvocatoriaDetallePage({ params }: Props) {
               {ESTADO_LABELS[partido.estado] ?? partido.estado}
             </span>
           </div>
-          <p className="text-sm text-[#6B7280]">{fechaLabel}</p>
+          <p className="text-sm text-muted-foreground">{fechaLabel}</p>
         </div>
 
         {canModify && (
           <div className="flex items-center gap-2 shrink-0">
             <Link
               href={`/convocatorias/${id}/editar`}
-              className="text-sm font-medium px-4 py-2 border border-gray-200 text-[#6B7280] hover:text-[#1C1C1C] rounded-lg transition-colors"
+              className="text-sm font-medium px-4 py-2 border border-gray-200 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
             >
               Editar
             </Link>
@@ -112,24 +112,24 @@ export default async function ConvocatoriaDetallePage({ params }: Props) {
         <DetailCard title="Datos de la citación">
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <dt className="text-xs font-medium text-[#6B7280] mb-0.5">Hora de citación</dt>
-              <dd className="text-sm text-[#1C1C1C]">
-                {convocatoria.horaCitacion || <span className="text-[#6B7280]">—</span>}
+              <dt className="text-xs font-medium text-muted-foreground mb-0.5">Hora de citación</dt>
+              <dd className="text-sm text-foreground">
+                {convocatoria.horaCitacion || <span className="text-muted-foreground">—</span>}
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-[#6B7280] mb-0.5">
+              <dt className="text-xs font-medium text-muted-foreground mb-0.5">
                 Lugar / punto de encuentro
               </dt>
-              <dd className="text-sm text-[#1C1C1C]">
-                {convocatoria.lugar || <span className="text-[#6B7280]">—</span>}
+              <dd className="text-sm text-foreground">
+                {convocatoria.lugar || <span className="text-muted-foreground">—</span>}
               </dd>
             </div>
           </dl>
           {convocatoria.observaciones && (
             <div className="mt-4">
-              <dt className="text-xs font-medium text-[#6B7280] mb-0.5">Observaciones</dt>
-              <dd className="text-sm text-[#1C1C1C] whitespace-pre-wrap">
+              <dt className="text-xs font-medium text-muted-foreground mb-0.5">Observaciones</dt>
+              <dd className="text-sm text-foreground whitespace-pre-wrap">
                 {convocatoria.observaciones}
               </dd>
             </div>
@@ -139,7 +139,7 @@ export default async function ConvocatoriaDetallePage({ params }: Props) {
         {/* Plantel convocado */}
         <DetailCard title={`Plantel convocado (${totalConvocados})`}>
           {totalConvocados === 0 ? (
-            <p className="text-sm text-[#6B7280] italic">
+            <p className="text-sm text-muted-foreground italic">
               No hay deportistas convocados.
             </p>
           ) : (
@@ -149,11 +149,11 @@ export default async function ConvocatoriaDetallePage({ params }: Props) {
                   key={c.id}
                   className="py-3 flex items-center justify-between gap-2 first:pt-0 last:pb-0"
                 >
-                  <span className="text-sm font-medium text-[#1C1C1C]">
+                  <span className="text-sm font-medium text-foreground">
                     {c.apellido}, {c.nombre}
                   </span>
                   {c.posicion && (
-                    <span className="text-xs text-[#6B7280]">{c.posicion}</span>
+                    <span className="text-xs text-muted-foreground">{c.posicion}</span>
                   )}
                 </li>
               ))}

@@ -165,7 +165,7 @@ export default async function SeccionSeguimientos({ hoyDb }: { hoyDb: Date }) {
                   <Link
                     href={`/seguimientos/${c.id}`}
                     aria-label={`Ver el seguimiento ${c.titulo}, cita del ${fechaDb(c.proximaCita)}${vencida ? ', ya pasó' : ''}`}
-                    className="group flex h-full min-w-0 items-center gap-3 rounded-xl bg-gray-50 p-2.5 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3346CC]"
+                    className="group flex h-full min-w-0 items-center gap-3 rounded-xl bg-gray-50 p-2.5 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secundario"
                   >
                     <TileFecha
                       arriba={diaCortoDb(c.proximaCita)}
@@ -174,7 +174,7 @@ export default async function SeccionSeguimientos({ hoyDb }: { hoyDb: Date }) {
                       texto={vencida ? 'text-amber-900' : 'text-white'}
                     />
                     <span className="flex min-w-0 flex-col">
-                      <span className="truncate text-sm font-semibold text-[#1C1C1C] group-hover:underline">
+                      <span className="truncate text-sm font-semibold text-foreground group-hover:underline">
                         {c.titulo}
                       </span>
                       <span className="truncate text-xs text-[#5B6478]">

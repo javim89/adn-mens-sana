@@ -186,7 +186,7 @@ export default function FotoPerfilInput({
             size="sm"
             disabled={disabled}
             onClick={() => inputRef.current?.click()}
-            className="border-[#121A61] text-[#121A61] hover:bg-[#3346CC]/5 hover:text-[#121A61]"
+            className="border-primario text-primario hover:bg-secundario/5 hover:text-primario"
           >
             <Camera />
             {hasFoto ? 'Cambiar' : 'Subir foto'}
@@ -199,7 +199,7 @@ export default function FotoPerfilInput({
               size="sm"
               disabled={disabled || cargandoOriginal}
               onClick={handleAjustar}
-              className="border-gray-200 text-[#121A61] hover:bg-[#3346CC]/5 hover:text-[#121A61]"
+              className="border-gray-200 text-primario hover:bg-secundario/5 hover:text-primario"
             >
               {cargandoOriginal ? <Loader2 className="animate-spin" /> : <Crop />}
               Ajustar
@@ -225,7 +225,7 @@ export default function FotoPerfilInput({
               size="sm"
               disabled={disabled}
               onClick={handleRestaurar}
-              className="text-[#3346CC] hover:bg-[#3346CC]/5 hover:text-[#121A61]"
+              className="text-secundario hover:bg-secundario/5 hover:text-primario"
             >
               <RotateCcw />
               Restaurar foto
@@ -233,7 +233,7 @@ export default function FotoPerfilInput({
           )}
         </div>
 
-        <p className="mt-2 text-xs text-[#6B7280]">JPG, PNG o WebP. Máx. 20 MB.</p>
+        <p className="mt-2 text-xs text-muted-foreground">JPG, PNG o WebP. Máx. 20 MB.</p>
         {error && (
           <p id={errorId} role="alert" className="mt-1 text-xs text-red-600">
             {error}

@@ -79,12 +79,12 @@ export default async function DashboardPage() {
   return (
     <div className="p-4 md:p-8">
       <h1
-        className="text-3xl font-bold text-[#121A61] mb-1"
+        className="text-3xl font-bold text-primario mb-1"
         style={{ fontFamily: 'Oswald, sans-serif' }}
       >
         Dashboard
       </h1>
-      <p className="text-[#6B7280] mb-6">
+      <p className="text-muted-foreground mb-6">
         Resumen de la semana {rangoSemana(semana.desdeClave, semana.hastaClave)}.
       </p>
 
@@ -95,11 +95,11 @@ export default async function DashboardPage() {
          * en blanco, que se leería como un bug: el mensaje dice qué pasa y qué hacer.
          */
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-12 text-center">
-          <LayoutDashboard size={28} className="mx-auto text-[#6B7280] mb-3" />
-          <p className="text-[#1C1C1C] font-medium mb-1">
+          <LayoutDashboard size={28} className="mx-auto text-muted-foreground mb-3" />
+          <p className="text-foreground font-medium mb-1">
             Tu usuario todavía no tiene un rol asignado
           </p>
-          <p className="text-sm text-[#6B7280]">
+          <p className="text-sm text-muted-foreground">
             Pedile al administrador del club que te asigne uno para ver el resumen que
             te corresponde.
           </p>

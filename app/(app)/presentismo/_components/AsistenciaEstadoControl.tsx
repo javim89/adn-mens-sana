@@ -73,11 +73,11 @@ export default function AsistenciaEstadoControl({ value, onChange, size = 'md' }
             onClick={() => onChange(estado)}
             onKeyDown={(e) => handleKeyDown(e, index)}
             className={[
-              'border rounded-md text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3346CC]/40',
+              'border rounded-md text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-secundario/40',
               padding,
               active
                 ? ACTIVE_STYLES[estado]
-                : 'bg-white text-[#6B7280] border-gray-200 hover:bg-[#F3F4F6]',
+                : 'bg-white text-muted-foreground border-gray-200 hover:bg-muted',
             ].join(' ')}
           >
             <span className="sm:hidden">{SHORT_LABELS[estado]}</span>

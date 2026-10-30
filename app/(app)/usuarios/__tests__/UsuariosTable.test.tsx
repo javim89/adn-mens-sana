@@ -278,7 +278,7 @@ describe('UsuariosTable', () => {
     // Badge must NOT have the fallback gray class
     expect(badge.className).not.toContain('bg-gray-100');
     // Badge must have the teal color class
-    expect(badge.className).toContain('bg-[#0F766E]');
+    expect(badge.className).toContain('bg-teal-700');
   });
 });
 
@@ -659,6 +659,6 @@ describe('ConfirmarAccionModal', () => {
     render(<ConfirmarAccionModal {...baseProps} danger={false} />);
 
     const confirmBtn = screen.getByRole('button', { name: /confirmar/i });
-    expect(confirmBtn.className).toContain('bg-[#121A61]');
+    expect(confirmBtn.className).toContain('bg-primario');
   });
 });

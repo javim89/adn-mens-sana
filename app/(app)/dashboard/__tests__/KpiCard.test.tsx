@@ -144,7 +144,7 @@ describe('KpiCard — la variación', () => {
       render(<KpiCard label="Rojo" valor={3} variacion={{ tipo: 'sin_base' }} />);
 
       const texto = screen.getByText(/sin comparación previa/);
-      expect(texto.className).toContain('text-[#6B7280]');
+      expect(texto.className).toContain('text-muted-foreground');
       expect(texto.className).not.toContain('text-red-700');
       expect(texto.className).not.toContain('text-green-700');
     });
@@ -179,7 +179,7 @@ describe('KpiCard — variantes', () => {
       />,
     );
 
-    expect(container.firstElementChild!.className).toContain('bg-[#121A61]');
+    expect(container.firstElementChild!.className).toContain('bg-primario');
     expect(screen.getByText('12').className).toContain('text-white');
     expect(screen.getByRole('link', { name: 'Ver deportistas' }).className).toContain(
       'text-white',

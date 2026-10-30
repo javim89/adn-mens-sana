@@ -40,12 +40,12 @@ export default function ConfirmarAccionModal({
             )}
             <h2
               id="confirmar-titulo"
-              className="text-base font-semibold text-[#121A61] font-['Oswald',sans-serif]"
+              className="text-base font-semibold text-primario font-['Oswald',sans-serif]"
             >
               {title}
             </h2>
           </div>
-          <p className="text-sm text-[#6B7280]">{description}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
@@ -53,7 +53,7 @@ export default function ConfirmarAccionModal({
             type="button"
             onClick={onCancel}
             disabled={isPending}
-            className="text-sm text-[#6B7280] hover:text-[#1C1C1C] border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
+            className="text-sm text-muted-foreground hover:text-foreground border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -64,7 +64,7 @@ export default function ConfirmarAccionModal({
             className={`flex items-center gap-2 text-sm font-medium px-5 py-2 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
               danger
                 ? 'bg-red-600 hover:bg-red-700 text-white'
-                : 'bg-[#121A61] hover:bg-[#1E2A8A] text-white'
+                : 'bg-primario hover:bg-primario-hover text-white'
             }`}
           >
             {isPending ? (

@@ -83,7 +83,7 @@ export default function SeguimientosTimeline({ seguimientos }: Props) {
 
   if (sinSeguimientos) {
     return (
-      <p className="text-sm text-[#6B7280] py-12 text-center">
+      <p className="text-sm text-muted-foreground py-12 text-center">
         Este deportista no tiene seguimientos registrados.
       </p>
     );
@@ -114,7 +114,7 @@ export default function SeguimientosTimeline({ seguimientos }: Props) {
       </div>
 
       {filtrados.length === 0 ? (
-        <p className="text-sm text-[#6B7280] py-12 text-center">
+        <p className="text-sm text-muted-foreground py-12 text-center">
           No hay seguimientos que coincidan con los filtros.
           {hayFiltros && (
             <button
@@ -123,7 +123,7 @@ export default function SeguimientosTimeline({ seguimientos }: Props) {
                 setTipoFiltro('');
                 setPrioridadFiltro('');
               }}
-              className="block mx-auto mt-2 text-[#121A61] underline hover:no-underline"
+              className="block mx-auto mt-2 text-primario underline hover:no-underline"
             >
               Limpiar filtros
             </button>
@@ -149,10 +149,10 @@ export default function SeguimientosTimeline({ seguimientos }: Props) {
 
                 <Link
                   href={`/seguimientos/${s.id}`}
-                  className="block rounded-lg border border-gray-100 bg-white p-4 shadow-sm transition-colors hover:border-[#121A61]/30 hover:bg-[#F3F4F6]"
+                  className="block rounded-lg border border-gray-100 bg-white p-4 shadow-sm transition-colors hover:border-primario/30 hover:bg-muted"
                 >
                   <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-xs text-[#6B7280] whitespace-nowrap">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {formatDate(s.fecha)}
                     </span>
                     <span
@@ -167,16 +167,16 @@ export default function SeguimientosTimeline({ seguimientos }: Props) {
                     </span>
                   </div>
 
-                  <p className="text-sm font-semibold text-[#1C1C1C]">{s.titulo}</p>
+                  <p className="text-sm font-semibold text-foreground">{s.titulo}</p>
 
                   {s.descripcion && (
-                    <p className="text-sm text-[#6B7280] mt-1 line-clamp-3 whitespace-pre-wrap">
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
                       {s.descripcion}
                     </p>
                   )}
 
                   {s.proximaCita && (
-                    <p className="flex items-center gap-1.5 text-xs text-[#6B7280] mt-2">
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
                       <CalendarClock size={14} />
                       Próxima cita: {formatDatetime(s.proximaCita)}
                     </p>

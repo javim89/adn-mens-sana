@@ -51,15 +51,15 @@ export default function ClubSelector({ clubes, clubActual }: ClubSelectorProps) 
           onChange={(e) => handleChange(e.target.value)}
           disabled={isPending}
           aria-busy={isPending}
-          className="w-full appearance-none rounded-lg border border-white/20 bg-white/10 py-2 pl-3 pr-8 text-sm font-medium text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]/70 disabled:opacity-60"
+          className="w-full appearance-none rounded-lg border border-white/20 bg-white/10 py-2 pl-3 pr-8 text-sm font-medium text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-acento/70 disabled:opacity-60"
         >
           {!actualEsMembresia && (
-            <option value={clubActual.id} disabled className="text-[#6B7280]">
+            <option value={clubActual.id} disabled className="text-muted-foreground">
               {clubActual.nombre}
             </option>
           )}
           {clubes.map((club) => (
-            <option key={club.id} value={club.id} className="text-[#1C1C1C]">
+            <option key={club.id} value={club.id} className="text-foreground">
               {club.nombre}
             </option>
           ))}

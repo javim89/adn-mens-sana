@@ -63,8 +63,8 @@ function ValueInput({
               }
               className={`px-2 py-1 rounded-full text-xs border transition-colors ${
                 active
-                  ? 'bg-[#121A61] text-white border-[#121A61]'
-                  : 'bg-white text-[#6B7280] border-gray-200 hover:border-[#3346CC]'
+                  ? 'bg-primario text-white border-primario'
+                  : 'bg-white text-muted-foreground border-gray-200 hover:border-secundario'
               }`}
             >
               {label}
@@ -87,7 +87,7 @@ function ValueInput({
           aria-label="Desde"
           className="h-9 w-full rounded-md border border-gray-200 px-2 text-sm"
         />
-        <span className="text-xs text-[#6B7280]">y</span>
+        <span className="text-xs text-muted-foreground">y</span>
         <input
           type={inputType}
           value={String(pair[1] ?? '')}
@@ -188,7 +188,7 @@ function ConditionRow({
         type="button"
         onClick={onRemove}
         aria-label="Quitar filtro"
-        className="h-9 w-9 flex items-center justify-center rounded-md text-[#6B7280] hover:text-red-600 hover:bg-red-50"
+        className="h-9 w-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50"
       >
         <Trash2 size={15} />
       </button>
@@ -221,7 +221,7 @@ export default function FilterBuilder({ dataset, value, onChange, depth = 0 }: P
       }
     >
       <div className="flex items-center gap-2">
-        <span className="text-xs text-[#6B7280]">Cumplir</span>
+        <span className="text-xs text-muted-foreground">Cumplir</span>
         <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
           {(['all', 'any'] as const).map((op) => (
             <button
@@ -230,18 +230,18 @@ export default function FilterBuilder({ dataset, value, onChange, depth = 0 }: P
               aria-pressed={value.op === op}
               onClick={() => onChange({ ...value, op })}
               className={`px-2.5 py-1 text-xs transition-colors ${
-                value.op === op ? 'bg-[#121A61] text-white' : 'bg-white text-[#6B7280]'
+                value.op === op ? 'bg-primario text-white' : 'bg-white text-muted-foreground'
               }`}
             >
               {op === 'all' ? 'todas' : 'alguna'}
             </button>
           ))}
         </div>
-        <span className="text-xs text-[#6B7280]">de las condiciones</span>
+        <span className="text-xs text-muted-foreground">de las condiciones</span>
       </div>
 
       {value.children.length === 0 && (
-        <p className="text-xs text-[#6B7280] italic">Sin filtros — se incluye todo.</p>
+        <p className="text-xs text-muted-foreground italic">Sin filtros — se incluye todo.</p>
       )}
 
       {value.children.map((child, i) =>
@@ -271,7 +271,7 @@ export default function FilterBuilder({ dataset, value, onChange, depth = 0 }: P
             const cond = defaultCondition(dataset);
             if (cond) onChange({ ...value, children: [...value.children, cond] });
           }}
-          className="inline-flex items-center gap-1 text-xs text-[#3346CC] hover:underline"
+          className="inline-flex items-center gap-1 text-xs text-secundario hover:underline"
         >
           <Plus size={13} /> Agregar condición
         </button>
@@ -284,7 +284,7 @@ export default function FilterBuilder({ dataset, value, onChange, depth = 0 }: P
                 children: [...value.children, emptyGroup(value.op === 'all' ? 'any' : 'all')],
               })
             }
-            className="inline-flex items-center gap-1 text-xs text-[#6B7280] hover:underline"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
           >
             <Plus size={13} /> Agregar grupo
           </button>

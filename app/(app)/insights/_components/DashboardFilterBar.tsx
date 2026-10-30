@@ -44,11 +44,11 @@ export default function DashboardFilterBar({
             <div className="flex items-center gap-1 mb-1">
               <label
                 htmlFor={`filtro-${filtro.id}`}
-                className="text-xs font-medium text-[#1C1C1C]"
+                className="text-xs font-medium text-foreground"
               >
                 {filtro.label}
               </label>
-              <span className="text-xs text-[#6B7280]">
+              <span className="text-xs text-muted-foreground">
                 {OPERATOR_LABELS[filtro.operator as Operator] ?? filtro.operator}
               </span>
               {editable && (
@@ -57,7 +57,7 @@ export default function DashboardFilterBar({
                     type="button"
                     onClick={() => onEdit?.(filtro)}
                     aria-label={`Editar filtro ${filtro.label}`}
-                    className="text-[#6B7280] hover:text-[#121A61]"
+                    className="text-muted-foreground hover:text-primario"
                   >
                     <Pencil size={12} />
                   </button>
@@ -65,7 +65,7 @@ export default function DashboardFilterBar({
                     type="button"
                     onClick={() => onDelete?.(filtro)}
                     aria-label={`Eliminar filtro ${filtro.label}`}
-                    className="text-[#6B7280] hover:text-red-600"
+                    className="text-muted-foreground hover:text-red-600"
                   >
                     <Trash2 size={12} />
                   </button>
@@ -74,7 +74,7 @@ export default function DashboardFilterBar({
             </div>
 
             {sinValor ? (
-              <p className="h-9 flex items-center text-sm text-[#6B7280]">
+              <p className="h-9 flex items-center text-sm text-muted-foreground">
                 Siempre activo
               </p>
             ) : dimension?.enumLabels ? (
@@ -111,7 +111,7 @@ export default function DashboardFilterBar({
                     type="button"
                     onClick={() => onChange(filtro.id, '')}
                     aria-label={`Limpiar ${filtro.label}`}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#1C1C1C]"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     <X size={13} />
                   </button>

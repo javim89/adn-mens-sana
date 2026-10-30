@@ -127,13 +127,13 @@ export default async function EditarSeguimientoPage({ params }: Props) {
       <div className="mb-2">
         <Link
           href={`/seguimientos/${id}`}
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Volver al seguimiento
         </Link>
       </div>
       <h1
-        className="text-3xl font-bold text-[#121A61] mb-6"
+        className="text-3xl font-bold text-primario mb-6"
         style={{ fontFamily: 'Oswald, sans-serif' }}
       >
         Editar seguimiento

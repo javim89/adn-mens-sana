@@ -11,7 +11,7 @@ export const ESTADO_ASISTENCIA_STYLES: Record<EstadoAsistencia, string> = {
   PRESENTE: 'bg-green-100 text-green-700',
   AUSENTE: 'bg-red-100 text-red-700',
   LLEGO_TARDE: 'bg-amber-100 text-amber-700',
-  SE_RETIRO_ANTES: 'bg-gray-100 text-[#6B7280]',
+  SE_RETIRO_ANTES: 'bg-gray-100 text-muted-foreground',
 };
 
 export const TIPO_SESION_LABELS: Record<TipoSesion, string> = {

@@ -6,7 +6,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-linear-to-br from-[#1E2A8A] to-[#121A61]">
+    <div className="flex min-h-screen w-full items-center justify-center bg-linear-to-br from-primario-hover to-primario">
       <div className="flex w-full flex-col items-center gap-6 px-4 py-12">
         {/* Marca */}
         <div className="flex items-center gap-3 text-center">

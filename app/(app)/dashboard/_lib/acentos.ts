@@ -83,18 +83,18 @@ export const ACENTOS: Record<ModuloDashboard, Acento> = {
     link: 'text-sky-700 hover:text-sky-900',
   },
   eventos: {
-    cuadrado: 'bg-[#C9A84C]',
-    bordeSuperior: 'border-t-4 border-t-[#C9A84C]',
-    barraFuerte: 'bg-[#C9A84C]',
-    barraSuave: 'bg-[#EADDB5]',
-    tileFecha: 'bg-[#121A61]',
-    link: 'text-[#3346CC] hover:text-[#121A61]',
+    cuadrado: 'bg-acento',
+    bordeSuperior: 'border-t-4 border-t-acento',
+    barraFuerte: 'bg-acento',
+    barraSuave: 'bg-acento-suave',
+    tileFecha: 'bg-primario',
+    link: 'text-secundario hover:text-primario',
   },
 };
 
 /** Variantes de card destacada. Texto en tonos 700–900 sobre tintados (contraste AA). */
 export const HERO = {
-  card: 'bg-[#121A61] text-white',
+  card: 'bg-primario text-white',
   label: 'text-white/80',
   valor: 'text-white',
   detalle: 'text-white/70',

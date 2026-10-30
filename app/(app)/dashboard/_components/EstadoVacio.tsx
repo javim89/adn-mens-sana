@@ -17,9 +17,9 @@ export default function EstadoVacio({
   detalle?: string;
 }) {
   return (
-    <div role="status" className="rounded-lg bg-[#F9FAFB] px-4 py-6 text-center">
-      <p className="text-sm font-medium text-[#1C1C1C]">{titulo}</p>
-      {detalle && <p className="mt-1 text-xs text-[#6B7280]">{detalle}</p>}
+    <div role="status" className="rounded-lg bg-subtle px-4 py-6 text-center">
+      <p className="text-sm font-medium text-foreground">{titulo}</p>
+      {detalle && <p className="mt-1 text-xs text-muted-foreground">{detalle}</p>}
     </div>
   );
 }
@@ -68,7 +68,7 @@ export function CardSeccion({
           <div className="min-w-0">
             {titulo && (
               <h3
-                className={`text-lg font-semibold ${alerta ? alerta.valor : 'text-[#121A61]'}`}
+                className={`text-lg font-semibold ${alerta ? alerta.valor : 'text-primario'}`}
                 style={OSWALD}
               >
                 {titulo}
@@ -76,7 +76,7 @@ export function CardSeccion({
             )}
             {descripcion && (
               <p
-                className={`${titulo ? 'mt-0.5' : ''} text-xs ${alerta ? alerta.detalle : 'text-[#6B7280]'}`}
+                className={`${titulo ? 'mt-0.5' : ''} text-xs ${alerta ? alerta.detalle : 'text-muted-foreground'}`}
               >
                 {descripcion}
               </p>
@@ -84,7 +84,7 @@ export function CardSeccion({
           </div>
           {badge && (
             <span
-              className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${alerta ? alerta.badge : 'bg-gray-100 text-[#1C1C1C]'}`}
+              className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${alerta ? alerta.badge : 'bg-gray-100 text-foreground'}`}
             >
               {badge}
             </span>

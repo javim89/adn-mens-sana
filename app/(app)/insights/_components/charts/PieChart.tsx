@@ -90,7 +90,7 @@ export function PieChartBase({
             y="45%"
             textAnchor="middle"
             dominantBaseline="middle"
-            className="fill-[#121A61]"
+            className="fill-primario"
             style={{ fontFamily: 'Oswald, sans-serif', fontSize: 20, fontWeight: 600 }}
           >
             {formatValue(total, format)}

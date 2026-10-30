@@ -87,7 +87,7 @@ export default async function SeccionTurnos({
                   >
                     <TileFecha arriba={diaCortoYFechaDb(t.fecha)} abajo={t.hora} />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[#1C1C1C]">
+                      <p className="truncate text-sm font-semibold text-foreground">
                         {t.titulo}
                       </p>
                       <p className="truncate text-xs text-[#5B6478]">

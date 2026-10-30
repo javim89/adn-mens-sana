@@ -90,12 +90,12 @@ export default function CalendarioView({ categorias, dias, eventos }: Calendario
     <div className="min-w-0">
       <div className="mb-6">
         <h1
-          className="text-3xl font-bold text-[#121A61]"
+          className="text-3xl font-bold text-primario"
           style={{ fontFamily: 'Oswald, sans-serif' }}
         >
           Calendario
         </h1>
-        <p className="text-sm text-[#6B7280] mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Fixture Torneo Juveniles 2026
         </p>
       </div>

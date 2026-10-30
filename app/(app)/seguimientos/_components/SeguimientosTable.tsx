@@ -184,7 +184,7 @@ export default function SeguimientosTable({
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <h1
-          className="text-3xl font-bold text-[#121A61]"
+          className="text-3xl font-bold text-primario"
           style={{ fontFamily: 'Oswald, sans-serif' }}
         >
           Seguimientos
@@ -192,17 +192,17 @@ export default function SeguimientosTable({
         {canWrite && (
           <Link
             href="/seguimientos/nuevo"
-            className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors shrink-0"
+            className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover transition-colors shrink-0"
           >
             <Plus size={16} />
             Nuevo seguimiento
           </Link>
         )}
       </div>
-      <p className="text-[#6B7280] mb-6">
+      <p className="text-muted-foreground mb-6">
         Evaluaciones y seguimiento clínico de deportistas
         {total > 0 && (
-          <span className="ml-2 text-xs font-medium bg-gray-100 text-[#6B7280] px-2 py-0.5 rounded-full">
+          <span className="ml-2 text-xs font-medium bg-gray-100 text-muted-foreground px-2 py-0.5 rounded-full">
             {total} {total === 1 ? 'seguimiento' : 'seguimientos'}
           </span>
         )}
@@ -213,14 +213,14 @@ export default function SeguimientosTable({
         <div className="relative flex-1 min-w-[180px]">
           <Search
             size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <input
             type="text"
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Buscar por título o deportista..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 bg-white"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30 bg-white"
           />
         </div>
 
@@ -280,10 +280,10 @@ export default function SeguimientosTable({
         {/* Mobile card list */}
         <ul className="lg:hidden divide-y divide-gray-100">
           {seguimientos.length === 0 ? (
-            <li className="px-4 py-12 text-center text-sm text-[#6B7280]">
+            <li className="px-4 py-12 text-center text-sm text-muted-foreground">
               No hay seguimientos.{' '}
               {canWrite && (
-                <Link href="/seguimientos/nuevo" className="text-[#121A61] underline hover:no-underline">
+                <Link href="/seguimientos/nuevo" className="text-primario underline hover:no-underline">
                   Crear el primero
                 </Link>
               )}
@@ -298,7 +298,7 @@ export default function SeguimientosTable({
                       <div className="flex flex-wrap items-center gap-2 mb-0.5">
                         <Link
                           href={`/seguimientos/${s.id}`}
-                          className="text-sm font-semibold text-[#1C1C1C] hover:text-[#121A61] truncate transition-colors"
+                          className="text-sm font-semibold text-foreground hover:text-primario truncate transition-colors"
                         >
                           {s.titulo}
                         </Link>
@@ -309,12 +309,12 @@ export default function SeguimientosTable({
                         const dep = formatDeportistas(s.deportistas);
                         return (
                           <p
-                            className="flex items-center gap-1 text-xs text-[#6B7280] mt-0.5"
+                            className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5"
                             title={dep.title}
                           >
                             <span className="truncate">{dep.first}</span>
                             {dep.othersCount > 0 && (
-                              <span className="shrink-0 text-[#6B7280]">
+                              <span className="shrink-0 text-muted-foreground">
                                 +{dep.othersCount}
                               </span>
                             )}
@@ -323,7 +323,7 @@ export default function SeguimientosTable({
                         );
                       })()}
                       {isAdmin && (
-                        <p className="text-xs text-[#6B7280] mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           Profesional: {s.profesionalNombre}
                         </p>
                       )}
@@ -331,7 +331,7 @@ export default function SeguimientosTable({
                     <div className="flex items-center gap-1 shrink-0">
                       <Link
                         href={`/seguimientos/${s.id}`}
-                        className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
+                        className="text-muted-foreground hover:text-primario transition-colors p-1"
                         title="Ver seguimiento"
                       >
                         <Eye size={15} />
@@ -340,7 +340,7 @@ export default function SeguimientosTable({
                         <>
                           <Link
                             href={`/seguimientos/${s.id}/editar`}
-                            className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
+                            className="text-muted-foreground hover:text-primario transition-colors p-1"
                             title="Editar seguimiento"
                           >
                             <Pencil size={15} />
@@ -364,7 +364,7 @@ export default function SeguimientosTable({
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-xs uppercase text-[#6B7280] bg-[#F3F4F6] border-b border-gray-100">
+              <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-gray-100">
                 <th className="px-5 py-3 text-left">Deportista</th>
                 <th className="px-5 py-3 text-left">Fecha</th>
                 <th className="px-5 py-3 text-left">Título</th>
@@ -379,13 +379,13 @@ export default function SeguimientosTable({
                 <tr>
                   <td
                     colSpan={isAdmin ? 7 : 6}
-                    className="px-5 py-12 text-center text-sm text-[#6B7280]"
+                    className="px-5 py-12 text-center text-sm text-muted-foreground"
                   >
                     No hay seguimientos.{' '}
                     {canWrite && (
                       <Link
                         href="/seguimientos/nuevo"
-                        className="text-[#121A61] underline hover:no-underline"
+                        className="text-primario underline hover:no-underline"
                       >
                         Crear el primero
                       </Link>
@@ -398,16 +398,16 @@ export default function SeguimientosTable({
                   return (
                     <tr
                       key={s.id}
-                      className="border-b border-gray-50 hover:bg-[#F3F4F6] transition-colors"
+                      className="border-b border-gray-50 hover:bg-muted transition-colors"
                     >
-                      <td className="px-5 py-3.5 text-sm text-[#6B7280] max-w-[180px]">
+                      <td className="px-5 py-3.5 text-sm text-muted-foreground max-w-[180px]">
                         {(() => {
                           const dep = formatDeportistas(s.deportistas);
                           return (
                             <div className="flex items-center gap-1" title={dep.title}>
                               <span className="truncate">{dep.first}</span>
                               {dep.othersCount > 0 && (
-                                <span className="shrink-0 text-[#6B7280]">
+                                <span className="shrink-0 text-muted-foreground">
                                   +{dep.othersCount}
                                 </span>
                               )}
@@ -415,13 +415,13 @@ export default function SeguimientosTable({
                           );
                         })()}
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-[#6B7280] whitespace-nowrap">
+                      <td className="px-5 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
                         {formatDate(s.fecha)}
                       </td>
-                      <td className="px-5 py-3.5 text-sm font-medium text-[#1C1C1C] max-w-[200px]">
+                      <td className="px-5 py-3.5 text-sm font-medium text-foreground max-w-[200px]">
                         <Link
                           href={`/seguimientos/${s.id}`}
-                          className="block truncate hover:text-[#121A61] transition-colors"
+                          className="block truncate hover:text-primario transition-colors"
                           title={s.titulo}
                         >
                           {s.titulo}
@@ -434,7 +434,7 @@ export default function SeguimientosTable({
                         <TipoBadge tipo={s.tipoSeguimiento} />
                       </td>
                       {isAdmin && (
-                        <td className="px-5 py-3.5 text-sm text-[#6B7280] max-w-[160px]">
+                        <td className="px-5 py-3.5 text-sm text-muted-foreground max-w-[160px]">
                           <span className="block truncate" title={s.profesionalNombre}>
                             {s.profesionalNombre}
                           </span>
@@ -444,7 +444,7 @@ export default function SeguimientosTable({
                         <div className="flex items-center gap-1 justify-end">
                           <Link
                             href={`/seguimientos/${s.id}`}
-                            className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
+                            className="text-muted-foreground hover:text-primario transition-colors p-1"
                             title="Ver seguimiento"
                           >
                             <Eye size={15} />
@@ -453,7 +453,7 @@ export default function SeguimientosTable({
                             <>
                               <Link
                                 href={`/seguimientos/${s.id}/editar`}
-                                className="text-[#6B7280] hover:text-[#121A61] transition-colors p-1"
+                                className="text-muted-foreground hover:text-primario transition-colors p-1"
                                 title="Editar seguimiento"
                               >
                                 <Pencil size={15} />
@@ -479,7 +479,7 @@ export default function SeguimientosTable({
       {/* Pagination controls */}
       {total > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
-          <p className="text-xs text-[#6B7280]">
+          <p className="text-xs text-muted-foreground">
             Mostrando {from}–{to} de {total}
           </p>
           <div className="flex items-center gap-2">
@@ -487,20 +487,20 @@ export default function SeguimientosTable({
               type="button"
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage <= 0 || isPending}
-              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página anterior"
             >
               <ChevronLeft size={14} />
               Anterior
             </button>
-            <span className="text-xs text-[#6B7280] whitespace-nowrap">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
               Página {currentPage + 1} de {totalPages}
             </span>
             <button
               type="button"
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage >= totalPages - 1 || isPending}
-              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página siguiente"
             >
               Siguiente

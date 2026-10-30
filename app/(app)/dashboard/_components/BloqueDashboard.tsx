@@ -65,7 +65,7 @@ export default function BloqueDashboard({
       <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-[#DFE3EF] px-4 py-3">
         <h2
           id={idTitulo}
-          className="flex items-center gap-2.5 text-sm font-semibold uppercase tracking-[0.14em] text-[#121A61]"
+          className="flex items-center gap-2.5 text-sm font-semibold uppercase tracking-[0.14em] text-primario"
           style={OSWALD}
         >
           <span

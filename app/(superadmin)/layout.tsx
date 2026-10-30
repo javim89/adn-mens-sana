@@ -21,13 +21,13 @@ export default async function SuperadminLayout({ children }: { children: React.R
 
   return (
     <div className="flex min-h-screen w-full min-w-0 flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between gap-3 bg-[#121A61] px-4 text-white md:px-8">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-3 bg-primario px-4 text-white md:px-8">
         <Link href="/superadmin/clubes" className="flex min-w-0 items-center gap-2">
           <LogoBioTeam variante="inverso" className="h-7" eager />
           <span className="font-[family-name:var(--font-oswald)] text-sm font-semibold uppercase tracking-wide">
             BioTeam
           </span>
-          <span className="rounded-full bg-[#C9A84C] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#1C1C1C]">
+          <span className="rounded-full bg-acento px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">
             Superadmin
           </span>
         </Link>

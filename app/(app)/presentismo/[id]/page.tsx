@@ -26,7 +26,7 @@ function formatDate(date: Date) {
 function DetailCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
-      <h2 className="text-xs font-semibold uppercase text-[#6B7280] mb-2 tracking-wide">
+      <h2 className="text-xs font-semibold uppercase text-muted-foreground mb-2 tracking-wide">
         {title}
       </h2>
       {children}
@@ -63,7 +63,7 @@ export default async function EntrenamientoDetallePage({ params }: Props) {
       <div className="mb-4">
         <Link
           href="/presentismo"
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Presentismo
         </Link>
@@ -74,7 +74,7 @@ export default async function EntrenamientoDetallePage({ params }: Props) {
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3 mb-1">
             <h1
-              className="text-3xl font-bold text-[#121A61]"
+              className="text-3xl font-bold text-primario"
               style={{ fontFamily: 'Oswald, sans-serif' }}
             >
               {fechaLabel}
@@ -83,17 +83,17 @@ export default async function EntrenamientoDetallePage({ params }: Props) {
               {TIPO_SESION_LABELS[entrenamiento.tipoSesion]}
             </span>
           </div>
-          <p className="text-sm text-[#6B7280]">
+          <p className="text-sm text-muted-foreground">
             {entrenamiento.disciplina.nombre} · {entrenamiento.categoria.nombre}
           </p>
-          <p className="text-sm text-[#6B7280]">Entrenador: {entrenadorNombre}</p>
+          <p className="text-sm text-muted-foreground">Entrenador: {entrenadorNombre}</p>
         </div>
 
         {canModify && (
           <div className="flex items-center gap-2 shrink-0">
             <Link
               href={`/presentismo/${id}/editar`}
-              className="text-sm font-medium px-4 py-2 border border-gray-200 text-[#6B7280] hover:text-[#1C1C1C] rounded-lg transition-colors"
+              className="text-sm font-medium px-4 py-2 border border-gray-200 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
             >
               Editar
             </Link>
@@ -109,7 +109,7 @@ export default async function EntrenamientoDetallePage({ params }: Props) {
       <div className="space-y-4">
         {entrenamiento.objetivos && (
           <DetailCard title="Objetivos">
-            <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">
+            <p className="text-sm text-foreground whitespace-pre-wrap">
               {entrenamiento.objetivos}
             </p>
           </DetailCard>
@@ -137,8 +137,8 @@ export default async function EntrenamientoDetallePage({ params }: Props) {
               </dd>
             </div>
             <div className="rounded-lg bg-gray-100 px-4 py-3">
-              <dt className="text-xs font-medium text-[#6B7280] mb-1">Se retiró antes</dt>
-              <dd className="text-2xl font-semibold leading-none text-[#6B7280]">
+              <dt className="text-xs font-medium text-muted-foreground mb-1">Se retiró antes</dt>
+              <dd className="text-2xl font-semibold leading-none text-muted-foreground">
                 {counts.SE_RETIRO_ANTES}
               </dd>
             </div>
@@ -148,7 +148,7 @@ export default async function EntrenamientoDetallePage({ params }: Props) {
         {/* Listado de deportistas */}
         <DetailCard title={`Deportistas (${totalAsistencias})`}>
           {totalAsistencias === 0 ? (
-            <p className="text-sm text-[#6B7280] italic">
+            <p className="text-sm text-muted-foreground italic">
               No hay deportistas registrados en este entrenamiento.
             </p>
           ) : (
@@ -158,7 +158,7 @@ export default async function EntrenamientoDetallePage({ params }: Props) {
                   key={a.id}
                   className="py-3 flex items-center justify-between gap-2 first:pt-0 last:pb-0"
                 >
-                  <span className="text-sm font-medium text-[#1C1C1C]">
+                  <span className="text-sm font-medium text-foreground">
                     {a.deportista.apellido}, {a.deportista.nombre}
                   </span>
                   <EstadoAsistenciaBadge estado={a.estado as EstadoAsistencia} />

@@ -59,7 +59,7 @@ export default function MiniCardsNivel({
               href={it.href}
               aria-label={it.ariaLabel}
               data-vacio={vacio || undefined}
-              className={`group flex h-full flex-col rounded-xl px-3 py-2.5 transition-colors hover:ring-2 hover:ring-[#121A61]/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3346CC] ${vacio ? 'bg-gray-50' : it.tinte}`}
+              className={`group flex h-full flex-col rounded-xl px-3 py-2.5 transition-colors hover:ring-2 hover:ring-primario/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secundario ${vacio ? 'bg-gray-50' : it.tinte}`}
             >
               <span className="flex min-w-0 items-center gap-1.5">
                 <span
@@ -67,13 +67,13 @@ export default function MiniCardsNivel({
                   aria-hidden
                 />
                 <span
-                  className={`truncate text-xs font-medium group-hover:underline ${vacio ? 'text-[#6B7280]' : 'text-[#1C1C1C]'}`}
+                  className={`truncate text-xs font-medium group-hover:underline ${vacio ? 'text-muted-foreground' : 'text-foreground'}`}
                 >
                   {it.label}
                 </span>
               </span>
               <span
-                className={`mt-1 text-3xl font-semibold leading-none tabular-nums ${vacio ? 'text-[#6B7280]' : 'text-[#121A61]'}`}
+                className={`mt-1 text-3xl font-semibold leading-none tabular-nums ${vacio ? 'text-muted-foreground' : 'text-primario'}`}
                 style={OSWALD}
               >
                 {it.cantidad}

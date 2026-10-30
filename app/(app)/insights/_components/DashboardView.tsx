@@ -40,9 +40,9 @@ export default function DashboardView({ dashboard }: { dashboard: DashboardDetai
   if (dashboard.widgets.length === 0) {
     return (
       <div className="rounded-xl border border-gray-100 bg-white px-6 py-12 text-center">
-        <ChartColumn size={28} className="mx-auto text-[#6B7280] mb-3" />
-        <p className="text-[#1C1C1C] font-medium mb-1">Este dashboard todavía no tiene widgets</p>
-        <p className="text-sm text-[#6B7280]">
+        <ChartColumn size={28} className="mx-auto text-muted-foreground mb-3" />
+        <p className="text-foreground font-medium mb-1">Este dashboard todavía no tiene widgets</p>
+        <p className="text-sm text-muted-foreground">
           Entrá a editarlo para agregar el primero.
         </p>
       </div>
@@ -52,7 +52,7 @@ export default function DashboardView({ dashboard }: { dashboard: DashboardDetai
   return (
     <>
       <div className="flex items-center justify-end gap-3 mb-4">
-        <span className="text-xs text-[#6B7280]">
+        <span className="text-xs text-muted-foreground">
           Actualizado a las{' '}
           {new Intl.DateTimeFormat('es-AR', {
             hour: '2-digit',
@@ -63,7 +63,7 @@ export default function DashboardView({ dashboard }: { dashboard: DashboardDetai
           type="button"
           onClick={refresh}
           disabled={refreshing}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-[#1C1C1C] hover:border-[#3346CC] disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-foreground hover:border-secundario disabled:opacity-50"
         >
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
           Actualizar

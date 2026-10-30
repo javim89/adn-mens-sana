@@ -32,7 +32,7 @@ export default function AppShell({
   return (
     <>
       {/* Mobile top bar — hidden on md+ */}
-      <header className="md:hidden flex items-center justify-between px-4 bg-[#121A61] text-white h-14 shrink-0">
+      <header className="md:hidden flex items-center justify-between px-4 bg-primario text-white h-14 shrink-0">
         <span className="flex min-w-0 items-center gap-2">
           <LogoBioTeam variante="inverso" className="h-7" eager />
           <span className="font-[family-name:var(--font-oswald)] font-semibold text-sm uppercase tracking-wide">

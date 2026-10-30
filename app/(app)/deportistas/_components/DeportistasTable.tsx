@@ -131,7 +131,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <h1
-          className="text-3xl font-bold text-[#121A61]"
+          className="text-3xl font-bold text-primario"
           style={{ fontFamily: 'Oswald, sans-serif' }}
         >
           Deportistas
@@ -139,17 +139,17 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
         {canCreate && (
           <Link
             href="/deportistas/nuevo"
-            className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors shrink-0"
+            className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover transition-colors shrink-0"
           >
             <Plus size={16} />
             Nuevo deportista
           </Link>
         )}
       </div>
-      <p className="text-[#6B7280] mb-6">
+      <p className="text-muted-foreground mb-6">
         Gestión del plantel deportivo
         {total > 0 && (
-          <span className="ml-2 text-xs font-medium bg-gray-100 text-[#6B7280] px-2 py-0.5 rounded-full">
+          <span className="ml-2 text-xs font-medium bg-gray-100 text-muted-foreground px-2 py-0.5 rounded-full">
             {total} {total === 1 ? 'deportista' : 'deportistas'}
           </span>
         )}
@@ -162,7 +162,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
           <div className="relative flex-1 sm:min-w-[220px]">
             <Search
               size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
             />
             <input
               type="text"
@@ -170,7 +170,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
               onChange={(e) => setLocalSearch(e.target.value)}
               onKeyDown={handleSearchKeyDown}
               placeholder="Buscar por nombre, apellido o DNI..."
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
             />
           </div>
 
@@ -241,7 +241,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
           {hasFilters && (
             <button
               onClick={handleClear}
-              className="flex items-center gap-1.5 text-sm text-[#6B7280] hover:text-[#1C1C1C] border border-gray-200 rounded-lg px-3 py-2 transition-colors"
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border border-gray-200 rounded-lg px-3 py-2 transition-colors"
             >
               <X size={14} />
               Limpiar
@@ -260,12 +260,12 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
         {!isError && (
           <ul className="lg:hidden divide-y divide-gray-100">
             {deportistas.length === 0 && !isLoading ? (
-              <li className="px-4 py-12 text-center text-sm text-[#6B7280]">
+              <li className="px-4 py-12 text-center text-sm text-muted-foreground">
                 No se encontraron deportistas
                 {hasFilters && (
                   <button
                     onClick={handleClear}
-                    className="ml-2 text-[#121A61] underline hover:no-underline"
+                    className="ml-2 text-primario underline hover:no-underline"
                   >
                     Limpiar filtros
                   </button>
@@ -279,26 +279,26 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                     className="flex items-start justify-between gap-2"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#1C1C1C] truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {item.attributes.apellido}, {item.attributes.nombre}
                       </p>
-                      <p className="text-xs text-[#6B7280] mt-0.5">DNI: {item.attributes.dni}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">DNI: {item.attributes.dni}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-2">
                         <span
                           className={[
                             'text-xs font-medium px-2.5 py-1 rounded-full',
-                            ESTADO_BADGE[item.attributes.estado as EstadoType] ?? 'bg-gray-100 text-[#6B7280]',
+                            ESTADO_BADGE[item.attributes.estado as EstadoType] ?? 'bg-gray-100 text-muted-foreground',
                           ].join(' ')}
                         >
                           {ESTADO_LABELS[item.attributes.estado as EstadoType]}
                         </span>
                         {item.attributes.disciplina && (
-                          <span className="text-xs text-[#6B7280]">
+                          <span className="text-xs text-muted-foreground">
                             {item.attributes.disciplina.nombre}
                           </span>
                         )}
                         {item.attributes.categoria && (
-                          <span className="text-xs text-[#6B7280]">
+                          <span className="text-xs text-muted-foreground">
                             {item.attributes.categoria.nombre}
                           </span>
                         )}
@@ -314,11 +314,11 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                             {NIVEL_TRIAGE_LABELS[item.attributes.nivelTriage]}
                           </span>
                         ) : (
-                          <span className="text-xs text-[#6B7280]">—</span>
+                          <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </div>
                     </div>
-                    <ChevronRight size={16} className="text-[#6B7280] shrink-0 mt-1" />
+                    <ChevronRight size={16} className="text-muted-foreground shrink-0 mt-1" />
                   </Link>
                 </li>
               ))
@@ -331,7 +331,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-xs uppercase text-[#6B7280] bg-[#F3F4F6] border-b border-gray-100">
+                <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-gray-100">
                   <th className="px-5 py-3 text-left">Nombre</th>
                   <th className="px-5 py-3 text-left">DNI</th>
                   <th className="px-5 py-3 text-left">Disciplina</th>
@@ -346,13 +346,13 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                   <tr>
                     <td
                       colSpan={7}
-                      className="px-5 py-12 text-center text-sm text-[#6B7280]"
+                      className="px-5 py-12 text-center text-sm text-muted-foreground"
                     >
                       No se encontraron deportistas
                       {hasFilters && (
                         <button
                           onClick={handleClear}
-                          className="ml-2 text-[#121A61] underline hover:no-underline"
+                          className="ml-2 text-primario underline hover:no-underline"
                         >
                           Limpiar filtros
                         </button>
@@ -363,21 +363,21 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                   deportistas.map((item) => (
                     <tr
                       key={item.id}
-                      className="border-b border-gray-50 hover:bg-[#F3F4F6] transition-colors cursor-pointer"
+                      className="border-b border-gray-50 hover:bg-muted transition-colors cursor-pointer"
                     >
-                      <td className="px-5 py-3.5 text-sm font-medium text-[#1C1C1C]">
+                      <td className="px-5 py-3.5 text-sm font-medium text-foreground">
                         <Link
                           href={`/deportistas/${item.id}`}
-                          className="hover:text-[#121A61] hover:underline"
+                          className="hover:text-primario hover:underline"
                         >
                           {item.attributes.apellido}, {item.attributes.nombre}
                         </Link>
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-[#6B7280]">{item.attributes.dni}</td>
-                      <td className="px-5 py-3.5 text-sm text-[#6B7280]">
+                      <td className="px-5 py-3.5 text-sm text-muted-foreground">{item.attributes.dni}</td>
+                      <td className="px-5 py-3.5 text-sm text-muted-foreground">
                         {item.attributes.disciplina?.nombre ?? '—'}
                       </td>
-                      <td className="px-5 py-3.5 text-sm text-[#6B7280]">
+                      <td className="px-5 py-3.5 text-sm text-muted-foreground">
                         {item.attributes.categoria
                           ? item.attributes.categoria.nombre
                           : '—'}
@@ -386,7 +386,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                         <span
                           className={[
                             'text-xs font-medium px-2.5 py-1 rounded-full',
-                            ESTADO_BADGE[item.attributes.estado as EstadoType] ?? 'bg-gray-100 text-[#6B7280]',
+                            ESTADO_BADGE[item.attributes.estado as EstadoType] ?? 'bg-gray-100 text-muted-foreground',
                           ].join(' ')}
                         >
                           {ESTADO_LABELS[item.attributes.estado as EstadoType]}
@@ -403,12 +403,12 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                             {NIVEL_TRIAGE_LABELS[item.attributes.nivelTriage]}
                           </span>
                         ) : (
-                          <span className="text-sm text-[#6B7280]">—</span>
+                          <span className="text-sm text-muted-foreground">—</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <Link href={`/deportistas/${item.id}`}>
-                          <ChevronRight size={16} className="text-[#6B7280] ml-auto" />
+                          <ChevronRight size={16} className="text-muted-foreground ml-auto" />
                         </Link>
                       </td>
                     </tr>
@@ -422,7 +422,7 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-gray-100 bg-gray-50">
-            <span className="text-xs text-[#6B7280]">
+            <span className="text-xs text-muted-foreground">
               Mostrando {from}–{to} de {total}
             </span>
             <div className="flex items-center gap-2">
@@ -430,20 +430,20 @@ export default function DeportistasTable({ canCreate = true }: { canCreate?: boo
                 type="button"
                 disabled={pageNumber <= 1}
                 onClick={() => pushFilters({ 'page[number]': String(pageNumber - 1) })}
-                className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Página anterior"
               >
                 <ChevronLeft size={14} />
                 Anterior
               </button>
-              <span className="text-xs text-[#6B7280] whitespace-nowrap">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
                 Página {pageNumber} de {totalPages}
               </span>
               <button
                 type="button"
                 disabled={pageNumber >= totalPages}
                 onClick={() => pushFilters({ 'page[number]': String(pageNumber + 1) })}
-                className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Página siguiente"
               >
                 Siguiente

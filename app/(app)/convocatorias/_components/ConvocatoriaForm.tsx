@@ -36,7 +36,7 @@ const ESTADO_STYLES: Record<string, string> = {
 // Colores del badge de estado del DEPORTISTA (espeja DeportistasTable).
 const ESTADO_DEPORTISTA_BADGE: Record<string, string> = {
   ACTIVO: 'bg-green-100 text-green-700',
-  INACTIVO: 'bg-gray-100 text-[#6B7280]',
+  INACTIVO: 'bg-gray-100 text-muted-foreground',
   LESIONADO: 'bg-amber-100 text-amber-700',
   SUSPENDIDO: 'bg-red-100 text-red-700',
 };
@@ -253,7 +253,7 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
       {/* Card 1 — Partido */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-5">
         <h2
-          className="text-lg font-semibold text-[#121A61]"
+          className="text-lg font-semibold text-primario"
           style={{ fontFamily: 'Oswald, sans-serif' }}
         >
           Partido
@@ -261,7 +261,7 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Disciplina <span className="text-red-500">*</span>
             </label>
             <Controller
@@ -283,7 +283,7 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Categoría <span className="text-red-500">*</span>
             </label>
             <Controller
@@ -307,18 +307,18 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
         </div>
 
         {!bothSelected ? (
-          <div className="px-4 py-8 text-center text-sm text-[#6B7280] bg-[#F9FAFB] border border-dashed border-gray-200 rounded-lg">
+          <div className="px-4 py-8 text-center text-sm text-muted-foreground bg-subtle border border-dashed border-gray-200 rounded-lg">
             Seleccioná disciplina y categoría para buscar el próximo partido.
           </div>
         ) : isLoadingPartido ? (
-          <div className="px-4 py-8 text-center text-sm text-[#6B7280] flex items-center justify-center gap-2">
+          <div className="px-4 py-8 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
             <Loader2 size={16} className="animate-spin" />
             Buscando próximo partido...
           </div>
         ) : partido ? (
-          <div className="rounded-lg border border-gray-100 bg-[#F9FAFB] px-4 py-4">
+          <div className="rounded-lg border border-gray-100 bg-subtle px-4 py-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Próximo partido
               </span>
               <span
@@ -329,10 +329,10 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
                 {ESTADO_LABELS[partido.estado] ?? partido.estado}
               </span>
             </div>
-            <p className="text-sm font-semibold text-[#1C1C1C]">
+            <p className="text-sm font-semibold text-foreground">
               {partido.local} vs {partido.visitante}
             </p>
-            <p className="text-sm text-[#6B7280] mt-0.5">{formatDate(partido.fecha)}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{formatDate(partido.fecha)}</p>
           </div>
         ) : (
           <div className="flex items-start gap-2 px-4 py-4 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-800">
@@ -345,7 +345,7 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
       {/* Card 2 — Datos de la citación */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-5 mt-5">
         <h2
-          className="text-lg font-semibold text-[#121A61]"
+          className="text-lg font-semibold text-primario"
           style={{ fontFamily: 'Oswald, sans-serif' }}
         >
           Datos de la citación
@@ -353,38 +353,38 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Hora de citación
             </label>
             <input
               type="time"
               {...register('horaCitacion')}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+            <label className="block text-sm font-medium text-foreground mb-1.5">
               Lugar / punto de encuentro
             </label>
             <input
               type="text"
               {...register('lugar')}
               placeholder="Ej: Sede central"
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Observaciones
           </label>
           <textarea
             {...register('observaciones')}
             rows={3}
             placeholder="Indicaciones para el plantel..."
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-secundario/30"
           />
         </div>
       </div>
@@ -393,29 +393,29 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-5 mt-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2
-            className="text-lg font-semibold text-[#121A61]"
+            className="text-lg font-semibold text-primario"
             style={{ fontFamily: 'Oswald, sans-serif' }}
           >
             Plantel convocado
           </h2>
           {partido && roster.length > 0 && (
-            <span className="text-xs font-medium bg-gray-100 text-[#6B7280] px-2.5 py-1 rounded-full">
+            <span className="text-xs font-medium bg-gray-100 text-muted-foreground px-2.5 py-1 rounded-full">
               Convocados: {convocadosCount} / {roster.length}
             </span>
           )}
         </div>
 
         {!partido ? (
-          <div className="px-4 py-10 text-center text-sm text-[#6B7280] bg-[#F9FAFB] border border-dashed border-gray-200 rounded-lg">
+          <div className="px-4 py-10 text-center text-sm text-muted-foreground bg-subtle border border-dashed border-gray-200 rounded-lg">
             Elegí un partido para cargar el plantel convocable.
           </div>
         ) : isLoadingRoster ? (
-          <div className="px-4 py-10 text-center text-sm text-[#6B7280] flex items-center justify-center gap-2">
+          <div className="px-4 py-10 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
             <Loader2 size={16} className="animate-spin" />
             Cargando plantel...
           </div>
         ) : roster.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm text-[#6B7280] bg-[#F9FAFB] border border-dashed border-gray-200 rounded-lg">
+          <div className="px-4 py-10 text-center text-sm text-muted-foreground bg-subtle border border-dashed border-gray-200 rounded-lg">
             No hay deportistas en esta disciplina y categoría.
           </div>
         ) : (
@@ -424,7 +424,7 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
               <button
                 type="button"
                 onClick={toggleAll}
-                className="flex items-center justify-center gap-1.5 text-sm text-[#121A61] border border-gray-200 rounded-lg px-3 py-2 hover:bg-[#F3F4F6] transition-colors shrink-0"
+                className="flex items-center justify-center gap-1.5 text-sm text-primario border border-gray-200 rounded-lg px-3 py-2 hover:bg-muted transition-colors shrink-0"
               >
                 <CheckCheck size={15} />
                 {allSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
@@ -432,21 +432,21 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
               <div className="relative flex-1">
                 <Search
                   size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
                 <input
                   type="text"
                   value={rosterSearch}
                   onChange={(e) => setRosterSearch(e.target.value)}
                   placeholder="Buscar deportista..."
-                  className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+                  className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
                 />
               </div>
             </div>
 
             <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
               {filteredRoster.length === 0 ? (
-                <li className="px-4 py-8 text-center text-sm text-[#6B7280]">
+                <li className="px-4 py-8 text-center text-sm text-muted-foreground">
                   Sin resultados para la búsqueda.
                 </li>
               ) : (
@@ -457,19 +457,19 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
                         type="checkbox"
                         checked={citados.has(d.id)}
                         onChange={() => toggleCitado(d.id)}
-                        className="h-4 w-4 rounded border-gray-300 text-[#121A61] focus:ring-[#3346CC]/30"
+                        className="h-4 w-4 rounded border-gray-300 text-primario focus:ring-secundario/30"
                       />
                       <span className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-[#1C1C1C]">
+                        <span className="text-sm font-medium text-foreground">
                           {d.apellido}, {d.nombre}
                         </span>
                         {d.posicion && (
-                          <span className="ml-2 text-xs text-[#6B7280]">{d.posicion}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">{d.posicion}</span>
                         )}
                         {d.estado !== 'ACTIVO' && (
                           <span
                             className={`ml-2 text-xs font-medium px-2 py-0.5 rounded-full ${
-                              ESTADO_DEPORTISTA_BADGE[d.estado] ?? 'bg-gray-100 text-[#6B7280]'
+                              ESTADO_DEPORTISTA_BADGE[d.estado] ?? 'bg-gray-100 text-muted-foreground'
                             }`}
                           >
                             {ESTADO_DEPORTISTA_LABELS[d.estado]}
@@ -492,14 +492,14 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
             type="button"
             onClick={() => router.push('/convocatorias')}
             disabled={isPending}
-            className="text-sm text-[#6B7280] hover:text-[#1C1C1C] border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
+            className="text-sm text-muted-foreground hover:text-foreground border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={isPending || !canSave}
-            className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-primario-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isPending ? (
               <>

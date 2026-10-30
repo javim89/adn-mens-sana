@@ -78,7 +78,7 @@ export default function ComidaToggle({
   const atenuado = bloqueado && !soloLectura;
 
   const base =
-    'w-full flex flex-col items-center justify-center gap-0.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3346CC]/30';
+    'w-full flex flex-col items-center justify-center gap-0.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-secundario/30';
 
   // Cuatro estados. El borde punteado ya no significa "no se puede" sino "no
   // está en la ficha"; el ámbar marca la entrega que se apartó de lo previsto,
@@ -88,8 +88,8 @@ export default function ComidaToggle({
       ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
       : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
     : fueraDeFicha
-      ? 'border-dashed border-gray-200 bg-[#F9FAFB] text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#1C1C1C]'
-      : 'border-gray-200 bg-white text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#1C1C1C]';
+      ? 'border-dashed border-gray-200 bg-subtle text-muted-foreground hover:bg-muted hover:text-foreground'
+      : 'border-gray-200 bg-white text-muted-foreground hover:bg-muted hover:text-foreground';
 
   return (
     <button

@@ -13,8 +13,8 @@ type Errores = Partial<Record<keyof CrearClubInput, string>>;
 const VACIO: Campos = { nombre: '', slug: '', adminEmail: '', adminNombre: '', adminApellido: '' };
 
 const INPUT =
-  'text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 text-[#1C1C1C]';
-const LABEL = 'text-xs font-medium text-[#1C1C1C] uppercase tracking-wide';
+  'text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30 text-foreground';
+const LABEL = 'text-xs font-medium text-foreground uppercase tracking-wide';
 
 /**
  * Alta de un club. El slug se sugiere a partir del nombre hasta que se edita a
@@ -95,7 +95,7 @@ export default function CrearClubForm() {
     >
       <h2
         id="crear-club-titulo"
-        className="px-6 py-4 border-b border-gray-100 text-lg font-semibold text-[#121A61] font-[family-name:var(--font-oswald)]"
+        className="px-6 py-4 border-b border-gray-100 text-lg font-semibold text-primario font-[family-name:var(--font-oswald)]"
       >
         Nuevo club
       </h2>
@@ -104,7 +104,7 @@ export default function CrearClubForm() {
         {campo('slug', 'Slug', { type: 'text', placeholder: 'club-atletico-ejemplo', autoCapitalize: 'none' })}
 
         <fieldset className="flex flex-col gap-4">
-          <legend className="mb-2 text-sm font-medium text-[#121A61]">Primer administrador</legend>
+          <legend className="mb-2 text-sm font-medium text-primario">Primer administrador</legend>
           <div className="grid grid-cols-2 gap-4">
             {campo('adminNombre', 'Nombre', { type: 'text' })}
             {campo('adminApellido', 'Apellido', { type: 'text' })}
@@ -112,16 +112,16 @@ export default function CrearClubForm() {
           {campo('adminEmail', 'Email', { type: 'email', placeholder: 'admin@club.com' })}
         </fieldset>
 
-        <label className="flex items-start gap-2 text-sm text-[#1C1C1C]">
+        <label className="flex items-start gap-2 text-sm text-foreground">
           <input
             type="checkbox"
             checked={copiarCatalogos}
             onChange={(e) => setCopiarCatalogos(e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-[#121A61]"
+            className="mt-0.5 h-4 w-4 accent-primario"
           />
           <span>
             Copiar catálogos default
-            <span className="block text-xs text-[#6B7280]">Disciplinas y categorías estándar</span>
+            <span className="block text-xs text-muted-foreground">Disciplinas y categorías estándar</span>
           </span>
         </label>
       </div>
@@ -129,7 +129,7 @@ export default function CrearClubForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="flex w-full items-center justify-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3346CC]/40 transition-colors disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secundario/40 transition-colors disabled:opacity-60"
         >
           {isPending && <Loader2 size={14} className="animate-spin" />}
           Crear club

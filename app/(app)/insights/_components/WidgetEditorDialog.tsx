@@ -184,7 +184,7 @@ export default function WidgetEditorDialog({
         <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
           {/* ---------------- Configuración ---------------- */}
           <div className="overflow-y-auto p-6 space-y-5">
-            <div className="grid grid-cols-2 gap-1 p-1 bg-[#F3F4F6] rounded-lg">
+            <div className="grid grid-cols-2 gap-1 p-1 bg-muted rounded-lg">
               {(
                 [
                   ['data', 'Datos', Database],
@@ -197,7 +197,7 @@ export default function WidgetEditorDialog({
                   aria-pressed={tab === id}
                   onClick={() => setTab(id)}
                   className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md text-sm transition-colors ${
-                    tab === id ? 'bg-white text-[#121A61] shadow-sm' : 'text-[#6B7280]'
+                    tab === id ? 'bg-white text-primario shadow-sm' : 'text-muted-foreground'
                   }`}
                 >
                   <Icon size={14} /> {label}
@@ -210,7 +210,7 @@ export default function WidgetEditorDialog({
                 <div>
                   <label
                     htmlFor="widget-tipo"
-                    className="block text-sm font-medium text-[#1C1C1C] mb-1.5"
+                    className="block text-sm font-medium text-foreground mb-1.5"
                   >
                     Tipo de visualización
                   </label>
@@ -235,7 +235,7 @@ export default function WidgetEditorDialog({
                       </optgroup>
                     ))}
                   </select>
-                  <p className="mt-1.5 text-xs text-[#6B7280]">
+                  <p className="mt-1.5 text-xs text-muted-foreground">
                     {VISUALIZATIONS.find((v) => v.id === draft.tipo)?.description}
                   </p>
                 </div>
@@ -243,7 +243,7 @@ export default function WidgetEditorDialog({
                 <div>
                   <label
                     htmlFor="widget-titulo"
-                    className="block text-sm font-medium text-[#1C1C1C] mb-1.5"
+                    className="block text-sm font-medium text-foreground mb-1.5"
                   >
                     Título
                   </label>
@@ -259,9 +259,9 @@ export default function WidgetEditorDialog({
                 <div>
                   <label
                     htmlFor="widget-desc"
-                    className="block text-sm font-medium text-[#1C1C1C] mb-1.5"
+                    className="block text-sm font-medium text-foreground mb-1.5"
                   >
-                    Descripción <span className="text-[#6B7280] font-normal">(opcional)</span>
+                    Descripción <span className="text-muted-foreground font-normal">(opcional)</span>
                   </label>
                   <textarea
                     id="widget-desc"
@@ -293,8 +293,8 @@ export default function WidgetEditorDialog({
                         }
                         className={`px-3 py-1.5 text-xs transition-colors ${
                           draft.querySpec.mode === mode
-                            ? 'bg-[#121A61] text-white'
-                            : 'bg-white text-[#6B7280]'
+                            ? 'bg-primario text-white'
+                            : 'bg-white text-muted-foreground'
                         }`}
                       >
                         {label}
@@ -311,7 +311,7 @@ export default function WidgetEditorDialog({
                 ) : (
                   <>
                     {!permiteSql && (
-                      <p role="note" className="rounded-md bg-[#F3F4F6] px-3 py-2 text-xs text-[#6B7280]">
+                      <p role="note" className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
                         Este widget usa una consulta SQL. Solo el equipo de BioTeam puede editarla.
                       </p>
                     )}
@@ -327,7 +327,7 @@ export default function WidgetEditorDialog({
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
                       Eje de categorías
                     </label>
                     <CustomSelect
@@ -340,7 +340,7 @@ export default function WidgetEditorDialog({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
                       Formato numérico
                     </label>
                     <CustomSelect
@@ -361,7 +361,7 @@ export default function WidgetEditorDialog({
                 </div>
 
                 <fieldset className="space-y-2">
-                  <legend className="text-sm font-medium text-[#1C1C1C] mb-1">Mostrar</legend>
+                  <legend className="text-sm font-medium text-foreground mb-1">Mostrar</legend>
                   {(
                     [
                       ['showLegend', 'Leyenda'],
@@ -374,7 +374,7 @@ export default function WidgetEditorDialog({
                         type="checkbox"
                         checked={draft.vizConfig[key] ?? key !== 'showDataLabels'}
                         onChange={(e) => setVizConfig({ [key]: e.target.checked })}
-                        className="rounded border-gray-300 text-[#121A61] focus:ring-[#3346CC]"
+                        className="rounded border-gray-300 text-primario focus:ring-secundario"
                       />
                       {label}
                     </label>
@@ -382,7 +382,7 @@ export default function WidgetEditorDialog({
                 </fieldset>
 
                 <div>
-                  <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+                  <label className="block text-sm font-medium text-foreground mb-1.5">
                     Orientación de las barras
                   </label>
                   <CustomSelect
@@ -401,7 +401,7 @@ export default function WidgetEditorDialog({
                   <div>
                     <label
                       htmlFor="kpi-label"
-                      className="block text-sm font-medium text-[#1C1C1C] mb-1.5"
+                      className="block text-sm font-medium text-foreground mb-1.5"
                     >
                       Etiqueta bajo el número
                     </label>
@@ -419,7 +419,7 @@ export default function WidgetEditorDialog({
                   <div>
                     <label
                       htmlFor="progress-target"
-                      className="block text-sm font-medium text-[#1C1C1C] mb-1.5"
+                      className="block text-sm font-medium text-foreground mb-1.5"
                     >
                       Objetivo
                     </label>
@@ -437,13 +437,13 @@ export default function WidgetEditorDialog({
           </div>
 
           {/* ---------------- Preview ---------------- */}
-          <div className="p-6 flex flex-col min-h-0 bg-[#F9FAFB]">
+          <div className="p-6 flex flex-col min-h-0 bg-subtle">
             <div className="flex items-baseline justify-between mb-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Vista previa
               </p>
               {preview.data && (
-                <p className="text-xs text-[#6B7280]">
+                <p className="text-xs text-muted-foreground">
                   {preview.data.meta.rowCount}{' '}
                   {preview.data.meta.rowCount === 1 ? 'fila' : 'filas'}
                   {preview.data.meta.truncated && ' (recortadas)'}
@@ -452,7 +452,7 @@ export default function WidgetEditorDialog({
             </div>
             <div className="flex-1 min-h-[280px] bg-white rounded-xl border border-gray-100 p-3">
               {!specIsQueryable ? (
-                <div className="h-full flex items-center justify-center text-sm text-[#6B7280] text-center px-4">
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground text-center px-4">
                   {isBuilder
                     ? 'Elegí al menos una dimensión o una medida.'
                     : 'Escribí una consulta para ver el resultado.'}
@@ -474,7 +474,7 @@ export default function WidgetEditorDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="px-4 py-2 text-sm text-[#6B7280] hover:text-[#1C1C1C]"
+            className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
           >
             Cancelar
           </button>
@@ -485,7 +485,7 @@ export default function WidgetEditorDialog({
               onSave(draft);
               onOpenChange(false);
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#121A61] text-white text-sm hover:bg-[#1E2A8A] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primario text-white text-sm hover:bg-primario-hover disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Save size={15} />
             {widget ? 'Guardar cambios' : 'Agregar widget'}

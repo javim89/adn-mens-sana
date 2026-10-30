@@ -45,8 +45,8 @@ export default function DeportistaFormTabs({
               className={[
                 'flex items-center gap-1.5 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 -mb-px snap-start transition-colors',
                 isActive
-                  ? 'border-[#121A61] text-[#121A61]'
-                  : 'border-transparent text-[#6B7280] hover:text-[#1C1C1C] hover:border-gray-300',
+                  ? 'border-primario text-primario'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300',
                 hasError ? 'text-red-600 border-red-400' : '',
               ].join(' ')}
             >

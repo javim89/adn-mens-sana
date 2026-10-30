@@ -15,7 +15,7 @@ import { OSWALD } from '../_lib/acentos';
 export default function TileFecha({
   arriba,
   abajo,
-  fondo = 'bg-[#121A61]',
+  fondo = 'bg-primario',
   texto = 'text-white',
   tamano = 'normal',
 }: {

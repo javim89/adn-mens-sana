@@ -200,7 +200,7 @@ export default function DashboardEditor({
             disabled={!canUndo}
             aria-label="Deshacer"
             title="Deshacer"
-            className="h-8 w-8 flex items-center justify-center rounded-md text-[#6B7280] hover:bg-[#F3F4F6] disabled:opacity-30 disabled:hover:bg-transparent"
+            className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent"
           >
             <Undo2 size={16} />
           </button>
@@ -210,12 +210,12 @@ export default function DashboardEditor({
             disabled={!canRedo}
             aria-label="Rehacer"
             title="Rehacer"
-            className="h-8 w-8 flex items-center justify-center rounded-md text-[#6B7280] hover:bg-[#F3F4F6] disabled:opacity-30 disabled:hover:bg-transparent"
+            className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent"
           >
             <Redo2 size={16} />
           </button>
           {dirty && (
-            <span className="ml-2 text-xs text-[#C9A84C]">Cambios sin guardar</span>
+            <span className="ml-2 text-xs text-acento">Cambios sin guardar</span>
           )}
         </div>
 
@@ -226,7 +226,7 @@ export default function DashboardEditor({
               setEditing(undefined);
               setEditorOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-[#1C1C1C] hover:border-[#3346CC]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-foreground hover:border-secundario"
           >
             <Plus size={15} /> Agregar widget
           </button>
@@ -236,7 +236,7 @@ export default function DashboardEditor({
               setFiltroEditando(undefined);
               setFiltroOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-[#1C1C1C] hover:border-[#3346CC]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-foreground hover:border-secundario"
           >
             <Filter size={15} /> Agregar filtro
           </button>
@@ -244,7 +244,7 @@ export default function DashboardEditor({
             type="button"
             onClick={save}
             disabled={isSaving || !dirty}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#121A61] text-white text-sm hover:bg-[#1E2A8A] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primario text-white text-sm hover:bg-primario-hover disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Save size={15} /> {isSaving ? 'Guardando…' : 'Guardar'}
           </button>
@@ -265,9 +265,9 @@ export default function DashboardEditor({
 
       {widgets.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-200 bg-white px-6 py-12 text-center">
-          <ChartColumn size={28} className="mx-auto text-[#6B7280] mb-3" />
-          <p className="text-[#1C1C1C] font-medium mb-1">Dashboard vacío</p>
-          <p className="text-sm text-[#6B7280]">
+          <ChartColumn size={28} className="mx-auto text-muted-foreground mb-3" />
+          <p className="text-foreground font-medium mb-1">Dashboard vacío</p>
+          <p className="text-sm text-muted-foreground">
             Agregá el primer widget para empezar.
           </p>
         </div>

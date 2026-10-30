@@ -63,14 +63,14 @@ export function CustomSelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:border-[#3346CC]/50 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:border-secundario/50 focus:outline-none focus:ring-2 focus:ring-secundario/30 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <span className={selected ? 'text-[#1C1C1C]' : 'text-[#6B7280]'}>
+        <span className={selected ? 'text-foreground' : 'text-muted-foreground'}>
           {selected ? selected.label : placeholder}
         </span>
         <ChevronDown
           size={14}
-          className={`text-[#6B7280] shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`text-muted-foreground shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -79,14 +79,14 @@ export function CustomSelect({
           {searchable && (
             <div className="p-2 border-b border-gray-100">
               <div className="relative">
-                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   autoFocus
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar..."
-                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-secundario/30"
                 />
               </div>
             </div>
@@ -94,20 +94,20 @@ export function CustomSelect({
 
           <ul className="max-h-52 overflow-y-auto">
             {filtered.length === 0 ? (
-              <li className="px-3 py-4 text-center text-sm text-[#6B7280]">Sin resultados</li>
+              <li className="px-3 py-4 text-center text-sm text-muted-foreground">Sin resultados</li>
             ) : (
               filtered.map((opt) => (
                 <li key={opt.value}>
                   <button
                     type="button"
                     onClick={() => handleSelect(opt.value)}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-[#F3F4F6] transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-muted transition-colors"
                   >
                     <Check
                       size={14}
-                      className={`shrink-0 text-[#121A61] ${value === opt.value ? 'opacity-100' : 'opacity-0'}`}
+                      className={`shrink-0 text-primario ${value === opt.value ? 'opacity-100' : 'opacity-0'}`}
                     />
-                    <span className="text-[#1C1C1C]">{opt.label}</span>
+                    <span className="text-foreground">{opt.label}</span>
                   </button>
                 </li>
               ))

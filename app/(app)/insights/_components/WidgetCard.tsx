@@ -63,14 +63,14 @@ export default function WidgetCard({
       <div className="widget-drag-handle flex items-start justify-between gap-2 px-4 pt-3 pb-2 shrink-0">
         <div className="min-w-0">
           <h3
-            className="text-sm font-semibold text-[#121A61] truncate"
+            className="text-sm font-semibold text-primario truncate"
             style={{ fontFamily: 'Oswald, sans-serif' }}
             title={widget.titulo}
           >
             {widget.titulo}
           </h3>
           {widget.descripcion && (
-            <p className="text-xs text-[#6B7280] truncate" title={widget.descripcion}>
+            <p className="text-xs text-muted-foreground truncate" title={widget.descripcion}>
               {widget.descripcion}
             </p>
           )}
@@ -83,7 +83,7 @@ export default function WidgetCard({
               aria-label={`Acciones de ${widget.titulo}`}
               // `onMouseDown` detenido: sin esto, abrir el menú arrastra el widget.
               onMouseDown={(e) => e.stopPropagation()}
-              className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md text-[#6B7280] opacity-0 group-hover/widget:opacity-100 focus:opacity-100 hover:bg-[#F3F4F6] transition-opacity"
+              className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground opacity-0 group-hover/widget:opacity-100 focus:opacity-100 hover:bg-muted transition-opacity"
             >
               <MoreHorizontal size={16} />
             </button>

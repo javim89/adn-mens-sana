@@ -65,8 +65,8 @@ function WidgetError({ message }: { message: string }) {
       className="h-full w-full flex flex-col items-center justify-center gap-1.5 px-4 text-center"
     >
       <AlertCircle size={18} className="text-red-500" />
-      <p className="text-sm text-[#1C1C1C]">No se pudo cargar este widget</p>
-      <p className="text-xs text-[#6B7280]">{message}</p>
+      <p className="text-sm text-foreground">No se pudo cargar este widget</p>
+      <p className="text-xs text-muted-foreground">{message}</p>
     </div>
   );
 }

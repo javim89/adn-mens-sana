@@ -18,7 +18,7 @@ function UsuariosSkeleton() {
       </div>
       <div className="h-4 w-56 bg-gray-100 rounded mb-6 animate-pulse" />
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="h-10 bg-[#F3F4F6] border-b border-gray-100" />
+        <div className="h-10 bg-muted border-b border-gray-100" />
         {[...Array(5)].map((_, i) => (
           <div key={i} className="flex gap-4 px-5 py-3.5 border-b border-gray-50">
             <div className="h-4 w-36 bg-gray-100 rounded animate-pulse" />

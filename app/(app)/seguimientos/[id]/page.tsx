@@ -18,10 +18,10 @@ const PRIORIDAD_LABELS: Record<string, string> = {
 };
 
 const PRIORIDAD_STYLES: Record<string, string> = {
-  BAJA: 'bg-[#D1FAE5] text-[#065F46]',
-  MEDIA: 'bg-[#FEF9C3] text-[#713F12]',
-  ALTA: 'bg-[#FED7AA] text-[#7C2D12]',
-  URGENTE: 'bg-[#FEE2E2] text-[#7F1D1D]',
+  BAJA: 'bg-emerald-100 text-emerald-800',
+  MEDIA: 'bg-yellow-100 text-yellow-900',
+  ALTA: 'bg-orange-200 text-orange-900',
+  URGENTE: 'bg-red-100 text-red-900',
 };
 
 const TIPO_LABELS: Record<string, string> = {
@@ -54,7 +54,7 @@ function formatDate(dateStr: string) {
 function DetailCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
-      <h2 className="text-xs font-semibold uppercase text-[#6B7280] mb-2 tracking-wide">{title}</h2>
+      <h2 className="text-xs font-semibold uppercase text-muted-foreground mb-2 tracking-wide">{title}</h2>
       {children}
     </div>
   );
@@ -67,8 +67,8 @@ function FieldGrid({ items }: { items: { label: string; value: string | null | u
     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
       {visible.map(({ label, value }) => (
         <div key={label}>
-          <dt className="text-xs text-[#6B7280] font-medium mb-0.5">{label}</dt>
-          <dd className="text-sm text-[#1C1C1C]">{value}</dd>
+          <dt className="text-xs text-muted-foreground font-medium mb-0.5">{label}</dt>
+          <dd className="text-sm text-foreground">{value}</dd>
         </div>
       ))}
     </dl>
@@ -78,11 +78,11 @@ function FieldGrid({ items }: { items: { label: string; value: string | null | u
 function SumatoriaReadout({ label, value, suffix }: { label: string; value: number | null | undefined; suffix?: string }) {
   const hasValue = value !== null && value !== undefined;
   return (
-    <div className="rounded-lg bg-[#F3F4F6] px-4 py-3">
-      <dt className="text-xs font-medium text-[#6B7280] mb-1">{label}</dt>
-      <dd className="font-mono text-2xl font-semibold leading-none text-[#121A61]">
-        {hasValue ? value : <span className="text-[#6B7280]">—</span>}
-        {hasValue && suffix ? <span className="ml-1 text-sm font-normal text-[#6B7280]">{suffix}</span> : null}
+    <div className="rounded-lg bg-muted px-4 py-3">
+      <dt className="text-xs font-medium text-muted-foreground mb-1">{label}</dt>
+      <dd className="font-mono text-2xl font-semibold leading-none text-primario">
+        {hasValue ? value : <span className="text-muted-foreground">—</span>}
+        {hasValue && suffix ? <span className="ml-1 text-sm font-normal text-muted-foreground">{suffix}</span> : null}
       </dd>
     </div>
   );
@@ -92,10 +92,10 @@ function NumericField({ label, value, suffix }: { label: string; value: number |
   if (value === null || value === undefined) return null;
   return (
     <div>
-      <dt className="text-xs text-[#6B7280] font-medium mb-0.5">{label}</dt>
-      <dd className="text-sm text-[#1C1C1C]">
+      <dt className="text-xs text-muted-foreground font-medium mb-0.5">{label}</dt>
+      <dd className="text-sm text-foreground">
         {value}
-        <span className="text-xs text-[#6B7280] ml-0.5">{suffix}</span>
+        <span className="text-xs text-muted-foreground ml-0.5">{suffix}</span>
       </dd>
     </div>
   );
@@ -136,7 +136,7 @@ export default async function SeguimientoDetallePage({ params }: Props) {
       <div className="mb-4">
         <Link
           href="/seguimientos"
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Seguimientos
         </Link>
@@ -147,7 +147,7 @@ export default async function SeguimientoDetallePage({ params }: Props) {
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3 mb-1">
             <h1
-              className="text-3xl font-bold text-[#121A61]"
+              className="text-3xl font-bold text-primario"
               style={{ fontFamily: 'Oswald, sans-serif' }}
             >
               {seguimiento.titulo}
@@ -163,17 +163,17 @@ export default async function SeguimientoDetallePage({ params }: Props) {
               </span>
             )}
           </div>
-          <p className="text-sm text-[#6B7280]">
+          <p className="text-sm text-muted-foreground">
             {deportistasLabel} · {formatDate(fechaStr)}
           </p>
-          <p className="text-sm text-[#6B7280]">Profesional: {profesionalNombre}</p>
+          <p className="text-sm text-muted-foreground">Profesional: {profesionalNombre}</p>
         </div>
 
         {canModify && (
           <div className="flex items-center gap-2 shrink-0">
             <Link
               href={`/seguimientos/${id}/editar`}
-              className="text-sm font-medium px-4 py-2 border border-gray-200 text-[#6B7280] hover:text-[#1C1C1C] rounded-lg transition-colors"
+              className="text-sm font-medium px-4 py-2 border border-gray-200 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
             >
               Editar
             </Link>
@@ -191,32 +191,32 @@ export default async function SeguimientoDetallePage({ params }: Props) {
         {/* Generic fields */}
         {seguimiento.descripcion && (
           <DetailCard title="Descripción / Observaciones">
-            <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{seguimiento.descripcion}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{seguimiento.descripcion}</p>
           </DetailCard>
         )}
 
         {seguimiento.recomendaciones && (
           <DetailCard title="Recomendaciones">
-            <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{seguimiento.recomendaciones}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{seguimiento.recomendaciones}</p>
           </DetailCard>
         )}
 
         {seguimiento.resultadosEvaluacion && (
           <DetailCard title="Resultados de evaluación">
-            <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{seguimiento.resultadosEvaluacion}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{seguimiento.resultadosEvaluacion}</p>
           </DetailCard>
         )}
 
         {seguimiento.alertaSeguimiento && (
           <DetailCard title="Alerta de seguimiento">
-            <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{seguimiento.alertaSeguimiento}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{seguimiento.alertaSeguimiento}</p>
           </DetailCard>
         )}
 
         {seguimiento.proximaCita && (
           <DetailCard title="Próxima cita">
-            <p className="text-sm text-[#1C1C1C] flex items-center gap-2">
-              <CalendarDays size={14} className="text-[#6B7280] shrink-0" />
+            <p className="text-sm text-foreground flex items-center gap-2">
+              <CalendarDays size={14} className="text-muted-foreground shrink-0" />
               {formatDatetime(seguimiento.proximaCita.toISOString())}
             </p>
           </DetailCard>
@@ -256,7 +256,7 @@ export default async function SeguimientoDetallePage({ params }: Props) {
             </DetailCard>
             {t.observaciones && (
               <DetailCard title="Observaciones (Traumatología)">
-                <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{t.observaciones}</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{t.observaciones}</p>
               </DetailCard>
             )}
           </>
@@ -291,12 +291,12 @@ export default async function SeguimientoDetallePage({ params }: Props) {
             </DetailCard>
             {ps.sociograma && (
               <DetailCard title="Sociograma">
-                <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{ps.sociograma}</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{ps.sociograma}</p>
               </DetailCard>
             )}
             {ps.poms && (
               <DetailCard title="POMS">
-                <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{ps.poms}</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{ps.poms}</p>
               </DetailCard>
             )}
             <DetailCard title="STAI – Ansiedad Estado-Rasgo">
@@ -307,7 +307,7 @@ export default async function SeguimientoDetallePage({ params }: Props) {
             </DetailCard>
             {ps.observaciones && (
               <DetailCard title="Observaciones (Psicología)">
-                <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{ps.observaciones}</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{ps.observaciones}</p>
               </DetailCard>
             )}
           </>
@@ -319,38 +319,38 @@ export default async function SeguimientoDetallePage({ params }: Props) {
             <div className="space-y-3">
               {ca.ecg && (
                 <div>
-                  <p className="text-xs text-[#6B7280] font-medium mb-0.5">ECG</p>
-                  <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{ca.ecg}</p>
+                  <p className="text-xs text-muted-foreground font-medium mb-0.5">ECG</p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{ca.ecg}</p>
                 </div>
               )}
               {ca.examenFisico && (
                 <div>
-                  <p className="text-xs text-[#6B7280] font-medium mb-0.5">Examen físico</p>
-                  <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{ca.examenFisico}</p>
+                  <p className="text-xs text-muted-foreground font-medium mb-0.5">Examen físico</p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{ca.examenFisico}</p>
                 </div>
               )}
               {ca.sintomas && (
                 <div>
-                  <p className="text-xs text-[#6B7280] font-medium mb-0.5">Síntomas</p>
-                  <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{ca.sintomas}</p>
+                  <p className="text-xs text-muted-foreground font-medium mb-0.5">Síntomas</p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{ca.sintomas}</p>
                 </div>
               )}
               {ca.estudiosAnteriores && (
                 <div>
-                  <p className="text-xs text-[#6B7280] font-medium mb-0.5">Estudios anteriores</p>
-                  <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{ca.estudiosAnteriores}</p>
+                  <p className="text-xs text-muted-foreground font-medium mb-0.5">Estudios anteriores</p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{ca.estudiosAnteriores}</p>
                 </div>
               )}
               {ca.diagnostico && (
                 <div>
-                  <p className="text-xs text-[#6B7280] font-medium mb-0.5">Diagnóstico</p>
-                  <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{ca.diagnostico}</p>
+                  <p className="text-xs text-muted-foreground font-medium mb-0.5">Diagnóstico</p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{ca.diagnostico}</p>
                 </div>
               )}
               {ca.observaciones && (
                 <div>
-                  <p className="text-xs text-[#6B7280] font-medium mb-0.5">Observaciones</p>
-                  <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{ca.observaciones}</p>
+                  <p className="text-xs text-muted-foreground font-medium mb-0.5">Observaciones</p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{ca.observaciones}</p>
                 </div>
               )}
             </div>
@@ -408,7 +408,7 @@ export default async function SeguimientoDetallePage({ params }: Props) {
           !ps &&
           !ca &&
           !an && (
-            <p className="text-sm text-[#6B7280] italic">
+            <p className="text-sm text-muted-foreground italic">
               No hay información adicional registrada para este seguimiento.
             </p>
           )}

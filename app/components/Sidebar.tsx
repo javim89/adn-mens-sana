@@ -54,7 +54,7 @@ export default function Sidebar({
       <aside
         data-club-id={club?.id}
         className={[
-          'w-64 flex flex-col bg-[#121A61] text-white shrink-0',
+          'w-64 flex flex-col bg-primario text-white shrink-0',
           // Mobile: fixed drawer
           'fixed inset-y-0 left-0 z-50 transition-transform duration-200',
           isOpen ? 'translate-x-0' : '-translate-x-full',
@@ -78,7 +78,7 @@ export default function Sidebar({
         {club && comoSuperadmin && (
           <p
             role="status"
-            className="mx-3 mt-3 rounded-lg border-l-2 border-[#C9A84C] bg-white/10 px-3 py-2 text-xs text-white/80"
+            className="mx-3 mt-3 rounded-lg border-l-2 border-acento bg-white/10 px-3 py-2 text-xs text-white/80"
           >
             Estás viendo <span className="font-semibold text-white">{club.nombre}</span> como superadmin
           </p>
@@ -99,7 +99,7 @@ export default function Sidebar({
                 className={[
                   'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
                   active
-                    ? 'bg-white/15 text-white border-l-2 border-[#C9A84C]'
+                    ? 'bg-white/15 text-white border-l-2 border-acento'
                     : 'text-white/70 hover:bg-white/10 hover:text-white',
                 ].join(' ')}
               >
@@ -131,7 +131,7 @@ export default function Sidebar({
                 </button>
               </SignInButton>
               <SignUpButton>
-                <button className="w-full px-4 py-2 text-sm font-medium text-[#121A61] bg-white rounded-lg hover:bg-white/90 transition-colors">
+                <button className="w-full px-4 py-2 text-sm font-medium text-primario bg-white rounded-lg hover:bg-white/90 transition-colors">
                   Registrarse
                 </button>
               </SignUpButton>

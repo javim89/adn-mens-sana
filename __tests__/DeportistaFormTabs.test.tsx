@@ -66,8 +66,8 @@ test('no error badge renders when no tab has errors', () => {
 test('the active tab keeps its navy active border/text classes', () => {
   renderTabs({ activeTab: 'deportivo' });
   const activeTab = screen.getByRole('tab', { name: 'Datos Deportivos' });
-  expect(activeTab.className).toContain('border-[#121A61]');
-  expect(activeTab.className).toContain('text-[#121A61]');
+  expect(activeTab.className).toContain('border-primario');
+  expect(activeTab.className).toContain('text-primario');
   expect(activeTab.getAttribute('aria-selected')).toBe('true');
 });
 
