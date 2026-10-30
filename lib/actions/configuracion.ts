@@ -12,7 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { contextoAccion } from '@/lib/tenant/contexto';
 import { actualizarBrandingDelClub } from '@/lib/tenant/clubes';
-import { deleteFoto, fotoExiste, keyLogoEsDelClub } from '@/lib/s3';
+import { deleteFoto, fotoExiste, keyLogoBorrable, keyLogoEsDelClub } from '@/lib/s3';
 import { contraste, normalizarHex } from '@/lib/branding/colores';
 import { BLANCO, CONTRASTE_MIN_TEXTO } from '@/lib/branding/tokens';
 import {
@@ -94,8 +94,9 @@ export async function guardarConfiguracionClub(input: ConfiguracionClubInput): P
     return { ok: false, error: 'No se pudo guardar la configuración' };
   }
 
-  // El logo anterior se borra recién con la DB ya actualizada, y solo si es de este club.
-  if (cambiaLogo && club.logoKey && keyLogoEsDelClub(club.logoKey, clubId)) {
+  // El logo anterior se borra recién con la DB ya actualizada, y solo si es de este
+  // club y uno subido desde acá (el legacy de Gimnasia se conserva).
+  if (cambiaLogo && club.logoKey && keyLogoBorrable(club.logoKey, clubId)) {
     await deleteFoto(club.logoKey);
   }
 

@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-const { mockRefresh, mockToast, mockGuardar, mockSubir, mockProcesar } = vi.hoisted(() => ({
+const { mockRefresh, mockToast, mockGuardar, mockSubir, mockProcesar, mockDescartar } = vi.hoisted(() => ({
+  mockDescartar: vi.fn(),
   mockRefresh: vi.fn(),
   mockToast: { success: vi.fn(), error: vi.fn() },
   mockGuardar: vi.fn(),
@@ -13,7 +14,7 @@ const { mockRefresh, mockToast, mockGuardar, mockSubir, mockProcesar } = vi.hois
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mockRefresh }) }));
 vi.mock('sonner', () => ({ toast: mockToast }));
 vi.mock('@/lib/actions/configuracion', () => ({ guardarConfiguracionClub: mockGuardar }));
-vi.mock('@/lib/api/club', () => ({ subirLogoClub: mockSubir }));
+vi.mock('@/lib/api/club', () => ({ subirLogoClub: mockSubir, descartarLogoSubido: mockDescartar }));
 vi.mock('@/lib/branding/imagen-logo', async () => ({
   ...(await vi.importActual<typeof import('@/lib/branding/imagen-logo')>('@/lib/branding/imagen-logo')),
   procesarLogo: mockProcesar,
@@ -258,6 +259,25 @@ describe('ConfiguracionClubForm', () => {
     });
     expect(mockToast.success).toHaveBeenCalledWith('Configuración guardada');
     expect(mockRefresh).toHaveBeenCalled();
+    expect(mockDescartar).not.toHaveBeenCalled();
+  });
+
+  it('si el guardado falla después de subir el logo, borra el logo subido', async () => {
+    mockProcesar.mockResolvedValue({
+      archivo: new File(['png'], 'escudo.png', { type: 'image/png' }),
+      ancho: 225,
+      alto: 225,
+      paleta: PALETA,
+    });
+    mockSubir.mockResolvedValue('clubes/club_test/logo/abc.png');
+    mockGuardar.mockResolvedValue({ ok: false, error: 'No se pudo guardar la configuración' });
+    const { user } = renderForm();
+
+    await user.upload(screen.getByTestId('logo-input'), new File(['x'], 'escudo.png', { type: 'image/png' }));
+    await screen.findByText(/Tomamos los colores/);
+    await user.click(guardar());
+    await waitFor(() => expect(mockDescartar).toHaveBeenCalledWith('clubes/club_test/logo/abc.png'));
+    expect(await screen.findByText('No se pudo guardar la configuración')).toBeInTheDocument();
   });
 
   it('sin cambios de logo no sube nada ni manda logoKey; quitar manda null', async () => {

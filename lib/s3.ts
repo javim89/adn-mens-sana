@@ -102,6 +102,15 @@ export function keyLogoEsDelClub(key: unknown, clubId: string): key is string {
   return m !== null && m[1] === clubId;
 }
 
+/**
+ * Un logo del club que se puede BORRAR: solo los subidos desde `/configuracion`
+ * (`clubes/<clubId>/logo/<uuid>.png`). La key legacy (`clubes/<clubId>/logo.png`, el
+ * escudo original de Gimnasia) nunca se borra: es el único original que hay.
+ */
+export function keyLogoBorrable(key: unknown, clubId: string): key is string {
+  return keyLogoEsDelClub(key, clubId) && /\/logo\/[0-9a-f-]{36}\.png$/.test(key);
+}
+
 /** PUT prefirmado para un logo nuevo del club: solo PNG de hasta 2 MB. */
 export async function createLogoUploadUrl({
   size,

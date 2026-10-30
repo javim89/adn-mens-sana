@@ -21,7 +21,7 @@ import { derivarTema } from '@/lib/branding/tema';
 import { VARS_TEMA, type Tema } from '@/lib/branding/tokens';
 import { procesarLogo } from '@/lib/branding/imagen-logo';
 import type { PaletaDetectada } from '@/lib/branding/paleta';
-import { subirLogoClub } from '@/lib/api/club';
+import { descartarLogoSubido, subirLogoClub } from '@/lib/api/club';
 import { guardarConfiguracionClub } from '@/lib/actions/configuracion';
 import { NOMBRE_CLUB_MAX, NOMBRE_CLUB_MIN } from '@/lib/types/configuracion';
 import SelectorColor, { contrasteBajo, hexInvalido } from './SelectorColor';
@@ -214,8 +214,11 @@ export default function ConfiguracionClubForm({ club, urlLogin }: ConfiguracionC
     if (!puedeGuardar) return;
     setGuardando(true);
     setError(null);
+    // La key del logo recién subido: si después no se guarda, se borra (no queda huérfano).
+    let subido: string | null = null;
     try {
-      const logoKey = logo.tipo === 'nuevo' ? await subirLogoClub(logo.archivo) : logo.tipo === 'quitar' ? null : undefined;
+      const logoKey =
+        logo.tipo === 'nuevo' ? (subido = await subirLogoClub(logo.archivo)) : logo.tipo === 'quitar' ? null : undefined;
       const c = colores(textos);
       const r = await guardarConfiguracionClub({
         nombre: nombreTrim,
@@ -225,12 +228,14 @@ export default function ConfiguracionClubForm({ club, urlLogin }: ConfiguracionC
         colorAcento: c.acento,
       });
       if (!r.ok) {
+        if (subido) void descartarLogoSubido(subido);
         setError(r.error);
         return;
       }
       toast.success('Configuración guardada');
       router.refresh();
     } catch (err) {
+      if (subido) void descartarLogoSubido(subido);
       setError(err instanceof Error ? err.message : 'No se pudo guardar la configuración');
     } finally {
       setGuardando(false);

@@ -46,3 +46,15 @@ export async function subirLogoClub(file: File): Promise<string> {
 
   return data.attributes.key;
 }
+
+/**
+ * Borra un logo subido que no se llegó a guardar. Best-effort: si falla queda un
+ * objeto huérfano en S3, que no se ve en ningún lado.
+ */
+export async function descartarLogoSubido(key: string): Promise<void> {
+  try {
+    await fetch(`/api/club/logo?key=${encodeURIComponent(key)}`, { method: 'DELETE' });
+  } catch {
+    // Sin conexión: no hay nada más que hacer.
+  }
+}

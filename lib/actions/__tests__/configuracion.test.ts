@@ -11,9 +11,14 @@ vi.mock('@/lib/tenant/contexto', async () => (await import('@/test-utils/tenant'
 vi.mock('@/lib/tenant/clubes', () => ({ actualizarBrandingDelClub: mockActualizar }));
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidate }));
 vi.mock('@/lib/s3', async () => {
-  // keyLogoEsDelClub es pura: se usa la real.
+  // keyLogoEsDelClub y keyLogoBorrable son puras: se usan las reales.
   const real = await vi.importActual<typeof import('@/lib/s3')>('@/lib/s3');
-  return { keyLogoEsDelClub: real.keyLogoEsDelClub, fotoExiste: mockFotoExiste, deleteFoto: mockDeleteFoto };
+  return {
+    keyLogoEsDelClub: real.keyLogoEsDelClub,
+    keyLogoBorrable: real.keyLogoBorrable,
+    fotoExiste: mockFotoExiste,
+    deleteFoto: mockDeleteFoto,
+  };
 });
 
 import { guardarConfiguracionClub } from '../configuracion';
@@ -147,6 +152,17 @@ describe('guardarConfiguracionClub', () => {
   test('el logo anterior de otro club nunca se borra', async () => {
     const ajeno = `clubes/otro_club/logo/${UUID}.png`;
     setContexto(mockContexto('admin', { club: { ...CLUB_TEST, logoKey: ajeno } }));
+    expect(await guardarConfiguracionClub({ ...INPUT, logoKey: null })).toEqual({ ok: true });
+    expect(mockDeleteFoto).not.toHaveBeenCalled();
+  });
+
+  test('el logo legacy del club (clubes/<id>/logo.png) se reemplaza pero nunca se borra', async () => {
+    const legacy = `clubes/${CLUB_TEST.id}/logo.png`;
+    setContexto(mockContexto('admin', { club: { ...CLUB_TEST, logoKey: legacy } }));
+    expect(await guardarConfiguracionClub({ ...INPUT, logoKey: LOGO_NUEVO })).toEqual({ ok: true });
+    expect(mockActualizar.mock.calls[0][1]).toMatchObject({ logoKey: LOGO_NUEVO });
+    expect(mockDeleteFoto).not.toHaveBeenCalled();
+
     expect(await guardarConfiguracionClub({ ...INPUT, logoKey: null })).toEqual({ ok: true });
     expect(mockDeleteFoto).not.toHaveBeenCalled();
   });

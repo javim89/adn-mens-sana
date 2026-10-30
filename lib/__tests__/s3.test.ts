@@ -279,6 +279,15 @@ describe('lib/s3', () => {
       expect(keyLogoEsDelClub(`clubes/club_a/logo/${UUID}.png`, '')).toBe(false);
     });
 
+    it('keyLogoBorrable: solo los logos subidos del club, nunca la key legacy', async () => {
+      const { keyLogoBorrable } = await loadS3();
+      expect(keyLogoBorrable(`clubes/club_a/logo/${UUID}.png`, 'club_a')).toBe(true);
+      expect(keyLogoBorrable('clubes/club_gimnasia_lp/logo.png', 'club_gimnasia_lp')).toBe(false);
+      expect(keyLogoBorrable(`clubes/club_a/logo/${UUID}.png`, 'club_b')).toBe(false);
+      expect(keyLogoBorrable(`clubes/club_a/deportistas/${UUID}.jpg`, 'club_a')).toBe(false);
+      expect(keyLogoBorrable(null, 'club_a')).toBe(false);
+    });
+
     it('createLogoUploadUrl firma un PUT image/png bajo clubes/<clubId>/logo/', async () => {
       const { createLogoUploadUrl, keyLogoEsDelClub } = await loadS3();
 
