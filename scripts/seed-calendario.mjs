@@ -158,11 +158,11 @@ async function main() {
   const equipoId = {}; // nombre -> id
   await insertRows(
     "equipos",
-    ["id", "club_id", "nombre", "es_gimnasia_lp"],
+    ["id", "club_id", "nombre", "es_propio"],
     equipoNombres.map((nombre) => {
       const id = randomUUID();
       equipoId[nombre] = id;
-      return { id, club_id: clubId, nombre, es_gimnasia_lp: nombre === LP };
+      return { id, club_id: clubId, nombre, es_propio: nombre === LP };
     })
   );
   console.log(`  ✓ ${equipoNombres.length} equipos`);

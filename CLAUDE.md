@@ -101,6 +101,28 @@ See `DESIGN.md` for the full design system: color palette (azul marino `#121A61`
 
 El script `scripts/apply-migration.mjs` usa `@neondatabase/serverless` con el driver HTTP para ejecutar el SQL sin TCP.
 
+## Multi-tenant
+
+Cada club ve solo sus datos. Reglas (detalle en `lib/tenant/*`):
+
+- **Datos del club: siempre `getDb()`** (o `dbDelClub(clubId)` con el club explícito, en cron y superadmin) de `@/lib/tenant/db`. Acota cada operación de Prisma al club: filtra lecturas/updates/deletes, inyecta `clubId` en los create y rechaza FKs o `connect` hacia filas de otro club.
+- **No importar `@/lib/db`** (cliente base, ve todos los clubes) fuera del allowlist de `eslint.config.mjs` (`lib/tenant/**`, `lib/db-readonly.ts`, `lib/foto-deportista.ts`, `app/api/cron/**`, `lib/actions/superadmin.ts`). ESLint lo marca como error.
+- **SQL crudo (`$queryRaw`) no pasa por el cliente acotado:** tiene que filtrar por `club_id = ${db.$clubId()}` (o por el padre, en tablas hijas).
+- **Contexto:** `requireContexto(roles)` en páginas, `getContextoClub()` en actions y API routes (`contextoApi` donde corresponda). El rol sale de `Membresia` del club activo, no de Clerk.
+- **Modelos nuevos:** clasificarlos en `TENANT_SCOPE` (`lib/tenant/scope.ts`: raíz con `club_id`, hijo por su padre, o global) — el tipo y `scope.test.ts` lo exigen. Si Insights lo tiene que leer, además en `lib/insights/tenant-tablas.json` (o en `excluidas`) y volver a correr `node scripts/setup-insights-rls.mjs`.
+- **S3:** fotos en `clubes/<clubId>/deportistas/…` y logos en `clubes/<clubId>/logo.<ext>`; validar con `keyEsDelClub`.
+- **Insights, dos capas:** (1) prelude de CTEs acotados con el club en `$1` (`lib/insights/tenant-prelude.ts`), que `compile()` y `runRawSql` anteponen a todo; (2) RLS del rol `insights_ro` resueltas por un token efímero de `insights_sesiones` que el runner setea con `set_config` dentro de la tx read-only. En producción `DATABASE_URL_READONLY` es obligatoria (falla cerrado). El modo SQL crudo es solo para superadmin hasta verificar las RLS en prod. Verificación: `node scripts/check-insights-readonly.mjs`.
+
+### Runbook de release (prod)
+
+1. Snapshot / branch de respaldo de Neon.
+2. Migraciones M1–M3 (`20261101000000`–`…02`) con `apply-migration.mjs`. El código viejo sigue andando (default transicional de `club_id`).
+3. `node scripts/migrar-membresias.mjs` (probar antes con `--dry-run`) y `node scripts/add-superadmin.mjs <clerkUserId>`.
+4. M4 (`20261101000003_equipo_es_propio`) + `node scripts/setup-insights-rls.mjs` + `node scripts/check-insights-readonly.mjs` (tiene que dar todo verde).
+5. Deploy. Antes: `DATABASE_URL_READONLY` seteada en Netlify, y la policy IAM del usuario de S3 con `s3:PutObject`/`GetObject`/`DeleteObject` sobre `clubes/*` (además del legacy `deportistas/*`, que se sigue leyendo y borrando).
+6. Smoke test: login, Gimnasia ve sus datos con su rol, Insights carga, el selector y `/superadmin/clubes` funcionan.
+7. M5 (`20261101000004_club_id_sin_default`): quita el default transicional. Solo con el código nuevo ya en prod.
+
 ## Architecture
 
 All routes live under `app/`. The root layout (`app/layout.tsx`) sets up fonts (Geist Sans + Geist Mono via `next/font/google`) and wraps everything in a flex column body. CSS custom properties for `--background` / `--foreground` are declared in `globals.css` with a dark mode media query, then mapped to Tailwind theme tokens via `@theme inline`.

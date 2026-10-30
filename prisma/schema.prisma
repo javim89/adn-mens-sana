@@ -714,7 +714,8 @@ model Equipo {
   clubId           String         @default(dbgenerated("NULL")) @map("club_id")
   club             Club           @relation(fields: [clubId], references: [id])
   nombre           String
-  esGimnasiaLP     Boolean        @default(false) @map("es_gimnasia_lp")
+  /// El equipo del propio club (el resto son rivales).
+  esPropio         Boolean        @default(false) @map("es_propio")
   eventosLocal     EventoTorneo[] @relation("EventoLocal")
   eventosVisitante EventoTorneo[] @relation("EventoVisitante")
   createdAt        DateTime       @default(now()) @map("created_at")

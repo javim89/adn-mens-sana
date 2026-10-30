@@ -26,7 +26,6 @@ const eslintConfig = defineConfig([
       "lib/foto-deportista.ts",
       "app/api/cron/**",
       "lib/actions/superadmin.ts",
-      "lib/insights/run.ts",
       // Los tests mockean el módulo; se migran a test-utils/tenant.ts.
       "**/__tests__/**",
       "test-utils/**",
