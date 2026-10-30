@@ -245,4 +245,105 @@ describe('lib/s3', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('logos de club', () => {
+    const UUID = '0b8e7c1a-4f2d-4c1e-9a3b-123456789abc';
+
+    it('isValidLogoKey acepta la key nueva y la legacy de Gimnasia', async () => {
+      const { isValidLogoKey } = await loadS3();
+      expect(isValidLogoKey(`clubes/club_a/logo/${UUID}.png`)).toBe(true);
+      expect(isValidLogoKey('clubes/club_gimnasia_lp/logo.png')).toBe(true);
+    });
+
+    it.each([
+      `clubes/club_a/logo/${UUID}.svg`,
+      `clubes/club_a/logo/${UUID}.jpg`,
+      `clubes/club_a/deportistas/${UUID}.png`,
+      `clubes/../logo/${UUID}.png`,
+      'logo.png',
+      `/clubes/club_a/logo/${UUID}.png`,
+      `clubes/club_a/logo/${UUID}.png?x=1`,
+      null,
+    ])('isValidLogoKey rechaza %s', async (key) => {
+      const { isValidLogoKey } = await loadS3();
+      expect(isValidLogoKey(key)).toBe(false);
+    });
+
+    it('keyLogoEsDelClub exige que el club del prefijo sea exactamente el pedido', async () => {
+      const { keyLogoEsDelClub } = await loadS3();
+      expect(keyLogoEsDelClub(`clubes/club_a/logo/${UUID}.png`, 'club_a')).toBe(true);
+      expect(keyLogoEsDelClub('clubes/club_gimnasia_lp/logo.png', 'club_gimnasia_lp')).toBe(true);
+      expect(keyLogoEsDelClub(`clubes/club_a/logo/${UUID}.png`, 'club_b')).toBe(false);
+      // Un id que es prefijo de otro no alcanza.
+      expect(keyLogoEsDelClub(`clubes/club_ab/logo/${UUID}.png`, 'club_a')).toBe(false);
+      expect(keyLogoEsDelClub(`clubes/club_a/logo/${UUID}.png`, '')).toBe(false);
+    });
+
+    it('createLogoUploadUrl firma un PUT image/png bajo clubes/<clubId>/logo/', async () => {
+      const { createLogoUploadUrl, keyLogoEsDelClub } = await loadS3();
+
+      const { uploadUrl, key } = await createLogoUploadUrl({ size: 2048, clubId: 'club_a' });
+
+      expect(uploadUrl).toBe('https://signed.example/url');
+      expect(key).toMatch(/^clubes\/club_a\/logo\/[0-9a-f-]{36}\.png$/);
+      expect(keyLogoEsDelClub(key, 'club_a')).toBe(true);
+      const [, command, options] = getSignedUrlMock.mock.calls[0];
+      expect(command.input).toEqual({
+        Bucket: 'bucket-test',
+        Key: key,
+        ContentType: 'image/png',
+        ContentLength: 2048,
+      });
+      expect(options.signableHeaders).toEqual(new Set(['content-type', 'content-length']));
+    });
+
+    it('cada subida genera una key distinta', async () => {
+      const { createLogoUploadUrl } = await loadS3();
+      const a = await createLogoUploadUrl({ size: 10, clubId: 'club_a' });
+      const b = await createLogoUploadUrl({ size: 10, clubId: 'club_a' });
+      expect(a.key).not.toBe(b.key);
+    });
+
+    it.each([0, -1, 1.5, 2 * 1024 * 1024 + 1])('createLogoUploadUrl rechaza size=%s', async (size) => {
+      const { createLogoUploadUrl } = await loadS3();
+      await expect(createLogoUploadUrl({ size, clubId: 'club_a' })).rejects.toThrow();
+      expect(getSignedUrlMock).not.toHaveBeenCalled();
+    });
+
+    it('createLogoUploadUrl sin club tira', async () => {
+      const { createLogoUploadUrl } = await loadS3();
+      await expect(createLogoUploadUrl({ size: 10, clubId: '' })).rejects.toThrow();
+    });
+  });
+
+  describe('leerObjeto', () => {
+    it('devuelve el body como web stream con el content-type y el largo', async () => {
+      const { leerObjeto } = await loadS3();
+      const stream = new ReadableStream();
+      sendMock.mockResolvedValue({
+        Body: { transformToWebStream: () => stream },
+        ContentType: 'image/png',
+        ContentLength: 123,
+      });
+
+      await expect(leerObjeto('clubes/a/logo.png')).resolves.toEqual({
+        body: stream,
+        contentType: 'image/png',
+        contentLength: 123,
+      });
+      expect(sendMock.mock.calls[0][0].input).toEqual({ Bucket: 'bucket-test', Key: 'clubes/a/logo.png' });
+    });
+
+    it('null si el objeto no existe', async () => {
+      const { leerObjeto } = await loadS3();
+      sendMock.mockRejectedValue(Object.assign(new Error('nope'), { name: 'NoSuchKey' }));
+      await expect(leerObjeto('clubes/a/logo.png')).resolves.toBeNull();
+    });
+
+    it('relanza otros errores', async () => {
+      const { leerObjeto } = await loadS3();
+      sendMock.mockRejectedValue(Object.assign(new Error('denied'), { $metadata: { httpStatusCode: 403 } }));
+      await expect(leerObjeto('clubes/a/logo.png')).rejects.toThrow('denied');
+    });
+  });
 });

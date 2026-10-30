@@ -17,3 +17,7 @@ export const FOTO_ORIGINAL_MAX_BYTES = 20 * 1024 * 1024;
 export function isFotoContentType(value: string): value is FotoContentType {
   return Object.hasOwn(FOTO_TIPOS, value);
 }
+
+// Logo del club: el cliente lo rasteriza y lo sube siempre como PNG (un SVG nunca se guarda).
+export const LOGO_CONTENT_TYPE = 'image/png';
+export const LOGO_MAX_BYTES = 2 * 1024 * 1024;

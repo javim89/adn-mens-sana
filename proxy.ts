@@ -4,10 +4,16 @@ import { NextResponse } from "next/server";
 // Las rutas de cron no llevan sesión de Clerk: las invoca una scheduled function
 // de Netlify y se autentican con CRON_SECRET en el propio route handler.
 // "/" es la landing pública y va EXACTA: "/(.*)" abriría el sitio entero.
+// El login con la marca de cada club (/c/<slug>/sign-in) y su logo e íconos son
+// públicos: se ven antes de iniciar sesión.
 export const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/c/:slug/sign-in(.*)",
+  "/c/:slug/sign-up(.*)",
+  "/api/clubes/:slug/logo",
+  "/api/clubes/:slug/icono",
   "/api/cron/(.*)",
 ]);
 
