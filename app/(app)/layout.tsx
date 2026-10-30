@@ -17,7 +17,7 @@ export default async function AppLayout({
   const misClubes = await getMisClubes(userId);
 
   return (
-    <Providers>
+    <Providers clubId={club.id}>
       <div className="flex flex-col min-h-screen flex-1 min-w-0">
         <AppShell
           navItems={navItems}

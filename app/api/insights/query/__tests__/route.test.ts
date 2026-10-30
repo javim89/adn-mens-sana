@@ -15,6 +15,7 @@ vi.mock('@/lib/tenant/miembros', () => ({
   nombreVisible: (m: { nombre: string; apellido: string; email: string; userId: string }) =>
     `${m.nombre} ${m.apellido}`.trim() || m.email || m.userId,
 }));
+vi.mock('@/lib/db', () => ({ prisma: {} }));
 vi.mock('@/lib/insights/run', () => ({
   runQuery: mockRunQuery,
   runRawSql: mockRunRawSql,
@@ -210,6 +211,19 @@ describe('POST /api/insights/query — ejecución', () => {
     const body = (await res.json()) as { error: string };
     expect(body.error).not.toContain('relation');
     expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('500 genérico si falta el rol read-only en producción', async () => {
+    const { ReadOnlyNoConfiguradoError } = await import('@/lib/db-readonly');
+    mockRunQuery.mockRejectedValue(new ReadOnlyNoConfiguradoError());
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await post({ spec: specValido });
+
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).not.toContain('DATABASE_URL');
     consoleError.mockRestore();
   });
 

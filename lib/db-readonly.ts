@@ -52,6 +52,14 @@ import { prisma } from '@/lib/db';
  * `undefined` = todavía no se resolvió; `null` = se resolvió y no hay variable
  * configurada. Distinguirlos evita reintentar la construcción en cada llamada.
  */
+/** Falta `DATABASE_URL_READONLY` en producción. Es un error de configuración, no del usuario. */
+export class ReadOnlyNoConfiguradoError extends Error {
+  constructor() {
+    super('DATABASE_URL_READONLY no está configurada: Insights no corre en producción sin el rol insights_ro');
+    this.name = 'ReadOnlyNoConfiguradoError';
+  }
+}
+
 const globalForReadOnly = globalThis as unknown as {
   prismaReadOnly?: PrismaClient | null;
 };
@@ -74,9 +82,7 @@ function createReadOnlyClient(): PrismaClient | null {
  */
 export function getReadOnlyPrisma(): PrismaClient {
   if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL_READONLY) {
-    throw new Error(
-      'DATABASE_URL_READONLY no está configurada: Insights no corre en producción sin el rol insights_ro',
-    );
+    throw new ReadOnlyNoConfiguradoError();
   }
   if (globalForReadOnly.prismaReadOnly === undefined) {
     globalForReadOnly.prismaReadOnly = createReadOnlyClient();

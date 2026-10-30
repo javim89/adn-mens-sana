@@ -58,6 +58,19 @@ describe.skipIf(!OWNER)('Insights: aislamiento entre clubes (integración)', () 
     expect(r.rows[0].n).toBe(chico.deportistas);
   });
 
+  it('todos los widgets de los dashboards de sistema corren con el prelude, en los dos clubes', async () => {
+    const { DASHBOARDS_SISTEMA } = await import('@/lib/insights/dashboards-sistema');
+    const { querySpecSchema } = await import('@/lib/insights/schemas');
+    for (const dashboard of DASHBOARDS_SISTEMA) {
+      for (const widget of dashboard.widgets) {
+        const spec = querySpecSchema.parse(widget.querySpec);
+        for (const club of [grande, chico]) {
+          await expect(run.runQuery(spec, club.id), `${dashboard.slug} · ${widget.titulo}`).resolves.toBeDefined();
+        }
+      }
+    }
+  }, 120_000);
+
   describe.skipIf(!READONLY)('con insights_ro (RLS)', () => {
     it('public.deportistas no filtra filas de otro club', async () => {
       const r = await run.runRawSql(

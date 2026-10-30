@@ -10,6 +10,7 @@
 
 import { NextResponse } from 'next/server';
 import { getContextoClub } from '@/lib/tenant/contexto';
+import { ReadOnlyNoConfiguradoError } from '@/lib/db-readonly';
 import { runQuery, runRawSql } from '@/lib/insights/run';
 import { resolveUserLabels } from '@/lib/insights/user-labels';
 import { formatZodError, queryRequestSchema } from '@/lib/insights/schemas';
@@ -26,9 +27,11 @@ function errorResponse(status: number, error: string) {
 
 /**
  * Los errores del compilador y del guard son errores del usuario (400); los de
- * Postgres son fallas del servidor (500) y su detalle no sale de acá.
+ * Postgres (y la falta del rol read-only en prod) son fallas del servidor (500)
+ * y su detalle no sale de acá.
  */
 function isDatabaseError(error: unknown): boolean {
+  if (error instanceof ReadOnlyNoConfiguradoError) return true;
   if (typeof error !== 'object' || error === null) return false;
   const name = (error as { name?: unknown }).name;
   return typeof name === 'string' && name.startsWith('PrismaClient');

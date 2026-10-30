@@ -24,6 +24,7 @@ vi.mock('@/lib/generated/prisma/client', () => ({
 }));
 
 import {
+  ReadOnlyNoConfiguradoError,
   __resetReadOnlyPrisma,
   getReadOnlyPrisma,
   isReadOnlyConfigured,
@@ -114,7 +115,7 @@ describe('en producción', () => {
   // Sin el rol de solo lectura, el fallback sería el cliente dueño de las
   // tablas, que bypasea las RLS por club de `insights_ro`: falla cerrado.
   it('sin DATABASE_URL_READONLY tira en vez de caer al cliente principal', () => {
-    expect(() => getReadOnlyPrisma()).toThrow(/DATABASE_URL_READONLY/);
+    expect(() => getReadOnlyPrisma()).toThrow(ReadOnlyNoConfiguradoError);
     expect(PrismaClientMock).not.toHaveBeenCalled();
   });
 
