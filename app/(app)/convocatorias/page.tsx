@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { requireContexto } from '@/lib/tenant/contexto';
 import type { AppRole } from '@/lib/roles';
 import { getConvocatorias } from '@/lib/queries/convocatorias';
@@ -6,6 +7,8 @@ import { toDateString } from '@/lib/queries/calendario';
 import ConvocatoriasTable, {
   type ConvocatoriaListItem,
 } from './_components/ConvocatoriasTable';
+
+export const metadata: Metadata = { title: 'Convocatorias' };
 
 export const dynamic = 'force-dynamic';
 

@@ -1,9 +1,12 @@
+import type { Metadata } from 'next';
 import { requireContexto } from '@/lib/tenant/contexto';
 import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
 import { getTurnos } from '@/lib/queries/turnos';
 import { getProfesionales } from '@/lib/actions/turnos';
 import TurnosTable from './_components/TurnosTable';
 import type { TurnoListItem } from '@/lib/types/turnos';
+
+export const metadata: Metadata = { title: 'Turnos' };
 
 const PAGE_SIZE = 25;
 

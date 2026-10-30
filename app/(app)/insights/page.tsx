@@ -1,9 +1,12 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { ChartColumn } from 'lucide-react';
 import { getDashboards } from '@/lib/actions/insights';
 import NuevoDashboardButton from './_components/NuevoDashboardButton';
 import DashboardCardActions from './_components/DashboardCardActions';
+
+export const metadata: Metadata = { title: 'Insights' };
 
 export const dynamic = 'force-dynamic';
 

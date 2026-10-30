@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { requireContexto } from '@/lib/tenant/contexto';
 import type { AppRole } from '@/lib/roles';
 import { getEntrenamientos } from '@/lib/queries/presentismo';
@@ -6,6 +7,8 @@ import type { TipoSesion } from '@/lib/types/presentismo';
 import PresentismoTable, {
   type EntrenamientoListItem,
 } from './_components/PresentismoTable';
+
+export const metadata: Metadata = { title: 'Presentismo' };
 
 export const dynamic = 'force-dynamic';
 

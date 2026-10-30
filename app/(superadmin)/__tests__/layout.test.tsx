@@ -14,7 +14,8 @@ vi.mock('@clerk/nextjs', () => ({ UserButton: () => <div data-testid="user-butto
 vi.mock('next/navigation', () => ({ notFound: mockNotFound }));
 vi.mock('@/lib/tenant/clubes', () => ({ esSuperadmin: mockEsSuperadmin }));
 
-import SuperadminLayout from '../layout';
+import SuperadminLayout, { metadata } from '../layout';
+import { ICONOS_BIOTEAM } from '@/lib/branding/iconos-bioteam';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -44,5 +45,24 @@ describe('SuperadminLayout: guard', () => {
 
     await expect(SuperadminLayout({ children: <p>contenido</p> })).rejects.toThrow('NEXT_NOT_FOUND');
     expect(mockEsSuperadmin).not.toHaveBeenCalled();
+  });
+});
+
+describe('SuperadminLayout: marca BioTeam', () => {
+  it('declara los íconos de BioTeam y el título del panel', () => {
+    expect(metadata.icons).toBe(ICONOS_BIOTEAM);
+    expect(metadata.title).toEqual({ template: '%s · BioTeam', default: 'Superadmin · BioTeam' });
+  });
+
+  it('el header usa los tokens fijos de BioTeam, no el tema del club', async () => {
+    mockAuth.mockResolvedValue({ userId: 'user_staff' });
+    mockEsSuperadmin.mockResolvedValue(true);
+
+    const { container } = render(await SuperadminLayout({ children: <p /> }));
+
+    const header = container.querySelector('header')!;
+    expect(header.className).toContain('bg-bioteam-navy');
+    expect(header.className).not.toMatch(/\bbg-primario\b/);
+    expect(screen.getByText('Superadmin').className).toContain('bg-bioteam-dorado');
   });
 });

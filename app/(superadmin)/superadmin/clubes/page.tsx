@@ -1,8 +1,11 @@
+import type { Metadata } from 'next';
 import { getClubes } from '@/lib/actions/superadmin';
 import ClubesTable from './_components/ClubesTable';
 import CrearClubForm from './_components/CrearClubForm';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = { title: 'Clubes' };
 
 export default async function ClubesPage() {
   // El layout del grupo ya validó que es superadmin.

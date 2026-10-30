@@ -3,24 +3,28 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
-import { ShieldCheck } from 'lucide-react';
+import { Settings, ShieldCheck } from 'lucide-react';
 import type { NavItem } from '../../lib/roles';
 import { ICON_MAP } from '../../lib/nav-icons';
-import LogoBioTeam from './LogoBioTeam';
+import MarcaClub from './branding/MarcaClub';
 import ClubSelector, { type ClubOpcion } from './ClubSelector';
 
 /** Club activo que llega desde el layout. */
 export interface ClubActivo {
   id: string;
   nombre: string;
+  /** `/api/clubes/<slug>/logo?v=…`; sin logo se muestran las iniciales. */
+  logoSrc?: string | null;
 }
 
 interface SidebarProps {
   navItems: NavItem[];
-  /** Club activo. Disponible para el selector y el branding por club; la marca sigue siendo BioTeam. */
+  /** Club activo: su logo y nombre son la marca del sidebar. */
   club?: ClubActivo;
   /** Clubes con membresía activa. Con más de uno se muestra el selector. */
   misClubes?: ClubOpcion[];
+  /** Admin del club: ve el link a Configuración (nombre, logo y colores). */
+  puedeConfigurar?: boolean;
   /** Staff de BioTeam: ve el link al panel de clubes. */
   esSuperadmin?: boolean;
   /** Está dentro de un club como superadmin (no como miembro): se avisa con un banner. */
@@ -33,6 +37,7 @@ export default function Sidebar({
   navItems,
   club,
   misClubes = [],
+  puedeConfigurar = false,
   esSuperadmin = false,
   comoSuperadmin = false,
   isOpen = false,
@@ -62,18 +67,12 @@ export default function Sidebar({
           'md:static md:translate-x-0 md:self-stretch',
         ].join(' ')}
       >
-        {/* Marca */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10">
-          <LogoBioTeam variante="inverso" className="h-9" eager />
-          <div className="min-w-0">
-            <p className="font-[family-name:var(--font-oswald)] font-semibold text-sm leading-tight uppercase tracking-wide">
-              BioTeam
-            </p>
-            <p className="text-xs text-white/50 mt-0.5">
-              Historia Deportiva
-            </p>
+        {/* Marca del club */}
+        {club && (
+          <div className="px-4 py-4 border-b border-white/10">
+            <MarcaClub nombre={club.nombre} logoSrc={club.logoSrc ?? null} />
           </div>
-        </div>
+        )}
 
         {club && comoSuperadmin && (
           <p
@@ -109,15 +108,35 @@ export default function Sidebar({
             );
           })}
 
-          {esSuperadmin && (
-            <Link
-              href="/superadmin/clubes"
-              onClick={onClose}
-              className="mt-4 flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/70 border-t border-white/10 hover:bg-white/10 hover:text-white transition-colors"
-            >
-              <ShieldCheck size={18} />
-              Superadmin · Clubes
-            </Link>
+          {(puedeConfigurar || esSuperadmin) && (
+            <div className="mt-4 pt-4 space-y-1 border-t border-white/10">
+              {puedeConfigurar && (
+                <Link
+                  href="/configuracion"
+                  onClick={onClose}
+                  aria-current={pathname === '/configuracion' ? 'page' : undefined}
+                  className={[
+                    'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                    pathname === '/configuracion'
+                      ? 'bg-white/15 text-white border-l-2 border-acento'
+                      : 'text-white/70 hover:bg-white/10 hover:text-white',
+                  ].join(' ')}
+                >
+                  <Settings size={18} />
+                  Configuración
+                </Link>
+              )}
+              {esSuperadmin && (
+                <Link
+                  href="/superadmin/clubes"
+                  onClick={onClose}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                >
+                  <ShieldCheck size={18} />
+                  Superadmin · Clubes
+                </Link>
+              )}
+            </div>
           )}
         </nav>
 

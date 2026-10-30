@@ -9,12 +9,6 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
 }));
 
-vi.mock('next/image', () => ({
-  default: ({ alt, src, ...rest }: { alt: string; src: string; 'data-logo-bioteam'?: string }) => (
-    <img alt={alt} src={src} data-logo-bioteam={rest['data-logo-bioteam']} />
-  ),
-}));
-
 vi.mock('@clerk/nextjs', () => ({
   Show: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -22,26 +16,55 @@ vi.mock('@clerk/nextjs', () => ({
   UserButton: () => <div data-testid="user-button" />,
 }));
 
-describe('AppShell', () => {
-  it('renders the mobile top bar with app name', () => {
-    const navItems = getNavItemsForRole('admin');
-    render(<AppShell navItems={navItems}><div>content</div></AppShell>);
+const CLUB = { id: 'club_a', nombre: 'Club Atlético Ejemplo', logoSrc: '/api/clubes/club-a/logo?v=1' };
 
-    // "BioTeam" appears in both the mobile header and the sidebar
-    expect(screen.getAllByText('BioTeam').length).toBeGreaterThan(0);
+describe('AppShell', () => {
+  it('el header mobile y el sidebar muestran el nombre del club', () => {
+    const navItems = getNavItemsForRole('admin');
+    render(<AppShell navItems={navItems} club={CLUB}><div>content</div></AppShell>);
+
+    expect(screen.getAllByText(CLUB.nombre)).toHaveLength(2);
   });
 
-  it('shows the inverse BioTeam icon in the mobile header and in the sidebar', () => {
+  it('muestra el logo del club (decorativo) en el header mobile y en el sidebar', () => {
     const navItems = getNavItemsForRole('admin');
-    const { container } = render(<AppShell navItems={navItems}><div /></AppShell>);
+    const { container } = render(<AppShell navItems={navItems} club={CLUB}><div /></AppShell>);
 
-    const iconos = container.querySelectorAll('img[data-logo-bioteam]');
-    expect(iconos).toHaveLength(2);
-    iconos.forEach((icono) => {
-      expect(icono).toHaveAttribute('data-logo-bioteam', 'inverso');
-      expect(icono).toHaveAttribute('alt', '');
-      expect(icono.getAttribute('src')).toBe('/brand/bioteam-logo-inverso.svg');
+    const logos = container.querySelectorAll('img[data-logo-club]');
+    expect(logos).toHaveLength(2);
+    logos.forEach((logo) => {
+      expect(logo).toHaveAttribute('alt', '');
+      expect(logo).toHaveAttribute('src', CLUB.logoSrc);
     });
+  });
+
+  it('sin logo muestra las iniciales del club', () => {
+    const navItems = getNavItemsForRole('admin');
+    const { container } = render(
+      <AppShell navItems={navItems} club={{ ...CLUB, logoSrc: null }}><div /></AppShell>,
+    );
+
+    expect(container.querySelector('img')).toBeNull();
+    const iniciales = container.querySelectorAll('[data-iniciales-club]');
+    expect(iniciales).toHaveLength(2);
+    expect(iniciales[0]).toHaveTextContent('E');
+  });
+
+  it('no aparece la marca BioTeam', () => {
+    const navItems = getNavItemsForRole('admin');
+    const { container } = render(<AppShell navItems={navItems} club={CLUB}><div /></AppShell>);
+
+    expect(container.textContent).not.toMatch(/bioteam|historia deportiva/i);
+    expect(container.querySelector('img[data-logo-bioteam]')).toBeNull();
+  });
+
+  it('Configuración solo con puedeConfigurar', () => {
+    const navItems = getNavItemsForRole('admin');
+    const { rerender } = render(<AppShell navItems={navItems} club={CLUB}><div /></AppShell>);
+    expect(screen.queryByRole('link', { name: /configuración/i })).not.toBeInTheDocument();
+
+    rerender(<AppShell navItems={navItems} club={CLUB} puedeConfigurar><div /></AppShell>);
+    expect(screen.getByRole('link', { name: /configuración/i })).toHaveAttribute('href', '/configuracion');
   });
 
   it('does not render the Gimnasia crest', () => {

@@ -36,9 +36,10 @@ vi.mock('@tanstack/react-query', () => ({
   QueryClientProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-import AppLayout from '../layout'
+import AppLayout, { generateMetadata } from '../layout'
 import { mockContexto, setContexto, CLUB_TEST } from '@/test-utils/tenant'
 import type { AppRole } from '@/lib/roles'
+import { versionTema } from '@/lib/branding/tema'
 
 function comoRol(rol: AppRole) {
   setContexto(mockContexto(rol))
@@ -145,5 +146,58 @@ describe('AppLayout: nav según el rol de la membresía', () => {
 
     expect(screen.getByRole('link', { name: /superadmin · clubes/i })).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent(`Estás viendo ${CLUB_TEST.nombre} como superadmin`)
+  })
+})
+
+describe('AppLayout: marca del club', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetMisClubes.mockResolvedValue([])
+  })
+
+  const CLUB_CON_LOGO = { ...CLUB_TEST, logoKey: 'clubes/club_test/logo/0b8e7c1a-4f2d-4c1e-9a3b-123456789abc.png' }
+
+  it('pasa el logo versionado y el nombre del club al shell', async () => {
+    setContexto(mockContexto('admin', { club: CLUB_CON_LOGO }))
+
+    const { container } = render(await AppLayout({ children: <div /> }))
+
+    const logo = container.querySelector('aside img[data-logo-club]')
+    expect(logo).toHaveAttribute('src', `/api/clubes/${CLUB_TEST.slug}/logo?v=${versionTema(CLUB_CON_LOGO)}`)
+    expect(screen.getAllByText(CLUB_TEST.nombre).length).toBeGreaterThan(0)
+    expect(container.textContent).not.toMatch(/bioteam/i)
+  })
+
+  it('el admin ve Configuración', async () => {
+    comoRol('admin')
+    render(await AppLayout({ children: <div /> }))
+    expect(screen.getByRole('link', { name: /configuración/i })).toHaveAttribute('href', '/configuracion')
+  })
+
+  it.each<AppRole>(['entrenador', 'medico', 'social', 'responsable_viandas'])('%s no ve Configuración', async (rol) => {
+    comoRol(rol)
+    render(await AppLayout({ children: <div /> }))
+    expect(screen.queryByRole('link', { name: /configuración/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('generateMetadata del layout de (app)', () => {
+  it('título "%s · <Club>" e íconos del club versionados', async () => {
+    const club = { ...CLUB_TEST, colorPrimario: '#8b0000' }
+    setContexto(mockContexto('admin', { club }))
+    const v = versionTema(club)
+
+    const metadata = await generateMetadata()
+
+    expect(metadata.title).toEqual({ template: `%s · ${CLUB_TEST.nombre}`, default: CLUB_TEST.nombre })
+    expect(metadata.icons).toEqual({
+      icon: [{ url: `/api/clubes/${CLUB_TEST.slug}/icono?tam=32&v=${v}`, sizes: '32x32', type: 'image/png' }],
+      apple: [{ url: `/api/clubes/${CLUB_TEST.slug}/icono?tam=180&v=${v}`, sizes: '180x180', type: 'image/png' }],
+    })
+  })
+
+  it('sin contexto no declara nada (el layout redirige)', async () => {
+    setContexto(null)
+    await expect(generateMetadata()).resolves.toEqual({})
   })
 })

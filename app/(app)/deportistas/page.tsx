@@ -1,5 +1,8 @@
+import type { Metadata } from 'next';
 import { requireContexto } from '@/lib/tenant/contexto';
 import DeportistasTable from './_components/DeportistasTable';
+
+export const metadata: Metadata = { title: 'Deportistas' };
 
 export default async function DeportistasPage() {
   const { rol: role } = await requireContexto();

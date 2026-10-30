@@ -1,6 +1,9 @@
+import type { Metadata } from 'next';
 import { getCalendarioData } from '@/lib/queries/calendario';
 import { requireContexto } from '@/lib/tenant/contexto';
 import CalendarioView from './_components/CalendarioView';
+
+export const metadata: Metadata = { title: 'Calendario' };
 
 export default async function CalendarioPage() {
   await requireContexto();

@@ -35,6 +35,7 @@
  * `gap-5` entre las cards de un mismo bloque. El doble de distancia significa "esto ya
  * es otro tema".
  */
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { requireContexto } from '@/lib/tenant/contexto';
 import { LayoutDashboard } from 'lucide-react';
@@ -60,6 +61,8 @@ import SeccionPresentismo from './_components/SeccionPresentismo';
 import SeccionSeguimientos from './_components/SeccionSeguimientos';
 import SeccionPlantel from './_components/SeccionPlantel';
 import SeccionEventos from './_components/SeccionEventos';
+
+export const metadata: Metadata = { title: 'Dashboard' };
 
 export const dynamic = 'force-dynamic';
 

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { requireContexto } from '@/lib/tenant/contexto';
 import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
 import type { AppRole } from '@/lib/roles';
@@ -7,6 +8,8 @@ import { hoyEnArgentina, resolverFechaActiva } from '@/lib/utils/fecha';
 import { esFiltroComida, esLugarRetiro } from '@/lib/utils/viandas';
 import ViandasPanel from './_components/ViandasPanel';
 import type { DeportistaVianda } from '@/lib/types/viandas';
+
+export const metadata: Metadata = { title: 'Viandas' };
 
 export const dynamic = 'force-dynamic';
 

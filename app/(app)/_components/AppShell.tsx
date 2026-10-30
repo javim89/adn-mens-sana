@@ -3,17 +3,19 @@
 import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
-import LogoBioTeam from '../../components/LogoBioTeam';
+import MarcaClub from '../../components/branding/MarcaClub';
 import type { NavItem } from '../../../lib/roles';
 import type { ClubActivo } from '../../components/Sidebar';
 import type { ClubOpcion } from '../../components/ClubSelector';
 
 interface AppShellProps {
   navItems: NavItem[];
-  /** Club activo de la sesión. Por ahora solo se pasa al Sidebar (el branding por club es la fase 2). */
+  /** Club activo de la sesión: su marca va en el header mobile y en el Sidebar. */
   club?: ClubActivo;
   /** Clubes con membresía activa (selector del Sidebar, que en mobile es el drawer). */
   misClubes?: ClubOpcion[];
+  /** Admin del club: ve el link a Configuración. */
+  puedeConfigurar?: boolean;
   esSuperadmin?: boolean;
   comoSuperadmin?: boolean;
   children: React.ReactNode;
@@ -23,6 +25,7 @@ export default function AppShell({
   navItems,
   club,
   misClubes,
+  puedeConfigurar,
   esSuperadmin,
   comoSuperadmin,
   children,
@@ -33,11 +36,8 @@ export default function AppShell({
     <>
       {/* Mobile top bar — hidden on md+ */}
       <header className="md:hidden flex items-center justify-between px-4 bg-primario text-white h-14 shrink-0">
-        <span className="flex min-w-0 items-center gap-2">
-          <LogoBioTeam variante="inverso" className="h-7" eager />
-          <span className="font-[family-name:var(--font-oswald)] font-semibold text-sm uppercase tracking-wide">
-            BioTeam
-          </span>
+        <span className="flex min-w-0 items-center">
+          {club && <MarcaClub nombre={club.nombre} logoSrc={club.logoSrc ?? null} tamanio="sm" />}
         </span>
         <button
           onClick={() => setSidebarOpen(true)}
@@ -53,6 +53,7 @@ export default function AppShell({
           navItems={navItems}
           club={club}
           misClubes={misClubes}
+          puedeConfigurar={puedeConfigurar}
           esSuperadmin={esSuperadmin}
           comoSuperadmin={comoSuperadmin}
           isOpen={sidebarOpen}

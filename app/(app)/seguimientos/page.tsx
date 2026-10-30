@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { requireContexto } from '@/lib/tenant/contexto';
 import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
 import { getSeguimientos } from '@/lib/queries/seguimientos';
@@ -5,6 +6,8 @@ import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
 import type { PrioridadSeguimiento } from '@/lib/types/seguimientos';
 import SeguimientosTable from './_components/SeguimientosTable';
+
+export const metadata: Metadata = { title: 'Seguimientos' };
 
 const PAGE_SIZE = 25;
 const VALID_PRIORIDADES: PrioridadSeguimiento[] = ['BAJA', 'MEDIA', 'ALTA', 'URGENTE'];

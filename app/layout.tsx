@@ -15,9 +15,16 @@ const inter = Inter({
   subsets: ['latin'],
 });
 
+/**
+ * Metadata neutra: la heredan las pantallas sin marca (login genérico, /bienvenida).
+ * La landing y el superadmin declaran los íconos de BioTeam, y la app los del club.
+ * Por eso en `app/` no puede haber `icon.*`, `apple-icon.*` ni `favicon.ico`: le
+ * ganarían a la metadata de cada segmento.
+ */
 export const metadata: Metadata = {
-  title: 'BioTeam',
-  description: 'BioTeam — gestión integral del deportista para clubes',
+  title: 'Gestión integral del deportista',
+  description: 'Gestión integral del deportista para clubes',
+  icons: { icon: [{ url: '/brand/icono-neutro.svg', type: 'image/svg+xml' }] },
 };
 
 export default function RootLayout({

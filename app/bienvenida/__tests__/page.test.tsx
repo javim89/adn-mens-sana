@@ -20,10 +20,10 @@ vi.mock('@/lib/tenant/invitaciones', () => ({ aceptarInvitacionesPendientes: moc
 vi.mock('@/lib/tenant/contexto', async () =>
   (await import('@/test-utils/tenant')).moduloContextoMock(null),
 );
-vi.mock('@/app/components/LogoBioTeam', () => ({ default: () => <span data-testid="logo" /> }));
 
 import BienvenidaPage from '../page';
 import { mockContexto, setContexto } from '@/test-utils/tenant';
+import { TEMA_NEUTRO } from '@/lib/branding/tokens';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -66,6 +66,16 @@ describe('/bienvenida', () => {
     expect(screen.getByText('nuevo@club.com')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /cerrar sesión/i })).toBeInTheDocument();
     expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  it('es neutra: tema gris, sin logo y sin la marca BioTeam', async () => {
+    const { container } = render(await BienvenidaPage());
+
+    expect(container.textContent).not.toMatch(/bioteam/i);
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('style[data-tema-club]')?.textContent).toContain(
+      `--club-primario:${TEMA_NEUTRO.primario};`,
+    );
   });
 
   it('si aceptar invitaciones falla, igual muestra la pantalla en vez de romper', async () => {

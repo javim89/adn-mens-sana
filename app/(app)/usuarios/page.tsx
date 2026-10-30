@@ -1,7 +1,10 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { getUsuarios } from '@/lib/actions/usuarios';
 import { requireContexto } from '@/lib/tenant/contexto';
 import UsuariosPageClient from './UsuariosPageClient';
+
+export const metadata: Metadata = { title: 'Usuarios' };
 
 async function UsuariosContent() {
   const { rol, userId } = await requireContexto(['admin']);

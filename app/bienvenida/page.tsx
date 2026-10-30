@@ -9,17 +9,24 @@
  * Vive FUERA del grupo `(app)` a propósito: el layout de `(app)` exige contexto y
  * redirige acá, así que adentro sería un loop de redirects. `proxy.ts` ya exige
  * sesión (no está en `isPublicRoute`).
+ *
+ * Es neutra: no se sabe de qué club es el usuario (ni si tiene uno), así que no
+ * lleva marca, ni la de un club ni la de BioTeam (`TEMA_NEUTRO`).
  */
 
+import type { Metadata } from 'next';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { SignOutButton } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
 import { ShieldAlert } from 'lucide-react';
-import LogoBioTeam from '@/app/components/LogoBioTeam';
+import TemaClub from '@/app/components/branding/TemaClub';
+import { TEMA_NEUTRO } from '@/lib/branding/tokens';
 import { aceptarInvitacionesPendientes } from '@/lib/tenant/invitaciones';
 import { getContextoClub } from '@/lib/tenant/contexto';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = { title: 'Sin acceso' };
 
 export default async function BienvenidaPage() {
   const { userId } = await auth();
@@ -42,21 +49,15 @@ export default async function BienvenidaPage() {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-linear-to-br from-primario-hover to-primario">
+      <TemaClub tema={TEMA_NEUTRO} />
       <div className="flex w-full flex-col items-center gap-6 px-4 py-12">
-        <div className="flex items-center gap-3 text-center">
-          <LogoBioTeam variante="inverso" className="h-12" eager />
-          <span className="font-[family-name:var(--font-oswald)] text-4xl font-bold tracking-widest text-white uppercase">
-            BioTeam
-          </span>
-        </div>
-
         <main className="w-full max-w-md rounded-2xl bg-white px-6 py-8 text-center shadow-sm">
           <ShieldAlert size={28} className="mx-auto mb-3 text-primario" aria-hidden="true" />
           <h1 className="mb-2 font-[family-name:var(--font-oswald)] text-2xl font-bold text-primario">
             No tenés acceso a ningún club
           </h1>
           <p className="mb-1 text-sm text-muted-foreground">
-            Tu cuenta todavía no forma parte de ningún club en BioTeam. Pedile al
+            Tu cuenta todavía no forma parte de ningún club. Pedile al
             administrador de tu club que te invite.
           </p>
           {email && (
