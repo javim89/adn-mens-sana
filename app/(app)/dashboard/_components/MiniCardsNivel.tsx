@@ -35,7 +35,7 @@ const COLUMNAS = {
  * Cada una es un link a su filtro exacto, así que el número que muestra es el que va a
  * contar el listado. **Las de 0 no se esconden**: "no hay nadie en naranja" es
  * información; se atenúan para que el ojo vaya a las que tienen gente. La atenuación
- * es con gris `#6B7280` y sin tinte, NO con `opacity`: siguen siendo links activos y
+ * es con gris (`text-muted-foreground`) y sin tinte, NO con `opacity`: siguen siendo links activos y
  * con `opacity-50` el texto caía a ~3:1 (no pasa AA).
  *
  * `total === 0` no divide: el % se omite.
@@ -79,7 +79,7 @@ export default function MiniCardsNivel({
                 {it.cantidad}
               </span>
               {total > 0 && (
-                <span className="mt-1 text-xs tabular-nums text-[#4A5368]">
+                <span className="mt-1 text-xs tabular-nums text-gray-600">
                   {Math.round((it.cantidad / total) * 100)}%
                 </span>
               )}

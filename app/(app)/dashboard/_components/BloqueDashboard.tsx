@@ -13,9 +13,10 @@ import { ACENTOS, OSWALD, type ModuloDashboard } from '../_lib/acentos';
  * dónde termina uno y empieza el otro.
  *
  * El bloque resuelve las dos cosas: pone un rótulo con el nombre del módulo en una
- * barra lavanda que corta el ancho (con el cuadradito del color del módulo, el mismo
- * que llevan sus cards), y la page separa bloque de bloque con `gap-10` — el doble
- * del `gap-5` interno. La distancia pasa a significar algo.
+ * barra lavanda (un tinte del primario del club) que corta el ancho (con el
+ * cuadradito del color del módulo, el mismo que llevan sus cards), y la page separa
+ * bloque de bloque con `gap-10` — el doble del `gap-5` interno. La distancia pasa a
+ * significar algo.
  *
  * ============================================================================
  * SE RENDERIZA FUERA DEL `<Suspense>`, Y ESO ES EL PUNTO
@@ -62,7 +63,7 @@ export default function BloqueDashboard({
        * 768 y 1023px el sidebar fijo deja ~512px de contenido y la descripción baja de
        * línea, así que con `sm:block` quedaba colgado.
        */}
-      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-[#DFE3EF] px-4 py-3">
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-primario/12 px-4 py-3">
         <h2
           id={idTitulo}
           className="flex items-center gap-2.5 text-sm font-semibold uppercase tracking-[0.14em] text-primario"
@@ -75,8 +76,8 @@ export default function BloqueDashboard({
           />
           {titulo}
         </h2>
-        <span className="hidden h-4 w-px bg-[#B8BFD6] lg:block" aria-hidden />
-        <p className="min-w-0 text-xs text-[#4A5368]">{descripcion}</p>
+        <span className="hidden h-4 w-px bg-primario/20 lg:block" aria-hidden />
+        <p className="min-w-0 text-xs text-gray-600">{descripcion}</p>
       </div>
 
       {/**

@@ -90,7 +90,7 @@ export default async function SeccionTurnos({
                       <p className="truncate text-sm font-semibold text-foreground">
                         {t.titulo}
                       </p>
-                      <p className="truncate text-xs text-[#5B6478]">
+                      <p className="truncate text-xs text-muted-foreground">
                         {listaDeportistas(t.deportistas)} · {t.lugar}
                       </p>
                     </div>

@@ -103,7 +103,7 @@ export default async function SeccionPresentismo({
                 />
                 <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
                   {ESTADOS.map(({ estado, clase }) => (
-                    <li key={estado} className="flex items-center gap-1.5 text-xs text-[#5B6478]">
+                    <li key={estado} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <span className={`h-2 w-2 shrink-0 rounded-full ${clase}`} aria-hidden />
                       {ESTADO_ASISTENCIA_LABELS[estado]}
                       <span className="font-semibold tabular-nums text-foreground">

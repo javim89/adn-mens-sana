@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   // `insights_ro` en producción: el prelude lo acota, pero `public.<tabla>` lo
   // salta y ahí solo queda la RLS. Ser admin del club no alcanza.
   if (spec.mode === 'sql' && !contexto.esSuperadmin) {
-    return errorResponse(403, 'El modo SQL está disponible solo para el equipo de BioTeam');
+    return errorResponse(403, 'El modo SQL está disponible solo para el equipo de soporte');
   }
 
   const startedAt = Date.now();

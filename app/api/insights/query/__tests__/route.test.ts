@@ -141,7 +141,7 @@ describe('POST /api/insights/query — validación', () => {
 
     expect(res.status).toBe(403);
     await expect(res.json()).resolves.toEqual({
-      error: 'El modo SQL está disponible solo para el equipo de BioTeam',
+      error: 'El modo SQL está disponible solo para el equipo de soporte',
     });
     expect(mockRunRawSql).not.toHaveBeenCalled();
   });

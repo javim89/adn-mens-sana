@@ -60,7 +60,7 @@ describe('WidgetEditorDialog — modo SQL', () => {
   it('un widget SQL existente se muestra de solo lectura, con el aviso', () => {
     renderDialog({ widget: widgetSql });
     expect(screen.getByLabelText('Consulta SQL')).toHaveAttribute('readonly');
-    expect(screen.getByRole('note')).toHaveTextContent('Solo el equipo de BioTeam puede editarla');
+    expect(screen.getByRole('note')).toHaveTextContent('Solo el equipo de soporte puede editarla');
   });
 
   it('el staff puede editar un widget SQL', () => {

@@ -87,7 +87,7 @@ export default async function SeccionEventos({ hoyDb }: { hoyDb: Date }) {
                     <p className="truncate text-sm font-semibold text-foreground">
                       {e.local} vs. {e.visitante}
                     </p>
-                    <p className="truncate text-xs text-[#5B6478]">{e.categoria}</p>
+                    <p className="truncate text-xs text-muted-foreground">{e.categoria}</p>
                     <Etiquetas evento={e} sobreOscuro={false} />
                   </div>
                 </li>

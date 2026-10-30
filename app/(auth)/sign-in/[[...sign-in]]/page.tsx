@@ -1,11 +1,9 @@
 import { SignIn } from "@clerk/nextjs";
+import { appearanceClerk } from "@/lib/branding/tema";
+import { TEMA_BIOTEAM } from "@/lib/branding/tokens";
 
 const appearance = {
-  variables: {
-    colorPrimary: "#121A61",
-    colorBackground: "#ffffff",
-    fontFamily: "Inter, sans-serif",
-  },
+  ...appearanceClerk(TEMA_BIOTEAM),
   elements: {
     footerAction: { display: "none" },
   },

@@ -308,7 +308,7 @@ describe('modo SQL — solo para el staff de BioTeam', () => {
     w: 6,
     h: 6,
   };
-  const MENSAJE = 'El modo SQL está disponible solo para el equipo de BioTeam';
+  const MENSAJE = 'El modo SQL está disponible solo para el equipo de soporte';
 
   beforeEach(() => {
     mockPrisma.insightsDashboard.findUnique.mockResolvedValue({ id: 'dash_1', esSistema: false });

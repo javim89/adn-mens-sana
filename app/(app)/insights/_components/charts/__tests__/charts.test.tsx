@@ -1,4 +1,4 @@
-import { describe, it, test, expect, beforeAll, vi } from 'vitest';
+import { describe, it, test, expect, beforeAll, afterAll, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { ColumnMeta, Row } from '@/lib/insights/types';
 import { VISUALIZATIONS, type VizId } from '@/lib/insights/visualizations';
@@ -202,5 +202,63 @@ describe('KpiChart', () => {
     expect(screen.getByText('248')).toBeInTheDocument();
     expect(screen.getByText('Deportistas activos')).toBeInTheDocument();
     expect(screen.queryByText('Cantidad')).toBeNull();
+  });
+});
+
+/**
+ * Los colores de las series son `var(--club-*)` (siguen el tema del club). recharts
+ * tiene que dejarlos llegar intactos al SVG: el navegador resuelve `var()` en los
+ * atributos `fill`/`stroke`, pero si recharts los parseara o descartara, el gráfico
+ * quedaría negro.
+ */
+describe('Charts — colores del tema', () => {
+  // ResponsiveContainer de recharts 3 mide con getBoundingClientRect (0x0 en jsdom).
+  beforeAll(() => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 600,
+      height: 400,
+      top: 0,
+      left: 0,
+      right: 600,
+      bottom: 400,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+  });
+  afterAll(() => vi.restoreAllMocks());
+
+  const columnsDeporte: ColumnMeta[] = [
+    { id: 'deporte', label: 'Deporte', type: 'string', role: 'dimension' },
+    { id: 'cantidad', label: 'Cantidad', type: 'number', role: 'measure', format: 'integer' },
+  ];
+  const dataDeporte: Row[] = [
+    { deporte: 'futbol', cantidad: 30 },
+    { deporte: 'hockey', cantidad: 12 },
+  ];
+
+  function fills(container: HTMLElement, attr: 'fill' | 'stroke') {
+    return [...container.querySelectorAll(`svg [${attr}]`)].map((el) => el.getAttribute(attr));
+  }
+
+  it('las barras y la grilla usan las vars del tema tal cual', () => {
+    const { container } = render(
+      <div style={{ width: 600, height: 400 }}>
+        <WidgetRenderer data={dataDeporte} columns={columnsDeporte} config={{ type: 'bar' }} />
+      </div>,
+    );
+    expect(fills(container, 'fill')).toContain('var(--club-primario)');
+    expect(fills(container, 'stroke')).toContain('var(--muted)');
+  });
+
+  it('cada porción de la torta rota la paleta del club', () => {
+    const { container } = render(
+      <div style={{ width: 600, height: 400 }}>
+        <WidgetRenderer data={dataDeporte} columns={columnsDeporte} config={{ type: 'pie' }} />
+      </div>,
+    );
+    const colores = fills(container, 'fill');
+    expect(colores).toContain('var(--club-primario)');
+    expect(colores).toContain('var(--club-secundario)');
   });
 });

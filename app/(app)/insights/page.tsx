@@ -68,7 +68,7 @@ async function DashboardsContent() {
             </h2>
             <div className="relative z-10 flex shrink-0 items-center gap-1.5">
               {d.esSistema ? (
-                <span className="px-2 py-0.5 rounded-full bg-acento/15 text-[#8C6D1F] text-xs font-medium">
+                <span className="px-2 py-0.5 rounded-full bg-acento/15 text-foreground text-xs font-medium">
                   Sistema
                 </span>
               ) : (

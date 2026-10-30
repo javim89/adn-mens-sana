@@ -177,7 +177,7 @@ export default async function SeccionSeguimientos({ hoyDb }: { hoyDb: Date }) {
                       <span className="truncate text-sm font-semibold text-foreground group-hover:underline">
                         {c.titulo}
                       </span>
-                      <span className="truncate text-xs text-[#5B6478]">
+                      <span className="truncate text-xs text-muted-foreground">
                         {listaDeportistas(c.deportistas)}
                       </span>
                       {vencida && (

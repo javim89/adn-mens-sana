@@ -21,8 +21,9 @@ export function esHex6(valor: unknown): valor is string {
 }
 
 /**
- * Lleva `#ABC`, `abc`, ` #AABBCC ` a `#aabbcc`. Cualquier otra cosa (nombres de color,
- * `rgb()`, texto con `;` o `}`) devuelve `null`: así nada que no sea un hex llega al CSS.
+ * Lleva un hex de 3 o 6 dígitos, con o sin `#`, en mayúscula o minúscula y con espacios
+ * alrededor, a `#rrggbb` en minúscula. Cualquier otra cosa (nombres de color, funciones
+ * de color, texto con `;` o `}`) devuelve `null`: así nada que no sea un hex llega al CSS.
  */
 export function normalizarHex(valor: unknown): string | null {
   if (typeof valor !== 'string') return null;
@@ -213,7 +214,7 @@ export function mezclar(a: string, b: string, t: number): string {
 /**
  * Tinte claro de `hex`: mismo tono, con la L fijada en `l` y el croma escalado por
  * `factorCroma`. Mezclar con blanco lo deslava más de lo que hace la paleta BioTeam
- * (`#121a61` → `#eef0fb` es `tinte(…, 0.957, 0.12)`).
+ * (su primario-suave es `tinte(primario, 0.957, 0.12)`).
  */
 export function tinte(hex: string, l: number, factorCroma: number): string {
   const { c, h } = hexAOklch(hex);

@@ -28,10 +28,10 @@ export interface ClubConColores {
 }
 
 const DELTA_HOVER = 0.06;
-/** El secundario derivado del primario: más claro y más saturado (como #121a61 → #3346cc). */
+/** El secundario derivado del primario: más claro y más saturado (como en la paleta BioTeam). */
 const DELTA_SECUNDARIO = 0.2;
 const CROMA_MIN_SECUNDARIO = 0.12;
-// L y factor de croma que llevan la paleta BioTeam a sus "suave" (#eef0fb, #eaddb5).
+// L y factor de croma que llevan el primario y el acento BioTeam a sus "suave".
 const SUAVE_PRIMARIO = { l: 0.957, croma: 0.12 };
 const SUAVE_ACENTO = { l: 0.898, croma: 0.465 };
 

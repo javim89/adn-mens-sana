@@ -312,7 +312,7 @@ export default function WidgetEditorDialog({
                   <>
                     {!permiteSql && (
                       <p role="note" className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                        Este widget usa una consulta SQL. Solo el equipo de BioTeam puede editarla.
+                        Este widget usa una consulta SQL. Solo el equipo de soporte puede editarla.
                       </p>
                     )}
                     <SqlEditor

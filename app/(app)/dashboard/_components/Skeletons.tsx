@@ -90,14 +90,14 @@ export function SeguimientosSkeleton() {
 export function EncabezadoBloqueSkeleton() {
   return (
     <div
-      className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-[#DFE3EF] px-4 py-3"
+      className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-primario/12 px-4 py-3"
       aria-hidden
     >
       <div className="flex h-5 items-center gap-2.5">
-        <div className="h-3 w-3 rounded-sm bg-[#B8BFD6]" />
-        <div className="h-4 w-24 rounded bg-[#B8BFD6] animate-pulse" />
+        <div className="h-3 w-3 rounded-sm bg-primario/20" />
+        <div className="h-4 w-24 rounded bg-primario/20 animate-pulse" />
       </div>
-      <div className="h-4 w-56 max-w-full rounded bg-[#CDD3E4] animate-pulse" />
+      <div className="h-4 w-56 max-w-full rounded bg-primario/8 animate-pulse" />
     </div>
   );
 }

@@ -57,7 +57,7 @@ export async function getCroppedImage(
 
   // JPEG no tiene alfa: fondo blanco para PNG/WebP transparentes.
   if (type === 'image/jpeg') {
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, size, size);
   }
   ctx.imageSmoothingQuality = 'high';

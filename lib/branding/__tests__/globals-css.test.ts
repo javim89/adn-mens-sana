@@ -52,6 +52,24 @@ describe('app/globals.css — bloque de tokens', () => {
   });
 });
 
+describe('app/globals.css — sin colores literales fuera de los tokens', () => {
+  const INICIO_LANDING = 'Landing pública (`app/_landing/`)';
+
+  test('ningún #hex, rgb() ni hsl() fuera del bloque de tokens y de la landing', () => {
+    const a = css.indexOf(INICIO_TOKENS);
+    const b = css.indexOf(FIN_TOKENS);
+    const landing = css.indexOf(INICIO_LANDING);
+    expect(landing, 'falta el comentario que abre la sección de la landing').toBeGreaterThan(b);
+    // De la landing para abajo el CSS es solo de `app/_landing/` (no recibe tema).
+    const resto = css.slice(0, a) + css.slice(b, landing);
+    const hallazgos = [
+      ...resto.matchAll(/(?<![&\w])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/g),
+      ...resto.matchAll(/\b(?:rgba?|hsla?)\(/g),
+    ].map((m) => m[0]);
+    expect(hallazgos, 'Usá var(--club-*), var(--cal-*) o un neutro del bloque de tokens').toEqual([]);
+  });
+});
+
 describe('app/globals.css — @theme inline', () => {
   const theme = css.slice(css.indexOf('@theme inline'), css.indexOf('}', css.indexOf('@theme inline')));
 

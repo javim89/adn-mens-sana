@@ -111,7 +111,7 @@ async function assertAdmin(): Promise<
  * Un admin del club no puede crear ni editar un widget SQL; uno que ya existía
  * se conserva tal cual.
  */
-const SQL_SOLO_SUPERADMIN = 'El modo SQL está disponible solo para el equipo de BioTeam';
+const SQL_SOLO_SUPERADMIN = 'El modo SQL está disponible solo para el equipo de soporte';
 
 class SqlSoloSuperadminError extends Error {
   constructor() {

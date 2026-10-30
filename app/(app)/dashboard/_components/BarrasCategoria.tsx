@@ -57,7 +57,7 @@ export default function BarrasCategoria({
                 }}
               />
             </div>
-            <span className="w-full truncate text-center text-xs text-[#5B6478]">
+            <span className="w-full truncate text-center text-xs text-muted-foreground">
               {c.label}
             </span>
           </div>
