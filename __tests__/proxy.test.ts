@@ -117,6 +117,16 @@ describe('ruteoPorHost', () => {
     expect(seguir(enHost('club-prueba.bioteam.app', '/c/club-prueba/entrar')).rewrite).toBeNull();
   });
 
+  it('en el subdominio de un club, / (la landing de BioTeam) va a /dashboard', () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    expect(enHost('club-prueba.bioteam.app', '/')).toEqual({
+      tipo: 'redirect',
+      url: 'http://club-prueba.bioteam.app/dashboard',
+    });
+    // En el dominio raíz la landing sigue.
+    expect(seguir(enHost('bioteam.app', '/')).rewrite).toBeNull();
+  });
+
   it('el login genérico y las rutas /c/<slug> por path siguen andando en el dominio raíz', () => {
     vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
     expect(seguir(enHost('bioteam.app', '/sign-in')).rewrite).toBeNull();

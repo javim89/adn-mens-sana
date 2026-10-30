@@ -27,7 +27,8 @@ export type RuteoPorHost =
  * - Siempre se pisan los headers internos (`x-club-slug`, `x-bt-ruta`): el cliente
  *   no los puede inyectar. Sin club en el host, `x-club-slug` no llega.
  * - En `<slug>.<raíz>`, `/sign-in*` y `/sign-up*` se reescriben al login del club
- *   (`/c/<slug>/...`), y `/c/<otro>/...` se manda al subdominio de ese otro club.
+ *   (`/c/<slug>/...`), `/` va a `/dashboard` y `/c/<otro>/...` se manda al
+ *   subdominio de ese otro club.
  */
 export function ruteoPorHost(request: NextRequest): RuteoPorHost {
   const { pathname, search } = request.nextUrl;
@@ -43,6 +44,10 @@ export function ruteoPorHost(request: NextRequest): RuteoPorHost {
   if (!slug) return { tipo: "seguir", headers, rewrite: null };
 
   headers.set(HEADER_CLUB_SLUG, slug);
+
+  // La landing es de BioTeam: en el subdominio de un club, `/` es la app (y sin sesión,
+  // el guard manda al login del club). Es también adonde vuelve el logout de Clerk.
+  if (pathname === "/") return { tipo: "redirect", url: new URL(`/dashboard${search}`, request.url).toString() };
 
   const otro = /^\/c\/([^/]+)(\/.*)?$/.exec(pathname);
   if (otro && otro[1] !== slug) {
