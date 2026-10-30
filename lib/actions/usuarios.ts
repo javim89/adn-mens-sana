@@ -176,7 +176,7 @@ export async function invitarUsuario(data: {
     });
     if (pendiente) return { ok: false, error: 'Ya existe una invitación pendiente para ese email' };
 
-    const clerkInvitationId = await invitacionClerkPara(email);
+    const clerkInvitationId = await invitacionClerkPara(email, check.contexto.club.slug);
     const { tokenHash } = nuevoTokenInvitacion();
     await db.invitacion.create({
       data: {
@@ -229,7 +229,7 @@ export async function reenviarInvitacion(invitacionId: string): Promise<Resultad
       return { ok: true };
     }
 
-    const clerkInvitationId = await invitacionClerkPara(email, { renovar: true });
+    const clerkInvitationId = await invitacionClerkPara(email, check.contexto.club.slug, { renovar: true });
     const { tokenHash } = nuevoTokenInvitacion();
     await db.invitacion.update({
       where: { id: invitacion.id },

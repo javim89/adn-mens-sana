@@ -3,6 +3,7 @@ import { inicialesDelClub } from '@/lib/branding/marca';
 const TAMANIO = {
   sm: { chip: 'h-8 w-8 rounded-md p-0.5', iniciales: 'text-xs', nombre: 'text-sm truncate' },
   md: { chip: 'h-10 w-10 rounded-lg p-1', iniciales: 'text-sm', nombre: 'text-sm line-clamp-2' },
+  lg: { chip: 'h-16 w-16 rounded-xl p-1.5', iniciales: 'text-xl', nombre: 'text-2xl line-clamp-2' },
 } as const;
 
 /**

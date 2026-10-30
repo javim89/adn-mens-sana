@@ -1,28 +1,26 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import AuthLayout from '../layout';
+import { TEMA_NEUTRO } from '@/lib/branding/tokens';
 
-describe('AuthLayout', () => {
+describe('AuthLayout (login genérico)', () => {
   it('renders children', () => {
     render(<AuthLayout><div>test child</div></AuthLayout>);
     expect(screen.getByText('test child')).toBeInTheDocument();
   });
 
-  it('renders BioTeam heading', () => {
-    render(<AuthLayout><div /></AuthLayout>);
-    expect(screen.getByText('BioTeam')).toBeInTheDocument();
-  });
-
-  it('renders the BioTeam icon (inverse variant, decorative) next to the wordmark', () => {
+  it('es neutro: sin la marca de BioTeam ni la de un club', () => {
     const { container } = render(<AuthLayout><div /></AuthLayout>);
-    const icono = container.querySelector('img[data-logo-bioteam]');
-    expect(icono).toHaveAttribute('data-logo-bioteam', 'inverso');
-    expect(icono).toHaveAttribute('alt', '');
-    expect(screen.queryByRole('img')).not.toBeInTheDocument();
-  });
-
-  it('does not render any club name', () => {
-    const { container } = render(<AuthLayout><div /></AuthLayout>);
+    expect(container.textContent).not.toMatch(/bioteam/i);
     expect(container.textContent).not.toMatch(/gimnasia y esgrima/i);
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Ingresá a tu club' })).toBeInTheDocument();
+  });
+
+  it('aplica el tema neutro', () => {
+    const { container } = render(<AuthLayout><div /></AuthLayout>);
+    expect(container.querySelector('style[data-tema-club]')?.textContent).toContain(
+      `--club-primario:${TEMA_NEUTRO.primario};`,
+    );
   });
 });

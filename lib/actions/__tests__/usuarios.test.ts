@@ -317,6 +317,10 @@ describe('invitarUsuario', () => {
     expect(mockClerk.invitations.createInvitation).toHaveBeenCalledWith(
       expect.objectContaining({ emailAddress: 'ana@club.com' }),
     );
+    // El link del mail abre el alta con la marca del club que invita.
+    expect(mockClerk.invitations.createInvitation.mock.calls[0][0].redirectUrl).toMatch(
+      new RegExp(`/c/${CLUB_TEST.slug}/sign-up$`),
+    );
     // La invitación de Clerk ya no lleva el rol: el acceso lo da la fila del club.
     expect(mockClerk.invitations.createInvitation.mock.calls[0][0]).not.toHaveProperty('publicMetadata');
     expect(mockDb.invitacion.create).toHaveBeenCalledWith({
@@ -401,6 +405,9 @@ describe('reenviarInvitacion', () => {
     expect(mockClerk.invitations.revokeInvitation).toHaveBeenCalledWith('clerk_inv_vieja');
     expect(mockClerk.invitations.createInvitation).toHaveBeenCalledWith(
       expect.objectContaining({ emailAddress: 'ana@club.com' }),
+    );
+    expect(mockClerk.invitations.createInvitation.mock.calls[0][0].redirectUrl).toMatch(
+      new RegExp(`/c/${CLUB_TEST.slug}/sign-up$`),
     );
     expect(mockDb.invitacion.update).toHaveBeenCalledWith({
       where: { id: 'inv_1' },

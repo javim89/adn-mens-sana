@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 /**
  * El ícono de BioTeam (la "b" con el punto dorado) junto al wordmark, y los app icons.
- * Solo rutas públicas: la landing y /sign-in. Los app icons de BioTeam viven en
+ * Solo rutas públicas: la landing y /sign-in (que es neutro). Los app icons de BioTeam viven en
  * `public/brand/` y solo los declaran la landing y el superadmin; el resto hereda el
  * ícono neutro del root layout, y la app logueada usa los del club.
  */
@@ -26,12 +26,10 @@ test.describe('Logo de BioTeam', () => {
     await expect(iconoFooter).toHaveAttribute('alt', '');
   });
 
-  test('/sign-in muestra el ícono inverso sobre el fondo azul', async ({ page }) => {
+  test('/sign-in es neutro: sin el ícono ni el wordmark de BioTeam', async ({ page }) => {
     await page.goto('/sign-in');
-    const icono = page.locator('img[data-logo-bioteam]');
-    await expect(icono).toBeVisible();
-    await expect(icono).toHaveAttribute('data-logo-bioteam', 'inverso');
-    await expect.poll(() => icono.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    await expect(page.getByRole('heading', { name: 'Ingresá a tu club' })).toBeVisible();
+    await expect(page.locator('img[data-logo-bioteam]')).toHaveCount(0);
   });
 
   test('a 375px el nav con el ícono no genera scroll horizontal', async ({ page }) => {

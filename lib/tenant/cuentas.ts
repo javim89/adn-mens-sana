@@ -8,6 +8,7 @@
  */
 
 import { clerkClient } from '@clerk/nextjs/server';
+import { rutaLoginDelClub } from '@/lib/branding/login';
 
 /** Vigencia de una invitación al club (y de la invitación de Clerk que la acompaña). */
 export const DIAS_INVITACION = 30;
@@ -16,8 +17,10 @@ export function venceEn(dias: number): Date {
   return new Date(Date.now() + dias * 24 * 60 * 60 * 1000);
 }
 
-function redirectUrlSignUp(): string {
-  return `${process.env.NEXT_PUBLIC_APP_URL}/sign-up`;
+/** El link del mail de Clerk abre el alta con la marca del club que invita. */
+export function redirectUrlSignUp(slug: string): string {
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '');
+  return `${base}${rutaLoginDelClub(slug, 'sign-up')}`;
 }
 
 /**
@@ -38,9 +41,15 @@ export async function buscarCuentaVerificada(email: string): Promise<string | nu
 /**
  * La invitación de Clerk pendiente para `email`, o una nueva. Solo sirve para que
  * la persona cree su cuenta, así que es una por mail aunque la inviten varios
- * clubes: si otro club ya la invitó, se reutiliza en vez de fallar con "already".
+ * clubes: si otro club ya la invitó, se reutiliza en vez de fallar con "already"
+ * (y su link sigue abriendo el alta de ese primer club: `entrar` y `/bienvenida`
+ * aceptan igual todas las invitaciones). `slug` es el del club que invita.
  */
-export async function invitacionClerkPara(email: string, opciones: { renovar?: boolean } = {}): Promise<string> {
+export async function invitacionClerkPara(
+  email: string,
+  slug: string,
+  opciones: { renovar?: boolean } = {},
+): Promise<string> {
   const client = await clerkClient();
   const { data } = await client.invitations.getInvitationList({ status: 'pending', query: email, limit: 10 });
   const existente = data.find((inv) => inv.emailAddress.toLowerCase() === email);
@@ -51,7 +60,7 @@ export async function invitacionClerkPara(email: string, opciones: { renovar?: b
 
   const creada = await client.invitations.createInvitation({
     emailAddress: email,
-    redirectUrl: redirectUrlSignUp(),
+    redirectUrl: redirectUrlSignUp(slug),
     expiresInDays: DIAS_INVITACION,
   });
   return creada.id;

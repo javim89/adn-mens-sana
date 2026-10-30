@@ -114,7 +114,7 @@ describe('crearClub', () => {
       expect(data.widgets.create).toHaveLength(d.widgets.length);
     }
 
-    expect(mockInvClerk).toHaveBeenCalledWith('admin@prueba.com');
+    expect(mockInvClerk).toHaveBeenCalledWith('admin@prueba.com', 'club-prueba');
     expect(mockTx.invitacion.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         clubId: 'club_nuevo',

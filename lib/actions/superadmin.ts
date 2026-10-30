@@ -122,7 +122,7 @@ export async function crearClub(input: CrearClubInput): Promise<ResultadoCrearCl
     if (existente) return { ok: false, error: SLUG_EN_USO, campos: { slug: SLUG_EN_USO } };
 
     const cuentaAdmin = await buscarCuentaVerificada(datos.adminEmail);
-    const clerkInvitationId = cuentaAdmin ? null : await invitacionClerkPara(datos.adminEmail);
+    const clerkInvitationId = cuentaAdmin ? null : await invitacionClerkPara(datos.adminEmail, datos.slug);
 
     const club = await prisma.$transaction(
       async (tx) => {
