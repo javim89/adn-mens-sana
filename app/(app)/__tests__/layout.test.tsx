@@ -7,6 +7,11 @@ vi.mock('@/lib/tenant/contexto', async () =>
   (await import('@/test-utils/tenant')).moduloContextoMock(),
 )
 
+// Las membresías cruzan clubes y se leen con el cliente base: se mockean.
+const { mockGetMisClubes } = vi.hoisted(() => ({ mockGetMisClubes: vi.fn() }))
+vi.mock('@/lib/tenant/clubes', () => ({ getMisClubes: mockGetMisClubes }))
+vi.mock('@/lib/actions/club-activo', () => ({ cambiarClubActivo: vi.fn() }))
+
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
@@ -42,6 +47,7 @@ function comoRol(rol: AppRole) {
 describe('AppLayout: nav según el rol de la membresía', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetMisClubes.mockResolvedValue([])
   })
 
   it('admin sees 4 nav items', async () => {
@@ -95,5 +101,30 @@ describe('AppLayout: nav según el rol de la membresía', () => {
     setContexto(null)
 
     await expect(AppLayout({ children: <div /> })).rejects.toThrow('NEXT_REDIRECT:/bienvenida')
+  })
+
+  it('con dos membresías muestra el selector de club con las del usuario', async () => {
+    comoRol('admin')
+    mockGetMisClubes.mockResolvedValue([
+      { id: CLUB_TEST.id, nombre: CLUB_TEST.nombre, slug: CLUB_TEST.slug },
+      { id: 'club_b', nombre: 'Club B', slug: 'club-b' },
+    ])
+
+    const result = await AppLayout({ children: <div /> })
+    render(result)
+
+    expect(mockGetMisClubes).toHaveBeenCalledWith('user_test')
+    expect(screen.getByLabelText('Club')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Club B' })).toBeInTheDocument()
+  })
+
+  it('superadmin dentro de un club ajeno: link al panel y banner', async () => {
+    setContexto(mockContexto('admin', { esSuperadmin: true, comoSuperadmin: true }))
+
+    const result = await AppLayout({ children: <div /> })
+    render(result)
+
+    expect(screen.getByRole('link', { name: /superadmin · clubes/i })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(`Estás viendo ${CLUB_TEST.nombre} como superadmin`)
   })
 })

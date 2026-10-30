@@ -21,6 +21,9 @@ vi.mock('@clerk/nextjs', () => ({
   UserButton: () => <div data-testid="user-button" />,
 }));
 
+// El selector importa la server action; acá alcanza con que no toque la DB.
+vi.mock('@/lib/actions/club-activo', () => ({ cambiarClubActivo: vi.fn() }));
+
 const noop = () => {};
 
 describe('Sidebar nav items por rol', () => {
@@ -102,5 +105,36 @@ describe('Sidebar nav items por rol', () => {
     expect(screen.getByText('Deportistas')).toBeInTheDocument();
     expect(screen.getByText('Turnos')).toBeInTheDocument();
     expect(screen.queryByText('Usuarios')).not.toBeInTheDocument();
+  });
+});
+
+describe('Sidebar: club activo y superadmin', () => {
+  const navItems = getNavItemsForRole('admin');
+  const club = { id: 'club_a', nombre: 'Club A' };
+
+  it('con una sola membresía no muestra el selector de club', () => {
+    render(<Sidebar navItems={navItems} club={club} misClubes={[club]} />);
+    expect(screen.queryByLabelText('Club')).not.toBeInTheDocument();
+  });
+
+  it('con dos membresías muestra el selector', () => {
+    render(<Sidebar navItems={navItems} club={club} misClubes={[club, { id: 'club_b', nombre: 'Club B' }]} />);
+    expect(screen.getByLabelText('Club')).toBeInTheDocument();
+  });
+
+  it('un superadmin ve el link al panel de clubes', () => {
+    render(<Sidebar navItems={navItems} club={club} esSuperadmin />);
+    expect(screen.getByRole('link', { name: /superadmin · clubes/i })).toHaveAttribute('href', '/superadmin/clubes');
+  });
+
+  it('un usuario común no ve el link de superadmin ni el banner', () => {
+    render(<Sidebar navItems={navItems} club={club} />);
+    expect(screen.queryByRole('link', { name: /superadmin/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('dentro de un club como superadmin muestra el banner con el nombre del club', () => {
+    render(<Sidebar navItems={navItems} club={club} esSuperadmin comoSuperadmin />);
+    expect(screen.getByRole('status')).toHaveTextContent('Estás viendo Club A como superadmin');
   });
 });

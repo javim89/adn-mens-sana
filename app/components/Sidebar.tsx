@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import { ShieldCheck } from 'lucide-react';
 import type { NavItem } from '../../lib/roles';
 import { ICON_MAP } from '../../lib/nav-icons';
 import LogoBioTeam from './LogoBioTeam';
+import ClubSelector, { type ClubOpcion } from './ClubSelector';
 
 /** Club activo que llega desde el layout. */
 export interface ClubActivo {
@@ -17,11 +19,25 @@ interface SidebarProps {
   navItems: NavItem[];
   /** Club activo. Disponible para el selector y el branding por club; la marca sigue siendo BioTeam. */
   club?: ClubActivo;
+  /** Clubes con membresía activa. Con más de uno se muestra el selector. */
+  misClubes?: ClubOpcion[];
+  /** Staff de BioTeam: ve el link al panel de clubes. */
+  esSuperadmin?: boolean;
+  /** Está dentro de un club como superadmin (no como miembro): se avisa con un banner. */
+  comoSuperadmin?: boolean;
   isOpen?: boolean;
   onClose?: () => void;
 }
 
-export default function Sidebar({ navItems, club, isOpen = false, onClose }: SidebarProps) {
+export default function Sidebar({
+  navItems,
+  club,
+  misClubes = [],
+  esSuperadmin = false,
+  comoSuperadmin = false,
+  isOpen = false,
+  onClose,
+}: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -59,6 +75,17 @@ export default function Sidebar({ navItems, club, isOpen = false, onClose }: Sid
           </div>
         </div>
 
+        {club && comoSuperadmin && (
+          <p
+            role="status"
+            className="mx-3 mt-3 rounded-lg border-l-2 border-[#C9A84C] bg-white/10 px-3 py-2 text-xs text-white/80"
+          >
+            Estás viendo <span className="font-semibold text-white">{club.nombre}</span> como superadmin
+          </p>
+        )}
+
+        {club && <ClubSelector clubes={misClubes} clubActual={club} />}
+
         {/* Navegación */}
         <nav className="flex-1 px-3 py-6 space-y-1">
           {navItems.map(({ href, label, icon }) => {
@@ -81,6 +108,17 @@ export default function Sidebar({ navItems, club, isOpen = false, onClose }: Sid
               </Link>
             );
           })}
+
+          {esSuperadmin && (
+            <Link
+              href="/superadmin/clubes"
+              onClick={onClose}
+              className="mt-4 flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/70 border-t border-white/10 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              <ShieldCheck size={18} />
+              Superadmin · Clubes
+            </Link>
+          )}
         </nav>
 
         {/* Auth controls */}

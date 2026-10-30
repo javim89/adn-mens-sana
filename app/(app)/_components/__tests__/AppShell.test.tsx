@@ -3,6 +3,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import AppShell from '../AppShell';
 import { getNavItemsForRole } from '../../../../lib/roles';
 
+// El selector de club importa la server action; acá alcanza con que no toque la DB.
+vi.mock('@/lib/actions/club-activo', () => ({ cambiarClubActivo: vi.fn() }));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
 }));

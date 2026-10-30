@@ -10,7 +10,6 @@
  * clubes.
  */
 
-import { clerkClient } from '@clerk/nextjs/server';
 import { esInvitacion, type Usuario, type UsuarioActivo, type UsuarioPendiente, type EstadoUsuario } from '@/lib/types/usuarios';
 import { ROLES_PERMITIDOS, type AppRole } from '@/lib/roles';
 import { LUGARES_RETIRO, esLugarRetiro } from '@/lib/utils/viandas';
@@ -19,11 +18,9 @@ import { getDb } from '@/lib/tenant/db';
 import { mensajeDeError } from '@/lib/tenant/errores';
 import { getMiembrosDelClub } from '@/lib/tenant/miembros';
 import { nuevoTokenInvitacion } from '@/lib/tenant/invitaciones';
+import { DIAS_INVITACION, buscarCuentaVerificada, invitacionClerkPara, venceEn } from '@/lib/tenant/cuentas';
 
 const LUGARES_VALIDOS = LUGARES_RETIRO.join(', ');
-
-/** Vigencia de una invitación al club (y de la invitación de Clerk que la acompaña). */
-const DIAS_INVITACION = 30;
 
 type Resultado = { ok: boolean; error?: string };
 
@@ -42,54 +39,9 @@ function esRolPermitido(rol: string): rol is AppRole {
   return ROLES_PERMITIDOS.includes(rol as AppRole);
 }
 
-function redirectUrlSignUp(): string {
-  return `${process.env.NEXT_PUBLIC_APP_URL}/sign-up`;
-}
-
-function venceEn(dias: number): Date {
-  return new Date(Date.now() + dias * 24 * 60 * 60 * 1000);
-}
-
 /** Invitaciones del club que todavía se pueden aceptar. */
 function wherePendiente(ahora = new Date()) {
   return { aceptadaAt: null, revocadaAt: null, expira: { gt: ahora } };
-}
-
-/**
- * La cuenta de Clerk cuyo mail VERIFICADO es `email`, si existe. Un mail sin
- * verificar no cuenta: cualquiera puede cargar un mail ajeno en su cuenta.
- */
-async function buscarCuentaVerificada(email: string): Promise<string | null> {
-  const client = await clerkClient();
-  const { data } = await client.users.getUserList({ emailAddress: [email], limit: 10 });
-  const cuenta = data.find((u) =>
-    u.emailAddresses.some(
-      (e) => e.emailAddress.toLowerCase() === email && e.verification?.status === 'verified',
-    ),
-  );
-  return cuenta?.id ?? null;
-}
-
-/**
- * La invitación de Clerk pendiente para `email`, o una nueva. Solo sirve para que
- * la persona cree su cuenta, así que es una por mail aunque la inviten varios
- * clubes: si otro club ya la invitó, se reutiliza en vez de fallar con "already".
- */
-async function invitacionClerkPara(email: string, opciones: { renovar?: boolean } = {}): Promise<string> {
-  const client = await clerkClient();
-  const { data } = await client.invitations.getInvitationList({ status: 'pending', query: email, limit: 10 });
-  const existente = data.find((inv) => inv.emailAddress.toLowerCase() === email);
-
-  if (existente && !opciones.renovar) return existente.id;
-  // Renovar = mandar el mail de nuevo. Clerk no reenvía: se revoca y se crea otra.
-  if (existente) await client.invitations.revokeInvitation(existente.id);
-
-  const creada = await client.invitations.createInvitation({
-    emailAddress: email,
-    redirectUrl: redirectUrlSignUp(),
-    expiresInDays: DIAS_INVITACION,
-  });
-  return creada.id;
 }
 
 /**

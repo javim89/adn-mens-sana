@@ -17,6 +17,7 @@ import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
 import { getClubId, assertClubExiste } from "./club-arg.mjs";
+import catalogos from "../lib/catalogos/catalogos-default.json" with { type: "json" };
 
 config({ path: ".env.local" });
 
@@ -30,23 +31,8 @@ const sql = neon(url);
 // --- Categorías -------------------------------------------------------------
 // Catálogo completo (15). Las 6 de torneo (orden 1..6) alimentan el fixture; las
 // nuevas (orden 7..15) sólo pobla el catálogo para el ABM de deportistas.
-export const catalogoCategorias = [
-  { nombre: "4ta", orden: 1 },
-  { nombre: "5ta", orden: 2 },
-  { nombre: "6ta", orden: 3 },
-  { nombre: "7ma", orden: 4 },
-  { nombre: "8va", orden: 5 },
-  { nombre: "9na", orden: 6 },
-  { nombre: "SUB-12", orden: 7 },
-  { nombre: "SUB-14", orden: 8 },
-  { nombre: "SUB-16", orden: 9 },
-  { nombre: "SUB-18", orden: 10 },
-  { nombre: "Reserva", orden: 11 },
-  { nombre: "División de Honor", orden: 12 },
-  { nombre: "Primera", orden: 13 },
-  { nombre: "Senior", orden: 14 },
-  { nombre: "Veteranos", orden: 15 },
-];
+// Vive en lib/catalogos/catalogos-default.json: lo comparte con `crearClub`.
+export const catalogoCategorias = catalogos.categorias;
 
 async function main() {
   console.log("Seeding Categorías (catálogo)...");

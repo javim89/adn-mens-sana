@@ -6,15 +6,27 @@ import Sidebar from '../../components/Sidebar';
 import LogoBioTeam from '../../components/LogoBioTeam';
 import type { NavItem } from '../../../lib/roles';
 import type { ClubActivo } from '../../components/Sidebar';
+import type { ClubOpcion } from '../../components/ClubSelector';
 
 interface AppShellProps {
   navItems: NavItem[];
   /** Club activo de la sesión. Por ahora solo se pasa al Sidebar (el branding por club es la fase 2). */
   club?: ClubActivo;
+  /** Clubes con membresía activa (selector del Sidebar, que en mobile es el drawer). */
+  misClubes?: ClubOpcion[];
+  esSuperadmin?: boolean;
+  comoSuperadmin?: boolean;
   children: React.ReactNode;
 }
 
-export default function AppShell({ navItems, club, children }: AppShellProps) {
+export default function AppShell({
+  navItems,
+  club,
+  misClubes,
+  esSuperadmin,
+  comoSuperadmin,
+  children,
+}: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -40,6 +52,9 @@ export default function AppShell({ navItems, club, children }: AppShellProps) {
         <Sidebar
           navItems={navItems}
           club={club}
+          misClubes={misClubes}
+          esSuperadmin={esSuperadmin}
+          comoSuperadmin={comoSuperadmin}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />

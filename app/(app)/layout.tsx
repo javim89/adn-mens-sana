@@ -1,5 +1,6 @@
 import { getNavItemsForRole } from '../../lib/roles';
 import { requireContexto } from '@/lib/tenant/contexto';
+import { getMisClubes } from '@/lib/tenant/clubes';
 import Providers from './providers';
 import AppShell from './_components/AppShell';
 
@@ -11,13 +12,22 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   // Sin club accesible manda a /bienvenida (que vive fuera de este grupo).
-  const { rol, club } = await requireContexto();
+  const { userId, rol, club, esSuperadmin, comoSuperadmin } = await requireContexto();
   const navItems = getNavItemsForRole(rol);
+  const misClubes = await getMisClubes(userId);
 
   return (
     <Providers>
       <div className="flex flex-col min-h-screen flex-1 min-w-0">
-        <AppShell navItems={navItems} club={{ id: club.id, nombre: club.nombre }}>{children}</AppShell>
+        <AppShell
+          navItems={navItems}
+          club={{ id: club.id, nombre: club.nombre }}
+          misClubes={misClubes.map(({ id, nombre }) => ({ id, nombre }))}
+          esSuperadmin={esSuperadmin}
+          comoSuperadmin={comoSuperadmin}
+        >
+          {children}
+        </AppShell>
       </div>
     </Providers>
   );

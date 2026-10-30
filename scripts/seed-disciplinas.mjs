@@ -17,6 +17,7 @@ import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
 import { getClubId, assertClubExiste } from "./club-arg.mjs";
+import catalogos from "../lib/catalogos/catalogos-default.json" with { type: "json" };
 
 config({ path: ".env.local" });
 
@@ -28,29 +29,8 @@ if (!url) {
 const sql = neon(url);
 
 // codigo = valor del enum original, nombre = label español, orden = 1..21.
-export const catalogoDisciplinas = [
-  { codigo: "FUTBOL", nombre: "Fútbol", orden: 1 },
-  { codigo: "FUTSAL", nombre: "Futsal", orden: 2 },
-  { codigo: "BASQUET", nombre: "Básquet", orden: 3 },
-  { codigo: "VOLEY", nombre: "Vóley", orden: 4 },
-  { codigo: "HANDBALL", nombre: "Handball", orden: 5 },
-  { codigo: "NATACION", nombre: "Natación", orden: 6 },
-  { codigo: "ATLETISMO", nombre: "Atletismo", orden: 7 },
-  { codigo: "HOCKEY", nombre: "Hockey", orden: 8 },
-  { codigo: "RUGBY", nombre: "Rugby", orden: 9 },
-  { codigo: "TENIS", nombre: "Tenis", orden: 10 },
-  { codigo: "GIMNASIA", nombre: "Gimnasia", orden: 11 },
-  { codigo: "GIMNASIA_ARTISTICA", nombre: "Gimnasia Artística", orden: 12 },
-  { codigo: "PATIN", nombre: "Patín", orden: 13 },
-  { codigo: "ARTES_MARCIALES", nombre: "Artes Marciales", orden: 14 },
-  { codigo: "COMBATE", nombre: "Combate", orden: 15 },
-  { codigo: "INICIACION_DEPORTIVA", nombre: "Iniciación Deportiva", orden: 16 },
-  { codigo: "POWER_CHAIR", nombre: "Power Chair", orden: 17 },
-  { codigo: "TIADE", nombre: "TIADE", orden: 18 },
-  { codigo: "AJEDREZ", nombre: "Ajedrez", orden: 19 },
-  { codigo: "BOXEO", nombre: "Boxeo", orden: 20 },
-  { codigo: "OTRO", nombre: "Otro", orden: 21 },
-];
+// Vive en lib/catalogos/catalogos-default.json: lo comparte con `crearClub`.
+export const catalogoDisciplinas = catalogos.disciplinas;
 
 async function main() {
   console.log("Seeding Disciplinas (catálogo)...");

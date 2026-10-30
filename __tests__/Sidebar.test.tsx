@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 
 // Mock next/navigation before importing Sidebar
+// El selector de club importa la server action; acá alcanza con que no toque la DB.
+vi.mock('@/lib/actions/club-activo', () => ({ cambiarClubActivo: vi.fn() }));
 vi.mock('next/navigation', () => ({ usePathname: () => '/dashboard' }));
 // Mock next/image
 vi.mock('next/image', () => ({ default: ({ alt, ...props }: { alt: string; [key: string]: unknown }) => <img alt={alt} {...props} /> }));
