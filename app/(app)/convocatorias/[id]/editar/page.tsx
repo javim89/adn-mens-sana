@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
-import { currentUser } from '@clerk/nextjs/server';
+import { notFound } from 'next/navigation';
+import { requireContexto } from '@/lib/tenant/contexto';
+import type { AppRole } from '@/lib/roles';
 import { getConvocatoriaById } from '@/lib/queries/convocatorias';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import ConvocatoriaForm, {
@@ -11,17 +12,12 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const ROLES_PERMITIDOS = ['admin', 'entrenador'];
+const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador'];
 
 export default async function EditarConvocatoriaPage({ params }: Props) {
   const { id } = await params;
 
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-
-  if (!ROLES_PERMITIDOS.includes(role)) {
-    redirect('/dashboard');
-  }
+  await requireContexto(ROLES_PERMITIDOS);
 
   const convocatoria = await getConvocatoriaById(id);
   if (!convocatoria) notFound();
@@ -51,13 +47,13 @@ export default async function EditarConvocatoriaPage({ params }: Props) {
       <div className="mb-2">
         <Link
           href="/convocatorias"
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Convocatorias
         </Link>
       </div>
       <h1
-        className="text-3xl font-bold text-[#121A61] mb-6"
+        className="text-3xl font-bold text-primario mb-6"
         style={{ fontFamily: 'Oswald, sans-serif' }}
       >
         Editar convocatoria

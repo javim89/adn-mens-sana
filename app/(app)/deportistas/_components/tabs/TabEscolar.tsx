@@ -24,7 +24,7 @@ function Field({
     <div className={className}>
       <label
         htmlFor={id}
-        className="block text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-1"
+        className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
       >
         {label}
       </label>
@@ -60,7 +60,7 @@ export default function TabEscolar({ data, onChange }: TabEscolarProps) {
           type="text"
           value={escolar.nombreColegio ?? ''}
           onChange={(e) => patchEscolar({ nombreColegio: e.target.value })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30"
         />
       </Field>
 
@@ -74,7 +74,7 @@ export default function TabEscolar({ data, onChange }: TabEscolarProps) {
           onChange={(e) =>
             patchEscolar({ anoCursa: e.target.value ? Number(e.target.value) : undefined })
           }
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30"
         />
       </Field>
 
@@ -86,7 +86,7 @@ export default function TabEscolar({ data, onChange }: TabEscolarProps) {
           value={escolar.materiasAdeudadas ?? ''}
           onChange={(e) => patchEscolar({ materiasAdeudadas: e.target.value })}
           rows={3}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 resize-none"
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30 resize-none"
         />
       </Field>
     </div>

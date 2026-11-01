@@ -1,29 +1,28 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { recomputeOne } from '@/lib/triage/recompute';
+import { contextoAccion } from '@/lib/tenant/contexto';
+import { dbDelClub } from '@/lib/tenant/db';
+import { mensajeDeError } from '@/lib/tenant/errores';
 
 export async function recomputeTriageAction(
   deportistaId: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   try {
-    const { userId } = await auth();
-    if (!userId) throw new Error('No autorizado');
+    const acceso = await contextoAccion();
+    if (!acceso.ok) throw new Error(acceso.error);
 
     if (!deportistaId?.trim()) {
       return { success: false, error: 'El deportista es requerido' };
     }
 
-    await recomputeOne(deportistaId);
+    await recomputeOne(dbDelClub(acceso.contexto.clubId), deportistaId);
 
     revalidatePath('/deportistas/' + deportistaId);
     return { success: true };
   } catch (error) {
     console.error('recomputeTriageAction error:', error);
-    if (error instanceof Error) {
-      return { success: false, error: error.message };
-    }
-    return { success: false, error: 'Error al recalcular el triage' };
+    return { success: false, error: mensajeDeError(error, 'Error al recalcular el triage') };
   }
 }

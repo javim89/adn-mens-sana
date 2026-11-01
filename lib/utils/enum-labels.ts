@@ -60,7 +60,7 @@ export const ESTADO_LABELS: Record<EstadoDeportista, string> = {
  */
 export const ESTADO_BADGE: Record<EstadoDeportista, string> = {
   ACTIVO: 'bg-green-100 text-green-700',
-  INACTIVO: 'bg-gray-100 text-[#6B7280]',
+  INACTIVO: 'bg-gray-100 text-muted-foreground',
   LESIONADO: 'bg-amber-100 text-amber-700',
   SUSPENDIDO: 'bg-red-100 text-red-700',
 };

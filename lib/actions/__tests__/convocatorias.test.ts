@@ -1,11 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // All mocks must be hoisted before vi.mock calls
-const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
-  const mockAuth = vi.fn().mockResolvedValue({ userId: 'user_entrenador_1' });
-  const mockCurrentUser = vi.fn().mockResolvedValue({
-    publicMetadata: { role: 'entrenador' },
-  });
+const { mockRevalidatePath, mockPrisma } = vi.hoisted(() => {
   const mockRevalidatePath = vi.fn();
 
   const mockPrisma = {
@@ -19,14 +15,15 @@ const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma } = vi.hoisted
       deleteMany: vi.fn().mockResolvedValue({}),
     },
   };
-  return { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma };
+  return { mockRevalidatePath, mockPrisma };
 });
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: mockAuth,
-  currentUser: mockCurrentUser,
-}));
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock(mockPrisma),
+);
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
 // El módulo de queries es importado por la action; lo mockeamos para aislar la lógica.
@@ -41,6 +38,9 @@ import {
   deleteConvocatoria,
 } from '../convocatorias';
 import type { ConvocatoriaFormData } from '@/lib/types/convocatorias';
+import { CLUB_TEST, mockContexto, setContexto } from '@/test-utils/tenant';
+import { dbDelClub } from '@/lib/tenant/db';
+import { CrossTenantError } from '@/lib/tenant/errores';
 
 const validData: ConvocatoriaFormData = {
   eventoTorneoId: 'evento-1',
@@ -54,13 +54,11 @@ const validData: ConvocatoriaFormData = {
 };
 
 function setCallerAsEntrenador(userId = 'user_entrenador_1') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'entrenador' } });
+  setContexto(mockContexto('entrenador', { userId }));
 }
 
 function setCallerAsAdmin(userId = 'user_admin_1') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+  setContexto(mockContexto('admin', { userId }));
 }
 
 // ─── createConvocatoria ───────────────────────────────────────────────────────
@@ -74,7 +72,7 @@ describe('createConvocatoria', () => {
   });
 
   test('1. rechaza si no autenticado (userId = null)', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: null });
+    setContexto(null);
     const result = await createConvocatoria(validData);
     expect(result).toEqual({ success: false, error: 'No autorizado' });
     expect(mockPrisma.convocatoria.create).not.toHaveBeenCalled();
@@ -297,5 +295,38 @@ describe('deleteConvocatoria', () => {
     expect(result.success).toBe(true);
     expect(mockPrisma.convocatoria.delete).toHaveBeenCalledWith({ where: { id: 'existing-id' } });
     expect(mockRevalidatePath).toHaveBeenCalledWith('/convocatorias');
+  });
+});
+
+// ─── Aislamiento por club ─────────────────────────────────────────────────────
+
+describe('convocatorias — cliente del club', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setCallerAsEntrenador();
+    mockPrisma.convocatoria.findUnique.mockResolvedValue(null);
+  });
+
+  test('escribe con el cliente acotado al club de la sesión', async () => {
+    mockPrisma.convocatoria.create.mockResolvedValue({ id: 'new-convocatoria-id' });
+    await createConvocatoria(validData);
+    expect(dbDelClub).toHaveBeenCalledWith(CLUB_TEST.id);
+  });
+
+  test('un partido o deportista de otro club (CrossTenantError) vuelve como "No encontrado"', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockPrisma.convocatoria.create.mockRejectedValue(
+      new CrossTenantError('Convocatoria: la escritura referencia una fila de otro club'),
+    );
+
+    const result = await createConvocatoria(validData);
+
+    expect(result).toEqual({ success: false, error: 'No encontrado' });
+  });
+
+  test('sin club activo no llega a crear el cliente', async () => {
+    setContexto(null);
+    await createConvocatoria(validData);
+    expect(dbDelClub).not.toHaveBeenCalled();
   });
 });

@@ -30,7 +30,7 @@ export function Avatar({ src, alt, iniciales, className = 'size-10 text-sm' }: A
         <span
           role="img"
           aria-label={alt}
-          className="flex size-full items-center justify-center bg-[#121A61] font-semibold uppercase text-white font-[family-name:var(--font-oswald)]"
+          className="flex size-full items-center justify-center bg-primario font-semibold uppercase text-white font-[family-name:var(--font-oswald)]"
         >
           {iniciales}
         </span>

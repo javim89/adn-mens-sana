@@ -31,12 +31,12 @@ export default function ClubAnteriorList({ clubs, onChange, disabled = false }: 
   return (
     <div className={`space-y-3${disabled ? ' opacity-50' : ''}`}>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-[#1C1C1C]">Clubes anteriores</span>
+        <span className="text-sm font-medium text-foreground">Clubes anteriores</span>
         <button
           type="button"
           onClick={addClub}
           disabled={disabled}
-          className="flex items-center gap-1.5 text-xs text-[#121A61] hover:text-[#1E2A8A] border border-[#121A61]/30 rounded-lg px-2.5 py-1.5 transition-colors disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 text-xs text-primario hover:text-primario-hover border border-primario/30 rounded-lg px-2.5 py-1.5 transition-colors disabled:cursor-not-allowed"
         >
           <Plus size={12} />
           Agregar club
@@ -44,7 +44,7 @@ export default function ClubAnteriorList({ clubs, onChange, disabled = false }: 
       </div>
 
       {clubs.length === 0 ? (
-        <p className="text-sm text-[#6B7280] italic">Sin clubes anteriores registrados</p>
+        <p className="text-sm text-muted-foreground italic">Sin clubes anteriores registrados</p>
       ) : (
         <div className="space-y-2">
           {clubs.map((club, index) => (
@@ -55,7 +55,7 @@ export default function ClubAnteriorList({ clubs, onChange, disabled = false }: 
                 onChange={(e) => updateClub(index, 'nombre', e.target.value)}
                 placeholder="Nombre del club"
                 disabled={disabled}
-                className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 disabled:cursor-not-allowed"
+                className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30 disabled:cursor-not-allowed"
               />
               <input
                 type="text"
@@ -63,7 +63,7 @@ export default function ClubAnteriorList({ clubs, onChange, disabled = false }: 
                 onChange={(e) => updateClub(index, 'periodo', e.target.value)}
                 placeholder="Período (ej: 2019-2021)"
                 disabled={disabled}
-                className="w-28 shrink-0 sm:w-36 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 disabled:cursor-not-allowed"
+                className="w-28 shrink-0 sm:w-36 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30 disabled:cursor-not-allowed"
               />
               <button
                 type="button"

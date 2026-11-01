@@ -7,11 +7,11 @@ interface Props {
 }
 
 const inputClass =
-  'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30';
+  'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30';
 
-const labelClass = 'block text-sm font-medium text-[#1C1C1C] mb-1.5';
+const labelClass = 'block text-sm font-medium text-foreground mb-1.5';
 
-const sectionTitleClass = 'text-xs font-semibold uppercase text-[#6B7280] tracking-wide mb-3';
+const sectionTitleClass = 'text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-3';
 
 export function TraumatologiaSection({ register, errors }: Props) {
   return (

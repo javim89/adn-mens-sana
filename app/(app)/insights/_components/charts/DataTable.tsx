@@ -21,12 +21,12 @@ export default function DataTable({ data, config, columns }: ChartProps) {
     <div className="h-full w-full overflow-auto">
       <table className="w-full text-sm border-collapse">
         <thead className="sticky top-0 z-10">
-          <tr className="bg-[#F3F4F6]">
+          <tr className="bg-muted">
             {columns.map((col) => (
               <th
                 key={col.id}
                 scope="col"
-                className={`px-3 py-2 font-medium text-[#1C1C1C] whitespace-nowrap border-b border-gray-100 ${
+                className={`px-3 py-2 font-medium text-foreground whitespace-nowrap border-b border-gray-100 ${
                   col.role === 'measure' ? 'text-right' : 'text-left'
                 }`}
               >
@@ -37,7 +37,7 @@ export default function DataTable({ data, config, columns }: ChartProps) {
         </thead>
         <tbody>
           {data.map((row, i) => (
-            <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-[#F9FAFB]">
+            <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-subtle">
               {columns.map((col) => {
                 const value = row[col.id];
                 const isMeasure = col.role === 'measure';
@@ -46,8 +46,8 @@ export default function DataTable({ data, config, columns }: ChartProps) {
                     key={col.id}
                     className={`px-3 py-2 whitespace-nowrap ${
                       isMeasure
-                        ? 'text-right tabular-nums text-[#1C1C1C]'
-                        : 'text-left text-[#6B7280]'
+                        ? 'text-right tabular-nums text-foreground'
+                        : 'text-left text-muted-foreground'
                     }`}
                   >
                     {isMeasure

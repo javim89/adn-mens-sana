@@ -5,80 +5,100 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* tokens:start ---------------------------------------------------------------
+   Único bloque del CSS (fuera de la landing) con valores de color: el resto usa
+   var(--…) o las clases que salen del @theme. Lo controla
+   lib/branding/__tests__/globals-css.test.ts, que además fija que los defaults
+   --club-* sean iguales a TEMA_BIOTEAM (lib/branding/tokens.ts).
+   --------------------------------------------------------------------------- */
 :root {
-  /* ---- shadcn semantic tokens mapped to club palette ---- */
+  /* ---- Club: los pisa el tema del club. Defaults = paleta BioTeam ---- */
+  --club-primario: #121a61;
+  --club-primario-hover: #1e2a8a;
+  --club-primario-foreground: #ffffff;
+  --club-primario-suave: #eef0fb;
+  --club-secundario: #3346cc;
+  --club-secundario-foreground: #ffffff;
+  --club-acento: #c9a84c;
+  --club-acento-foreground: #1c1c1c;
+  --club-acento-suave: #eaddb5;
+
+  /* ---- BioTeam fijo (superadmin): no cambia con el club ---- */
+  --bioteam-navy: #121a61;
+  --bioteam-navy-hover: #1e2a8a;
+  --bioteam-dorado: #c9a84c;
+
+  /* ---- Neutros ---- */
   --background: #ffffff;
-  --foreground: #1C1C1C;
-
-  --card: #ffffff;
-  --card-foreground: #1C1C1C;
-
-  --popover: #ffffff;
-  --popover-foreground: #1C1C1C;
-
-  /* Primary = azul marino */
-  --primary: #121A61;
-  --primary-foreground: #ffffff;
-
-  /* Secondary = gris claro */
-  --secondary: #F3F4F6;
-  --secondary-foreground: #1C1C1C;
-
-  /* Muted = gris neutro zone */
-  --muted: #F3F4F6;
-  --muted-foreground: #6B7280;
-
-  /* Accent = azul claro */
-  --accent: #3346CC;
-  --accent-foreground: #ffffff;
-
-  /* Destructive = red (keep default-ish) */
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-
+  --foreground: #1c1c1c;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+  --subtle: #f9fafb;
   --border: #e5e7eb;
+  --border-fuerte: #9ca3af;
   --input: #e5e7eb;
-  --ring: #3346CC;
+  --destructive: #dc2626;
 
-  --radius: 0.5rem;
-
-  /* ---- Club extended palette (non-shadcn, direct use) ---- */
-  --club-navy: #121A61;
-  --club-navy-hover: #1E2A8A;
-  --club-accent: #3346CC;
-  --club-gold: #C9A84C;
-  --club-text: #1C1C1C;
-  --club-text-muted: #6B7280;
-  --club-bg-alt: #F3F4F6;
+  /* ---- Calendario: colores de día y de evento (fijos, semánticos) ---- */
+  --cal-torneo-bg: #dcfce7;
+  --cal-torneo-texto: #15803d;
+  --cal-receso-bg: #fef9c3;
+  --cal-receso-texto: #a16207;
+  --cal-recupero-bg: #e5e7eb;
+  --cal-recupero-texto: #4b5563;
+  --cal-sin-actividad-bg: #fee2e2;
+  --cal-sin-actividad-texto: #b91c1c;
+  --cal-suspendido: #9ca3af;
 }
+/* tokens:end */
 
+/* Cada color del tema apunta a una var HOJA del bloque de tokens (nunca a otra
+   var del @theme): así el <style> del club y la vista previa, que pisan las
+   --club-* en :root, llegan a todas las clases. Los nombres shadcn (primary,
+   secondary, accent, ring, card, popover…) son solo para app/components/ui/*: el
+   resto de la app usa primario/secundario/acento/muted/subtle. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+
+  /* Club */
+  --color-primario: var(--club-primario);
+  --color-primario-hover: var(--club-primario-hover);
+  --color-primario-foreground: var(--club-primario-foreground);
+  --color-primario-suave: var(--club-primario-suave);
+  --color-secundario: var(--club-secundario);
+  --color-secundario-foreground: var(--club-secundario-foreground);
+  --color-acento: var(--club-acento);
+  --color-acento-foreground: var(--club-acento-foreground);
+  --color-acento-suave: var(--club-acento-suave);
+
+  /* BioTeam fijo */
+  --color-bioteam-navy: var(--bioteam-navy);
+  --color-bioteam-navy-hover: var(--bioteam-navy-hover);
+  --color-bioteam-dorado: var(--bioteam-dorado);
+
+  /* Neutros */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
+  --color-subtle: var(--subtle);
   --color-border: var(--border);
   --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  /* Club extended */
-  --color-club-navy: var(--club-navy);
-  --color-club-navy-hover: var(--club-navy-hover);
-  --color-club-accent: var(--club-accent);
-  --color-club-gold: var(--club-gold);
-  --color-club-bg-alt: var(--club-bg-alt);
+  --color-destructive: var(--destructive);
+
+  /* Alias shadcn (app/components/ui/*). secondary sigue siendo gris. */
+  --color-primary: var(--club-primario);
+  --color-primary-foreground: var(--club-primario-foreground);
+  --color-secondary: var(--muted);
+  --color-secondary-foreground: var(--foreground);
+  --color-accent: var(--club-secundario);
+  --color-accent-foreground: var(--club-secundario-foreground);
+  --color-ring: var(--club-secundario);
+  --color-card: var(--background);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--background);
+  --color-popover-foreground: var(--foreground);
 }
 
 body {
@@ -97,63 +117,63 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
-   Calendario (FullCalendar v6) — branding BioTeam
-   Paleta: azul marino #121A61 (primary) + dorado #C9A84C (acento moderado).
-   Colores de día = semánticos (verde/amarillo/gris/rojo), tonos suaves.
+   Calendario (FullCalendar v6) — con los colores del club
+   Primario (toolbar, eventos) + acento con moderación (vista activa, borde de
+   evento). Colores de día = semánticos y fijos (vars --cal-*), tonos suaves.
    Todos los overrides van scopeados bajo `.fc` para no filtrar estilos globales.
 --------------------------------------------------------------------------- */
 
 /* Contenedor del calendario: tipografía Inter para el cuerpo */
 .fc {
-  --fc-border-color: #e5e7eb;
-  --fc-today-bg-color: rgba(51, 70, 204, 0.06);
-  --fc-neutral-bg-color: #f3f4f6;
-  --fc-page-bg-color: #ffffff;
+  --fc-border-color: var(--border);
+  --fc-today-bg-color: color-mix(in srgb, var(--club-secundario) 6%, transparent);
+  --fc-neutral-bg-color: var(--muted);
+  --fc-page-bg-color: var(--background);
   font-family: var(--font-inter), var(--font-sans), Arial, Helvetica, sans-serif;
   font-size: 0.875rem;
 }
 
-/* Título del mes/año en Oswald, azul marino */
+/* Título del mes/año en Oswald, primario */
 .fc .fc-toolbar-title {
   font-family: 'Oswald', sans-serif;
   font-weight: 600;
-  color: #121a61;
+  color: var(--club-primario);
   letter-spacing: 0.01em;
 }
 
-/* Botones del toolbar en azul marino */
+/* Botones del toolbar en primario */
 .fc .fc-button-primary {
-  background-color: #121a61;
-  border-color: #121a61;
-  color: #ffffff;
+  background-color: var(--club-primario);
+  border-color: var(--club-primario);
+  color: var(--club-primario-foreground);
   text-transform: capitalize;
   font-weight: 500;
   box-shadow: none;
 }
 .fc .fc-button-primary:hover {
-  background-color: #1e2a8a;
-  border-color: #1e2a8a;
+  background-color: var(--club-primario-hover);
+  border-color: var(--club-primario-hover);
 }
 .fc .fc-button-primary:disabled {
-  background-color: #121a61;
-  border-color: #121a61;
+  background-color: var(--club-primario);
+  border-color: var(--club-primario);
   opacity: 0.5;
 }
 .fc .fc-button-primary:not(:disabled):focus,
 .fc .fc-button-primary:focus {
-  box-shadow: 0 0 0 2px rgba(51, 70, 204, 0.3);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--club-secundario) 30%, transparent);
 }
-/* Botón de vista activo: acento dorado */
+/* Botón de vista activo: acento */
 .fc .fc-button-primary:not(:disabled).fc-button-active,
 .fc .fc-button-primary:not(:disabled):active {
-  background-color: #1e2a8a;
-  border-color: #c9a84c;
-  box-shadow: inset 0 0 0 1px #c9a84c;
+  background-color: var(--club-primario-hover);
+  border-color: var(--club-acento);
+  box-shadow: inset 0 0 0 1px var(--club-acento);
 }
 
 /* Encabezados de día de la semana */
 .fc .fc-col-header-cell-cushion {
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-weight: 600;
   text-transform: uppercase;
   font-size: 0.7rem;
@@ -163,49 +183,49 @@ body {
 
 /* Número de día */
 .fc .fc-daygrid-day-number {
-  color: #1c1c1c;
+  color: var(--foreground);
   font-weight: 500;
 }
 
 /* --- Coloreo de celdas de día por tipo (aplicado vía dayCellClassNames) --- */
 .fc .fc-daygrid-day.cal-dia-torneo {
-  background-color: #dcfce7;
+  background-color: var(--cal-torneo-bg);
 }
 .fc .fc-daygrid-day.cal-dia-torneo .fc-daygrid-day-number {
-  color: #15803d;
+  color: var(--cal-torneo-texto);
   font-weight: 700;
 }
 
 .fc .fc-daygrid-day.cal-dia-receso {
-  background-color: #fef9c3;
+  background-color: var(--cal-receso-bg);
 }
 .fc .fc-daygrid-day.cal-dia-receso .fc-daygrid-day-number {
-  color: #a16207;
+  color: var(--cal-receso-texto);
   font-weight: 700;
 }
 
 .fc .fc-daygrid-day.cal-dia-recupero {
-  background-color: #e5e7eb;
+  background-color: var(--cal-recupero-bg);
 }
 .fc .fc-daygrid-day.cal-dia-recupero .fc-daygrid-day-number {
-  color: #4b5563;
+  color: var(--cal-recupero-texto);
   font-weight: 700;
 }
 
 .fc .fc-daygrid-day.cal-dia-sin-actividad {
-  background-color: #fee2e2;
+  background-color: var(--cal-sin-actividad-bg);
 }
 .fc .fc-daygrid-day.cal-dia-sin-actividad .fc-daygrid-day-number {
-  color: #b91c1c;
+  color: var(--cal-sin-actividad-texto);
   font-weight: 700;
 }
 
 /* --- Eventos (partidos) --- */
 .fc .cal-evento {
-  background-color: #121a61;
-  border-color: #121a61;
-  border-left: 3px solid #c9a84c;
-  color: #ffffff;
+  background-color: var(--club-primario);
+  border-color: var(--club-primario);
+  border-left: 3px solid var(--club-acento);
+  color: var(--club-primario-foreground);
   font-weight: 500;
   padding: 1px 4px;
   border-radius: 3px;
@@ -213,15 +233,15 @@ body {
 }
 .fc .cal-evento .fc-event-title,
 .fc .cal-evento .fc-event-time {
-  color: #ffffff;
+  color: var(--club-primario-foreground);
   white-space: normal;
 }
 
 /* Evento suspendido: atenuado + tachado */
 .fc .cal-evento-suspendido {
-  background-color: #9ca3af;
-  border-color: #9ca3af;
-  border-left-color: #6b7280;
+  background-color: var(--cal-suspendido);
+  border-color: var(--cal-suspendido);
+  border-left-color: var(--muted-foreground);
   opacity: 0.75;
 }
 .fc .cal-evento-suspendido .fc-event-title {
@@ -230,9 +250,9 @@ body {
 
 /* Evento reprogramado: atenuado, borde dorado punteado */
 .fc .cal-evento-reprogramado {
-  background-color: #1e2a8a;
-  border-color: #c9a84c;
-  border-left: 3px dashed #c9a84c;
+  background-color: var(--club-primario-hover);
+  border-color: var(--club-acento);
+  border-left: 3px dashed var(--club-acento);
   opacity: 0.85;
   font-style: italic;
 }
@@ -249,7 +269,7 @@ body {
   align-items: center;
   gap: 0.4rem;
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--muted-foreground);
 }
 .cal-swatch-torneo,
 .cal-swatch-receso,
@@ -260,29 +280,29 @@ body {
   height: 0.85rem;
   border-radius: 0.2rem;
   flex-shrink: 0;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid color-mix(in srgb, black 8%, transparent);
 }
 .cal-swatch-torneo {
-  background-color: #dcfce7;
+  background-color: var(--cal-torneo-bg);
 }
 .cal-swatch-receso {
-  background-color: #fef9c3;
+  background-color: var(--cal-receso-bg);
 }
 .cal-swatch-recupero {
-  background-color: #e5e7eb;
+  background-color: var(--cal-recupero-bg);
 }
 .cal-swatch-sin-actividad {
-  background-color: #fee2e2;
+  background-color: var(--cal-sin-actividad-bg);
 }
 
 /* Vista Año (multiMonth): compacta y legible en desktop */
 .fc .fc-multimonth-title {
   font-family: 'Oswald', sans-serif;
-  color: #121a61;
+  color: var(--club-primario);
   font-weight: 600;
 }
 .fc .fc-multimonth {
-  border-color: #e5e7eb;
+  border-color: var(--border);
 }
 
 /* ---------------------------------------------------------------------------
@@ -292,11 +312,11 @@ body {
    contenedor de la grilla, sin tocar nada global.
    --------------------------------------------------------------------------- */
 
-/* El placeholder de drop viene rojo por defecto; acá es el azul del club. */
+/* El placeholder de drop viene rojo por defecto; acá es el secundario del club. */
 .insights-grid .react-grid-item.react-grid-placeholder {
-  background: #3346cc;
+  background: var(--club-secundario);
   opacity: 0.12;
-  border: 2px dashed #3346cc;
+  border: 2px dashed var(--club-secundario);
   border-radius: 0.75rem;
   transition-duration: 120ms;
 }
@@ -304,7 +324,7 @@ body {
 /* Mientras se arrastra, el widget se despega del resto. */
 .insights-grid .react-grid-item.react-draggable-dragging {
   z-index: 30;
-  box-shadow: 0 10px 30px rgb(18 26 97 / 0.15);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--club-primario) 15%, transparent);
   cursor: grabbing;
 }
 
@@ -325,8 +345,8 @@ body {
   bottom: 5px;
   width: 11px;
   height: 11px;
-  border-right: 2px solid #9ca3af;
-  border-bottom: 2px solid #9ca3af;
+  border-right: 2px solid var(--border-fuerte);
+  border-bottom: 2px solid var(--border-fuerte);
   border-bottom-right-radius: 3px;
   opacity: 0;
   transition: opacity 120ms ease;
@@ -339,7 +359,7 @@ body {
 }
 
 .insights-grid .react-grid-item:hover .react-resizable-handle-se:hover {
-  border-color: #3346cc;
+  border-color: var(--club-secundario);
 }
 
 /* Sin transición de posición durante el arrastre: se siente pegajoso. */

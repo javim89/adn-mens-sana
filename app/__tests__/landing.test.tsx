@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockClerk = vi.hoisted(() => ({ auth: vi.fn() }));
 vi.mock('@clerk/nextjs/server', () => mockClerk);
 
-import Home from '../page';
+import Home, { metadata } from '../page';
+import { ICONOS_BIOTEAM } from '@/lib/branding/iconos-bioteam';
 import { CONTACTO_HREF } from '../_landing/contacto';
 
 async function renderHome(userId: string | null) {
@@ -17,6 +18,10 @@ beforeEach(() => {
 });
 
 describe('Landing pública (/)', () => {
+  it('declara los íconos de BioTeam (el root layout es neutro)', () => {
+    expect(metadata.icons).toBe(ICONOS_BIOTEAM);
+  });
+
   it('renderiza el titular del hero', async () => {
     await renderHome(null);
     expect(screen.getByRole('heading', { level: 1, name: 'Todo tu club, en una sola pantalla' })).toBeInTheDocument();

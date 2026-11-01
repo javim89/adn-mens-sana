@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 import type { Prisma, EstadoEvento } from '@/lib/generated/prisma/client';
 import { toDateString } from '@/lib/queries/calendario';
 import type {
@@ -43,19 +43,20 @@ function buildWhere(params: GetConvocatoriasParams): Prisma.ConvocatoriaWhereInp
 export async function getConvocatorias(
   params: GetConvocatoriasParams,
 ): Promise<{ items: ConvocatoriaRow[]; total: number }> {
+  const db = await getDb();
   const page = params.page ?? 0;
   const pageSize = params.pageSize ?? 50;
   const where = buildWhere(params);
 
-  const [items, total] = await prisma.$transaction([
-    prisma.convocatoria.findMany({
+  const [items, total] = await db.$transaction([
+    db.convocatoria.findMany({
       where,
       include: CONVOCATORIA_LIST_INCLUDE,
       orderBy: [{ evento: { dia: { fecha: 'desc' } } }],
       take: pageSize,
       skip: page * pageSize,
     }),
-    prisma.convocatoria.count({ where }),
+    db.convocatoria.count({ where }),
   ]);
 
   return { items, total };
@@ -90,7 +91,8 @@ export interface ConvocatoriaDetail {
 export async function getConvocatoriaById(
   id: string,
 ): Promise<ConvocatoriaDetail | null> {
-  const convocatoria = await prisma.convocatoria.findUnique({
+  const db = await getDb();
+  const convocatoria = await db.convocatoria.findUnique({
     where: { id },
     include: {
       evento: {
@@ -145,12 +147,13 @@ export async function getProximoPartido(
   disciplinaId: string,
   categoriaId: string,
 ): Promise<ProximoPartido | null> {
+  const db = await getDb();
   if (!disciplinaId || !categoriaId) return null;
 
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
-  const evento = await prisma.eventoTorneo.findFirst({
+  const evento = await db.eventoTorneo.findFirst({
     where: {
       categoriaId,
       estado: { not: 'SUSPENDIDO' },
@@ -179,7 +182,8 @@ export async function getDeportistasParaConvocar(
   disciplinaId: string,
   categoriaId: string,
 ): Promise<DeportistaConvocable[]> {
-  return prisma.deportista.findMany({
+  const db = await getDb();
+  return db.deportista.findMany({
     where: { disciplinaId, categoriaId },
     select: { id: true, nombre: true, apellido: true, posicion: true, estado: true },
     orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],

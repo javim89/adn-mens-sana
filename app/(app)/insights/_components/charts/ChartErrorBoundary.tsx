@@ -44,8 +44,8 @@ export class ChartErrorBoundary extends Component<Props, State> {
       return (
         <div className="h-full w-full flex flex-col items-center justify-center gap-1.5 px-4 text-center">
           <AlertTriangle size={18} className="text-amber-500" />
-          <p className="text-sm text-[#1C1C1C]">No se pudo dibujar este gráfico</p>
-          <p className="text-xs text-[#6B7280]">{this.state.error.message}</p>
+          <p className="text-sm text-foreground">No se pudo dibujar este gráfico</p>
+          <p className="text-xs text-muted-foreground">{this.state.error.message}</p>
         </div>
       );
     }

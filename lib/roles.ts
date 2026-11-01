@@ -1,6 +1,9 @@
-export type AppRole = 'admin' | 'entrenador' | 'medico' | 'kinesiologo' | 'nutricionista' | 'psicologo' | 'cardiologo' | 'social' | 'responsable_viandas';
+import { AppRole as APP_ROLE } from '@/lib/generated/prisma/enums';
 
-export const ROLES_PERMITIDOS: AppRole[] = ['admin', 'entrenador', 'medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo', 'social', 'responsable_viandas'];
+/** El rol vive en `Membresia.rol` (enum `AppRole` de Prisma): un solo origen para el tipo. */
+export type AppRole = (typeof APP_ROLE)[keyof typeof APP_ROLE];
+
+export const ROLES_PERMITIDOS: AppRole[] = Object.values(APP_ROLE);
 
 export const ROL_LABELS: Record<AppRole, string> = {
   admin:               'Admin',

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getTurnoById } from '@/lib/queries/turnos';
 import { getProfesionales } from '@/lib/actions/turnos';
 import TurnoForm from '../../_components/TurnoForm';
@@ -12,12 +12,11 @@ interface Props {
 
 export default async function EditarTurnoPage({ params }: Props) {
   const { id } = await params;
+  const { rol } = await requireContexto();
   const turno = await getTurnoById(id);
   if (!turno) notFound();
 
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-  const isAdmin = role === 'admin';
+  const isAdmin = rol === 'admin';
 
   const profesionales = isAdmin ? await getProfesionales() : [];
 
@@ -42,13 +41,13 @@ export default async function EditarTurnoPage({ params }: Props) {
       <div className="mb-2">
         <Link
           href="/turnos"
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Turnos
         </Link>
       </div>
       <h1
-        className="text-3xl font-bold text-[#121A61] mb-6"
+        className="text-3xl font-bold text-primario mb-6"
         style={{ fontFamily: 'Oswald, sans-serif' }}
       >
         Editar turno

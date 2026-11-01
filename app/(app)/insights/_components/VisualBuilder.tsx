@@ -86,7 +86,7 @@ export default function VisualBuilder({ spec, onChange }: Props) {
   return (
     <div className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">Dataset</label>
+        <label className="block text-sm font-medium text-foreground mb-1.5">Dataset</label>
         <CustomSelect
           value={spec.dataset}
           onChange={handleDatasetChange}
@@ -95,7 +95,7 @@ export default function VisualBuilder({ spec, onChange }: Props) {
           placeholder="Elegir dataset…"
         />
         {dataset && (
-          <p className="mt-1.5 text-xs text-[#6B7280]">
+          <p className="mt-1.5 text-xs text-muted-foreground">
             {dataset.description} <span className="text-gray-400">·</span> {dataset.grain}
           </p>
         )}
@@ -105,12 +105,12 @@ export default function VisualBuilder({ spec, onChange }: Props) {
         <>
           <section>
             <div className="flex items-baseline justify-between mb-2">
-              <h3 className="text-sm font-medium text-[#1C1C1C]">Dimensiones</h3>
-              <span className="text-xs text-[#6B7280]">
+              <h3 className="text-sm font-medium text-foreground">Dimensiones</h3>
+              <span className="text-xs text-muted-foreground">
                 {spec.dimensions.length}/{MAX_DIMENSIONS}
               </span>
             </div>
-            <p className="text-xs text-[#6B7280] mb-2">Campos por los que se agrupa.</p>
+            <p className="text-xs text-muted-foreground mb-2">Campos por los que se agrupa.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 max-h-56 overflow-y-auto pr-1">
               {dataset.dimensions.map((dim) => {
                 const checked = spec.dimensions.includes(dim.id);
@@ -119,7 +119,7 @@ export default function VisualBuilder({ spec, onChange }: Props) {
                   <label
                     key={dim.id}
                     className={`flex items-center gap-2 text-sm ${
-                      atLimit ? 'text-gray-300 cursor-not-allowed' : 'text-[#1C1C1C] cursor-pointer'
+                      atLimit ? 'text-gray-300 cursor-not-allowed' : 'text-foreground cursor-pointer'
                     }`}
                   >
                     <input
@@ -127,7 +127,7 @@ export default function VisualBuilder({ spec, onChange }: Props) {
                       checked={checked}
                       disabled={atLimit}
                       onChange={() => toggleDimension(dim.id)}
-                      className="rounded border-gray-300 text-[#121A61] focus:ring-[#3346CC]"
+                      className="rounded border-gray-300 text-primario focus:ring-secundario"
                     />
                     {dim.label}
                   </label>
@@ -137,23 +137,23 @@ export default function VisualBuilder({ spec, onChange }: Props) {
           </section>
 
           <section>
-            <h3 className="text-sm font-medium text-[#1C1C1C] mb-2">Medidas</h3>
-            <p className="text-xs text-[#6B7280] mb-2">Qué se calcula para cada grupo.</p>
+            <h3 className="text-sm font-medium text-foreground mb-2">Medidas</h3>
+            <p className="text-xs text-muted-foreground mb-2">Qué se calcula para cada grupo.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 max-h-56 overflow-y-auto pr-1">
               {dataset.measures.map((measure) => (
                 <label
                   key={measure.id}
-                  className="flex items-center gap-2 text-sm text-[#1C1C1C] cursor-pointer"
+                  className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
                 >
                   <input
                     type="checkbox"
                     checked={spec.measures.includes(measure.id)}
                     onChange={() => toggleMeasure(measure.id)}
-                    className="rounded border-gray-300 text-[#121A61] focus:ring-[#3346CC]"
+                    className="rounded border-gray-300 text-primario focus:ring-secundario"
                   />
                   <span>{measure.label}</span>
                   {measure.isFormula && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-[#F3F4F6] text-[10px] text-[#6B7280]">
+                    <span className="px-1.5 py-0.5 rounded-full bg-muted text-[10px] text-muted-foreground">
                       Fórmula
                     </span>
                   )}
@@ -163,7 +163,7 @@ export default function VisualBuilder({ spec, onChange }: Props) {
           </section>
 
           <section>
-            <h3 className="text-sm font-medium text-[#1C1C1C] mb-2">Filtros</h3>
+            <h3 className="text-sm font-medium text-foreground mb-2">Filtros</h3>
             <FilterBuilder
               dataset={dataset}
               value={spec.filters ?? emptyGroup()}
@@ -175,7 +175,7 @@ export default function VisualBuilder({ spec, onChange }: Props) {
 
           <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 Agrupar fecha por
               </label>
               <CustomSelect
@@ -200,14 +200,14 @@ export default function VisualBuilder({ spec, onChange }: Props) {
                 ]}
               />
               {dateDimensions.length === 0 && (
-                <p className="mt-1 text-xs text-[#6B7280]">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Requiere una dimensión de fecha.
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">Ordenar por</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Ordenar por</label>
               <CustomSelect
                 value={currentSort?.field ?? ''}
                 disabled={sortable.length === 0}
@@ -230,8 +230,8 @@ export default function VisualBuilder({ spec, onChange }: Props) {
                       onClick={() => patch({ sort: [{ ...currentSort, direction: dir }] })}
                       className={`px-2 py-1 text-xs ${
                         currentSort.direction === dir
-                          ? 'bg-[#121A61] text-white'
-                          : 'bg-white text-[#6B7280]'
+                          ? 'bg-primario text-white'
+                          : 'bg-white text-muted-foreground'
                       }`}
                     >
                       {dir === 'desc' ? 'Mayor a menor' : 'Menor a mayor'}
@@ -242,7 +242,7 @@ export default function VisualBuilder({ spec, onChange }: Props) {
             </div>
 
             <div>
-              <label htmlFor="viz-limit" className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+              <label htmlFor="viz-limit" className="block text-sm font-medium text-foreground mb-1.5">
                 Límite de filas
               </label>
               <input
@@ -254,7 +254,7 @@ export default function VisualBuilder({ spec, onChange }: Props) {
                 onChange={(e) => patch({ limit: Number(e.target.value) })}
                 className="h-9 w-full rounded-md border border-gray-200 px-2 text-sm"
               />
-              <p className="mt-1 text-xs text-[#6B7280]">Máximo {MAX_LIMIT}.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Máximo {MAX_LIMIT}.</p>
             </div>
           </section>
         </>

@@ -8,7 +8,7 @@
  *
  * Para cada turno:
  *   - Elige un profesional del pool de roles de salud (HEALTH_ROLES) traído en
- *     runtime desde Clerk (@clerk/backend) — NO se hardcodean IDs.
+ *     runtime de las membresías activas del club — NO se hardcodean IDs.
  *   - Deriva título y lugar coherentes con el rol del profesional asignado.
  *   - fecha: mezcla de pasado (~6 meses atrás) y futuro (~3 meses adelante);
  *     ~45% de los turnos quedan en el futuro (son citas).
@@ -21,27 +21,24 @@
  * Uses Neon's HTTP driver (avoids the TCP/IPv6 issue like apply-migration.mjs).
  * NO recrea deportistas: los lee de la DB.
  *
- * ⚠️  IDEMPOTENCIA: Al inicio ejecuta `DELETE FROM "turnos"`, que borra en
- * cascada `turno_deportistas`. Re-correr no duplica. Corré esto sólo en
- * entornos de prueba.
+ * ⚠️  IDEMPOTENCIA: Al inicio borra los turnos DEL CLUB, que borran en cascada
+ * `turno_deportistas`. Re-correr no duplica. Corré esto sólo en entornos de
+ * prueba.
  *
- * Requiere CLERK_SECRET_KEY en .env.local.
+ * Requiere las membresías del club (scripts/migrar-membresias.mjs para Gimnasia).
  *
- * Usage: node scripts/seed-turnos.mjs
+ * Usage: node scripts/seed-turnos.mjs [--club <id>]   (default: club_gimnasia_lp)
  */
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
+import { getClubId, assertClubExiste, fetchProfesionalesPorRol } from "./club-arg.mjs";
 
 config({ path: ".env.local" });
 
 const url = process.env.DATABASE_URL;
 if (!url) {
   console.error("DATABASE_URL not set");
-  process.exit(1);
-}
-if (!process.env.CLERK_SECRET_KEY) {
-  console.error("CLERK_SECRET_KEY not set (necesario para traer profesionales)");
   process.exit(1);
 }
 const sql = neon(url);
@@ -181,34 +178,23 @@ const catalogoGenerico = {
 
 const HEALTH_ROLES = ["medico", "kinesiologo", "nutricionista", "psicologo", "cardiologo"];
 
-async function fetchProfesionalesPorRol() {
-  const { createClerkClient } = await import("@clerk/backend");
-  const client = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
-  const res = await client.users.getUserList({ limit: 100 });
-  const porRol = {};
-  for (const user of res.data ?? []) {
-    const role = String(user.publicMetadata?.role ?? "");
-    if (!role) continue;
-    (porRol[role] ??= []).push(user.id);
-  }
-  return porRol;
-}
-
 async function main() {
   console.log("Seeding turnos aleatorios (datos de prueba)...");
+  const clubId = getClubId();
+  await assertClubExiste(sql, clubId);
 
-  // 1. Traer profesionales desde Clerk y armar el pool de salud (id + rol).
-  const porRol = await fetchProfesionalesPorRol();
+  // 1. Traer los profesionales del club y armar el pool de salud (id + rol).
+  const porRol = await fetchProfesionalesPorRol(sql, clubId);
   const conteoRoles = Object.fromEntries(
     Object.entries(porRol).map(([r, ids]) => [r, ids.length])
   );
-  console.log("  ✓ Profesionales por rol (Clerk):", JSON.stringify(conteoRoles));
+  console.log("  ✓ Profesionales por rol (membresías):", JSON.stringify(conteoRoles));
 
   // Pool: cada entrada guarda { id, rol } para elegir título/lugar coherente.
   const pool = HEALTH_ROLES.flatMap((rol) => (porRol[rol] ?? []).map((id) => ({ id, rol })));
   if (pool.length === 0) {
     console.error(
-      "No hay ningún profesional de salud elegible en Clerk (roles: " +
+      "No hay ningún profesional de salud elegible en el club (roles: " +
         HEALTH_ROLES.join(", ") +
         "). Abortando."
     );
@@ -217,7 +203,7 @@ async function main() {
   console.log(`  ✓ Pool de profesionales de salud: ${pool.length}`);
 
   // 2. Leer deportistas.
-  const deportistas = await sql.query('SELECT id FROM "deportistas"');
+  const deportistas = await sql.query('SELECT id FROM "deportistas" WHERE "club_id" = $1', [clubId]);
   if (deportistas.length === 0) {
     console.error("No hay deportistas. Corré primero: npm run seed:deportistas");
     process.exit(1);
@@ -225,7 +211,7 @@ async function main() {
   console.log(`  ✓ ${deportistas.length} deportistas encontrados`);
 
   // 3. Limpiar (idempotencia). turnos borra en cascada turno_deportistas.
-  await sql.query('DELETE FROM "turnos"');
+  await sql.query('DELETE FROM "turnos" WHERE "club_id" = $1', [clubId]);
   console.log("  ✓ turnos limpiados (cascade sobre turno_deportistas)");
 
   // 4. Generar filas.
@@ -246,6 +232,7 @@ async function main() {
 
       turnoRows.push({
         id: turnoId,
+        club_id: clubId,
         titulo: rand(cat.titulos),
         fecha,
         hora: horaAtencion(),
@@ -268,7 +255,7 @@ async function main() {
   await insertAll(
     "turnos",
     [
-      "id", "titulo", "fecha", "hora", "lugar", "descripcion",
+      "id", "club_id", "titulo", "fecha", "hora", "lugar", "descripcion",
       "profesional_id", "created_at", "updated_at",
     ],
     turnoRows
@@ -283,21 +270,28 @@ async function main() {
   console.log(`  ✓ ${turnoDeportistaRows.length} filas en turno_deportistas`);
 
   // 6. Conteos reales desde la DB.
-  const [{ total_turnos }] = await sql.query('SELECT COUNT(*)::int AS total_turnos FROM "turnos"');
-  const [{ total_td }] = await sql.query('SELECT COUNT(*)::int AS total_td FROM "turno_deportistas"');
+  // turno_deportistas no tiene club_id: se acota por el turno.
+  const TD_DEL_CLUB = `"turno_id" IN (SELECT "id" FROM "turnos" WHERE "club_id" = $1)`;
+  const p = [clubId];
+  const [{ total_turnos }] = await sql.query('SELECT COUNT(*)::int AS total_turnos FROM "turnos" WHERE "club_id" = $1', p);
+  const [{ total_td }] = await sql.query(`SELECT COUNT(*)::int AS total_td FROM "turno_deportistas" WHERE ${TD_DEL_CLUB}`, p);
   const [{ min_por_dep, max_por_dep, prom_por_dep }] = await sql.query(
     `SELECT MIN(c)::int AS min_por_dep, MAX(c)::int AS max_por_dep,
             ROUND(AVG(c), 2)::float8 AS prom_por_dep
-       FROM (SELECT COUNT(*) AS c FROM "turno_deportistas" GROUP BY deportista_id) t`
+       FROM (SELECT COUNT(*) AS c FROM "turno_deportistas" WHERE ${TD_DEL_CLUB} GROUP BY deportista_id) t`,
+    p
   );
   const [{ fuera_de_rango }] = await sql.query(
     `SELECT COUNT(*)::int AS fuera_de_rango
-       FROM (SELECT COUNT(*) AS c FROM "turno_deportistas" GROUP BY deportista_id) t
-      WHERE c < 3 OR c > 5`
+       FROM (SELECT COUNT(*) AS c FROM "turno_deportistas" WHERE ${TD_DEL_CLUB} GROUP BY deportista_id) t
+      WHERE c < 3 OR c > 5`,
+    p
   );
   const [{ sin_turnos }] = await sql.query(
     `SELECT COUNT(*)::int AS sin_turnos FROM "deportistas" d
-      WHERE NOT EXISTS (SELECT 1 FROM "turno_deportistas" td WHERE td.deportista_id = d.id)`
+      WHERE d."club_id" = $1
+        AND NOT EXISTS (SELECT 1 FROM "turno_deportistas" td WHERE td.deportista_id = d.id)`,
+    p
   );
 
   console.log("\nConteos finales (desde la DB):");

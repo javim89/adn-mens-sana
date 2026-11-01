@@ -15,12 +15,12 @@ export default function KpiChart({ data, config, columns }: ChartProps) {
   return (
     <div className="h-full w-full flex flex-col items-center justify-center gap-1 px-4 text-center">
       <p
-        className="text-4xl md:text-5xl font-semibold text-[#121A61] tabular-nums leading-none"
+        className="text-4xl md:text-5xl font-semibold text-primario tabular-nums leading-none"
         style={{ fontFamily: 'Oswald, sans-serif' }}
       >
         {formatCompact(value, format)}
       </p>
-      <p className="text-xs md:text-sm text-[#6B7280]">{config.label ?? measure.label}</p>
+      <p className="text-xs md:text-sm text-muted-foreground">{config.label ?? measure.label}</p>
     </div>
   );
 }

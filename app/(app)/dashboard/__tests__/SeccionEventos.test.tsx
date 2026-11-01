@@ -42,7 +42,7 @@ describe('SeccionEventos', () => {
     render(await SeccionEventos({ hoyDb: HOY }));
 
     const destacado = screen.getByText('Próximo partido').parentElement!.parentElement!;
-    expect(destacado.className).toContain('bg-[#121A61]');
+    expect(destacado.className).toContain('bg-primario');
     expect(destacado.textContent).toContain('Gimnasia vs. Rival 1');
     expect(destacado.textContent).toContain('JUE');
     expect(destacado.textContent).toContain('1/10');

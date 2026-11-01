@@ -4,14 +4,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
-}));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 
 vi.mock('@/lib/s3', async () => {
   const actual = await vi.importActual<typeof import('@/lib/s3')>('@/lib/s3');
   return {
     isValidFotoKey: actual.isValidFotoKey,
+    keyEsDelClub: actual.keyEsDelClub,
     getFotoUrl: vi.fn(async (key: string | null) => (key ? `https://signed.example/${key}` : null)),
     fotoExiste: vi.fn(),
   };
@@ -37,12 +38,19 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
+// El route usa el cliente del club; `foto-deportista` (ownership global de la
+// key) sigue usando el base. Los dos apuntan al mismo objeto de mocks.
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock((await import('@/lib/db')).prisma),
+);
+
 import type { DeportistaListItem } from '@/lib/types/deportistas';
-import { auth } from '@clerk/nextjs/server';
 import { getDeportistas } from '@/lib/queries/deportistas';
 import { prisma } from '@/lib/db';
 import { fotoExiste, getFotoUrl } from '@/lib/s3';
 import { GET, POST } from '../route';
+import { CLUB_TEST, mockContexto, setContexto } from '@/test-utils/tenant';
+import { CrossTenantError } from '@/lib/tenant/errores';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -110,7 +118,7 @@ describe('GET /api/deportistas', () => {
   });
 
   it('returns 401 when not authenticated', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(null);
 
     const req = makeRequest('http://localhost/api/deportistas');
     const res = await GET(req);
@@ -122,7 +130,7 @@ describe('GET /api/deportistas', () => {
   });
 
   it('returns 200 with JSON:API collection shape when authenticated', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(getDeportistas).mockResolvedValue({
       deportistas: [mockDeportistaListItem],
       total: 1,
@@ -156,7 +164,7 @@ describe('GET /api/deportistas', () => {
   });
 
   it('applies filter[search] param', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(getDeportistas).mockResolvedValue({
       deportistas: [],
       total: 0,
@@ -173,7 +181,7 @@ describe('GET /api/deportistas', () => {
   });
 
   it('applies filter[categoriaId] param', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(getDeportistas).mockResolvedValue({
       deportistas: [],
       total: 0,
@@ -190,7 +198,7 @@ describe('GET /api/deportistas', () => {
   });
 
   it('applies filter[disciplina] param as disciplinaId', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(getDeportistas).mockResolvedValue({
       deportistas: [],
       total: 0,
@@ -208,7 +216,7 @@ describe('GET /api/deportistas', () => {
   });
 
   it('applies page[number] and page[size] params', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(getDeportistas).mockResolvedValue({
       deportistas: [],
       total: 50,
@@ -227,7 +235,7 @@ describe('GET /api/deportistas', () => {
   });
 
   it('includes prev/next links when paginating', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(getDeportistas).mockResolvedValue({
       deportistas: [mockDeportistaListItem],
       total: 50,
@@ -246,7 +254,7 @@ describe('GET /api/deportistas', () => {
   });
 
   it('applies filter[nivelTriage] param', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(getDeportistas).mockResolvedValue({
       deportistas: [],
       total: 0,
@@ -263,7 +271,7 @@ describe('GET /api/deportistas', () => {
   });
 
   it('accepts SIN_CALCULAR as filter[nivelTriage]', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(getDeportistas).mockResolvedValue({
       deportistas: [],
       total: 0,
@@ -280,7 +288,7 @@ describe('GET /api/deportistas', () => {
   });
 
   it('returns 422 when filter[nivelTriage] is not a valid level', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
 
     const req = makeRequest('http://localhost/api/deportistas?filter%5BnivelTriage%5D=FUCSIA');
     const res = await GET(req);
@@ -321,7 +329,7 @@ describe('POST /api/deportistas', () => {
   });
 
   it('returns 401 when not authenticated', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(null);
 
     const req = makeRequest('http://localhost/api/deportistas', {
       method: 'POST',
@@ -334,7 +342,7 @@ describe('POST /api/deportistas', () => {
   });
 
   it('returns 415 when Content-Type is wrong', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
 
     const req = makeRequest('http://localhost/api/deportistas', {
       method: 'POST',
@@ -347,7 +355,7 @@ describe('POST /api/deportistas', () => {
   });
 
   it('returns 422 with errors array when apellido is missing', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
 
     const body = {
       data: {
@@ -380,7 +388,7 @@ describe('POST /api/deportistas', () => {
   });
 
   it('returns 201 with Location header and JSON:API single shape', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.create).mockResolvedValue({
       id: 'newcuid',
       ...mockDeportistaFull,
@@ -413,10 +421,10 @@ describe('POST /api/deportistas', () => {
     );
   });
 
-  const FOTO_KEY = 'deportistas/123e4567-e89b-12d3-a456-426614174000.jpg';
+  const FOTO_KEY = `clubes/${CLUB_TEST.id}/deportistas/123e4567-e89b-12d3-a456-426614174000.jpg`;
 
   it('persists a valid fotoKey and exposes fotoKey + fotoUrl', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.findFirst).mockResolvedValue(null);
     vi.mocked(fotoExiste).mockResolvedValue(true);
     vi.mocked(prisma.deportista.create).mockResolvedValue({ ...mockDeportistaFull, id: 'newcuid' } as never);
@@ -444,7 +452,7 @@ describe('POST /api/deportistas', () => {
   });
 
   it('stores fotoKey null and returns fotoUrl null when no foto is sent', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(prisma.deportista.create).mockResolvedValue({ ...mockDeportistaFull, id: 'newcuid' } as never);
     vi.mocked(prisma.deportista.findUnique).mockResolvedValue({ ...mockDeportistaFull, fotoKey: null } as never);
 
@@ -470,7 +478,7 @@ describe('POST /api/deportistas', () => {
     'deportistas/../../secreto.jpg',
     'deportistas/123e4567-e89b-12d3-a456-426614174000.pdf',
   ])('returns 422 for an invalid fotoKey (%s)', async (fotoKey) => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
 
     const body = {
       data: { ...validBody.data, attributes: { ...validBody.data.attributes, fotoKey } },
@@ -504,7 +512,7 @@ describe('POST /api/deportistas', () => {
     }
 
     beforeEach(() => {
-      vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+      setContexto(mockContexto('admin', { userId: 'user1' }));
     });
 
     it('returns 422 when another deportista already has the fotoKey', async () => {
@@ -557,12 +565,13 @@ describe('POST /api/deportistas', () => {
       expect(resBody.errors[0].source.pointer).toBe('/data/attributes/fotoKey');
     });
 
-    it('does not map a P2002 on another column (dni) to the fotoKey error', async () => {
+    // Con los uniques por club el target es compuesto: ['club_id', 'dni'].
+    it('maps a P2002 on [club_id, dni] to 409, not to the fotoKey error', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       vi.mocked(prisma.deportista.create).mockRejectedValue(
         Object.assign(new Error('Unique constraint failed'), {
           code: 'P2002',
-          meta: { modelName: 'Deportista', target: ['dni'] },
+          meta: { modelName: 'Deportista', target: ['club_id', 'dni'] },
         }),
       );
 
@@ -574,8 +583,63 @@ describe('POST /api/deportistas', () => {
         }),
       );
 
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(409);
+      const body = await res.json();
+      expect(body.errors[0].detail).toMatch(/DNI/);
+      expect(JSON.stringify(body)).not.toMatch(/foto/i);
       consoleSpy.mockRestore();
+    });
+
+    it('a P2002 on [club_id, email] is also a 409', async () => {
+      vi.mocked(prisma.deportista.create).mockRejectedValue(
+        Object.assign(new Error('Unique constraint failed'), {
+          code: 'P2002',
+          meta: { modelName: 'Deportista', target: ['club_id', 'email'] },
+        }),
+      );
+
+      const res = await POST(
+        makeRequest('http://localhost/api/deportistas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/vnd.api+json' },
+          body: JSON.stringify(validBody),
+        }),
+      );
+
+      expect(res.status).toBe(409);
+      expect((await res.json()).errors[0].detail).toMatch(/email/);
+    });
+
+    // Una disciplina/categoría de otro club: el cliente del club tira
+    // CrossTenantError y se responde como si no existiera.
+    it('maps a CrossTenantError to 404 without leaking the detail', async () => {
+      vi.mocked(prisma.deportista.create).mockRejectedValue(
+        new CrossTenantError('Deportista: la escritura referencia una fila de otro club'),
+      );
+
+      const res = await POST(
+        makeRequest('http://localhost/api/deportistas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/vnd.api+json' },
+          body: JSON.stringify(validBody),
+        }),
+      );
+
+      expect(res.status).toBe(404);
+      expect(JSON.stringify(await res.json())).not.toMatch(/otro club/);
+    });
+
+    it('rejects a fotoKey from another club (or legacy) with 422 before touching S3', async () => {
+      for (const key of [
+        'clubes/club_otro/deportistas/123e4567-e89b-12d3-a456-426614174000.jpg',
+        'deportistas/123e4567-e89b-12d3-a456-426614174000.jpg',
+      ]) {
+        vi.clearAllMocks();
+        const res = await postWithFoto(key);
+        expect(res.status).toBe(422);
+        expect(fotoExiste).not.toHaveBeenCalled();
+        expect(prisma.deportista.create).not.toHaveBeenCalled();
+      }
     });
 
     it('skips ownership and S3 checks when no fotoKey is sent', async () => {

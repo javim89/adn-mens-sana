@@ -7,15 +7,16 @@
  * The categorías are read from the DB (seeded by seed-calendario.mjs), not
  * hardcoded.
  *
- * ⚠️  IDEMPOTENCIA: Al inicio ejecuta `DELETE FROM "deportistas"`, lo que BORRA
- * TODOS los deportistas (y, por ON DELETE CASCADE, sus turno_deportistas y
- * seguimientos). Corré esto sólo en entornos de prueba.
+ * ⚠️  IDEMPOTENCIA: Al inicio BORRA TODOS los deportistas DEL CLUB (y, por
+ * ON DELETE CASCADE, sus turno_deportistas y seguimientos). Corré esto sólo en
+ * entornos de prueba.
  *
- * Usage: node scripts/seed-deportistas.mjs
+ * Usage: node scripts/seed-deportistas.mjs [--club <id>]   (default: club_gimnasia_lp)
  */
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
+import { getClubId, assertClubExiste } from "./club-arg.mjs";
 
 config({ path: ".env.local" });
 
@@ -153,20 +154,25 @@ async function insertRows(table, columns, rows) {
 }
 
 const COLUMNS = [
-  "id", "apellido", "nombre", "dni", "fecha_nacimiento",
+  "id", "club_id", "apellido", "nombre", "dni", "fecha_nacimiento",
   "provincia", "ciudad", "genero", "telefono", "email",
   "domicilio_actual", "nacionalidad", "contacto_emergencia",
   "vive_pension_club", "vive_pension_externa", "observaciones",
   "disciplina_id", "categoria_id", "posicion", "estado",
-  "actividad_complementaria", "fecha_ingreso", "es_representante",
+  "actividad_complementaria", "fecha_ingreso", "tiene_representante",
   "created_at", "updated_at",
 ];
 
 async function main() {
   console.log("Seeding Deportistas (datos de prueba)...");
+  const clubId = getClubId();
+  await assertClubExiste(sql, clubId);
 
   // 1. Leer categorías reales (no hardcodear ids).
-  const categorias = await sql.query('SELECT id, nombre, orden FROM "categorias" ORDER BY "orden"');
+  const categorias = await sql.query(
+    'SELECT id, nombre, orden FROM "categorias" WHERE "club_id" = $1 ORDER BY "orden"',
+    [clubId]
+  );
   if (categorias.length === 0) {
     console.error("No hay categorías. Corré primero: npm run seed:calendario");
     process.exit(1);
@@ -174,16 +180,19 @@ async function main() {
   console.log(`  ✓ ${categorias.length} categorías encontradas`);
 
   // 1b. Resolver la disciplina FUTBOL por codigo (ahora es FK, no enum).
-  const futbolRows = await sql.query('SELECT id FROM "disciplinas" WHERE codigo = $1', ["FUTBOL"]);
+  const futbolRows = await sql.query(
+    'SELECT id FROM "disciplinas" WHERE "club_id" = $1 AND codigo = $2',
+    [clubId, "FUTBOL"]
+  );
   if (futbolRows.length === 0) {
     console.error("No se encontró la disciplina FUTBOL. Corré primero: node scripts/seed-disciplinas.mjs");
     process.exit(1);
   }
   const futbolId = futbolRows[0].id;
 
-  // 2. Limpiar (BORRA TODOS los deportistas; cascade sobre turnos y seguimientos).
-  await sql.query('DELETE FROM "deportistas"');
-  console.log("  ✓ deportistas limpiados (DELETE FROM deportistas)");
+  // 2. Limpiar (BORRA TODOS los deportistas del club; cascade sobre turnos y seguimientos).
+  await sql.query('DELETE FROM "deportistas" WHERE "club_id" = $1', [clubId]);
+  console.log("  ✓ deportistas del club limpiados");
 
   // 3. Generar filas.
   const dniUsados = new Set();
@@ -234,6 +243,7 @@ async function main() {
 
       rows.push({
         id: randomUUID(),
+        club_id: clubId,
         apellido,
         nombre,
         dni,
@@ -255,7 +265,7 @@ async function main() {
         estado: rand(estadosPonderados),
         actividad_complementaria: rand(actividadComplementaria),
         fecha_ingreso: fechaIngresoReciente(),
-        es_representante: chance(0.05),
+        tiene_representante: chance(0.05),
         created_at: nowIso,
         updated_at: nowIso,
       });
@@ -270,7 +280,10 @@ async function main() {
   console.log(`  ✓ ${rows.length} deportistas insertados`);
 
   // 5. Verificación y conteos.
-  const [{ total }] = await sql.query('SELECT COUNT(*)::int AS total FROM "deportistas"');
+  const [{ total }] = await sql.query(
+    'SELECT COUNT(*)::int AS total FROM "deportistas" WHERE "club_id" = $1',
+    [clubId]
+  );
   console.log("\nDeportistas por categoría:");
   for (const cat of categorias) {
     console.log(`  ${cat.nombre.padEnd(20)} ${conteoPorCategoria[cat.nombre]}`);

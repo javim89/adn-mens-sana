@@ -1,10 +1,32 @@
 import { describe, it, test, expect } from 'vitest';
-import { compile, MAX_DIMENSIONS, MAX_LIMIT } from '../compile';
+import { compile as compileDelClub, MAX_DIMENSIONS, MAX_LIMIT } from '../compile';
 import { CATALOG, DATASETS } from '../catalog';
-import { isFormulaMeasure, type QuerySpec } from '../types';
+import { tenantCtes } from '../tenant-prelude';
+import { isFormulaMeasure, type CompiledQuery, type QuerySpec } from '../types';
 
 // Reloj fijo para que los operadores de fecha relativos sean reproducibles.
 const NOW = new Date('2026-09-15T12:00:00.000Z');
+const CLUB = 'club_test';
+
+/**
+ * Compila como `CLUB` y le quita el prelude multi-tenant (con su `$1`), así el
+ * resto del archivo mira el cuerpo de la query numerado desde `$1`. El prelude
+ * y el corrimiento de parámetros se prueban aparte, en "prelude multi-tenant".
+ */
+function compile(querySpec: QuerySpec, now: Date = NOW): CompiledQuery {
+  const compiled = compileDelClub(querySpec, now, { clubId: CLUB });
+  const prelude = `WITH ${tenantCtes()}`;
+  if (!compiled.sql.startsWith(prelude) || compiled.params[0] !== CLUB) {
+    throw new Error('La query compilada no empieza con el prelude del club');
+  }
+  const rest = compiled.sql.slice(prelude.length);
+  const body = rest.startsWith(',\n') ? `WITH ${rest.slice(2)}` : rest.slice(1);
+  return {
+    ...compiled,
+    sql: body.replace(/\$(\d+)/g, (_, n: string) => `$${Number(n) - 1}`),
+    params: compiled.params.slice(1),
+  };
+}
 
 function spec(partial: Partial<QuerySpec> & { dataset: string }): QuerySpec {
   return {
@@ -999,5 +1021,80 @@ describe('intentos de inyección', () => {
       NOW,
     );
     expect(compiled.params[0]).toBe('100\\%\\_%');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Prelude multi-tenant
+// ---------------------------------------------------------------------------
+
+describe('prelude multi-tenant', () => {
+  const builder = spec({ dataset: 'deportistas', dimensions: ['estado'], measures: ['cantidad'], limit: 10 });
+
+  it('el club viaja como $1 y el resto de los parámetros arranca en $2', () => {
+    const compiled = compileDelClub(
+      spec({
+        dataset: 'deportistas',
+        dimensions: ['estado'],
+        measures: ['cantidad'],
+        filters: { op: 'all', children: [{ field: 'estado', operator: 'in', value: ['ACTIVO'] }] },
+        limit: 10,
+      }),
+      NOW,
+      { clubId: 'club_a' },
+    );
+    expect(compiled.params).toEqual(['club_a', ['ACTIVO'], 10]);
+    expect(compiled.sql).toContain('deportistas AS NOT MATERIALIZED (SELECT * FROM public.deportistas WHERE club_id = $1)');
+    expect(compiled.sql).toContain('= ANY($2)');
+    expect(compiled.sql).toMatch(/LIMIT \$3$/);
+  });
+
+  it('antepone el prelude antes del SELECT', () => {
+    const compiled = compileDelClub(builder, NOW, { clubId: 'club_a' });
+    expect(compiled.sql.startsWith(`WITH ${tenantCtes()}\nSELECT `)).toBe(true);
+  });
+
+  it('fusiona los CTEs del dataset en un único WITH, después del prelude', () => {
+    const compiled = compileDelClub(
+      spec({ dataset: 'triage_ultimo', dimensions: ['nivel'], measures: [CATALOG.triage_ultimo.measures[0].id] }),
+      NOW,
+      { clubId: 'club_a' },
+    );
+    expect(compiled.sql.match(/\bWITH\b/g)).toHaveLength(1);
+    expect(compiled.sql).toContain(`${tenantCtes()},\ntriage_ultimo AS (`);
+    // El CTE del dataset lee `triage` sin esquema: resuelve al CTE acotado.
+    expect(compiled.sql).toContain('triage AS NOT MATERIALIZED (SELECT * FROM public.triage WHERE club_id = $1)');
+  });
+
+  it('cobertura de viandas: los tres CTEs del dataset quedan detrás del prelude', () => {
+    const compiled = compileDelClub(
+      spec({ dataset: 'viandas_cobertura', measures: ['esperadas'] }),
+      NOW,
+      { clubId: 'club_a' },
+    );
+    expect(compiled.sql.match(/\bWITH\b/g)).toHaveLength(1);
+    const prelude = compiled.sql.indexOf('entregas_comida AS NOT MATERIALIZED');
+    expect(prelude).toBeGreaterThan(-1);
+    expect(compiled.sql.indexOf('viandas_dias AS (')).toBeGreaterThan(prelude);
+  });
+
+  it('todos los datasets llevan el prelude y la paridad de parámetros', () => {
+    for (const dataset of DATASETS) {
+      const compiled = compileDelClub(
+        spec({ dataset: dataset.id, measures: [dataset.measures[0].id] }),
+        NOW,
+        { clubId: 'club_a' },
+      );
+      expect(compiled.sql.startsWith('WITH ')).toBe(true);
+      expect(compiled.params[0]).toBe('club_a');
+      expectParamParity(compiled);
+    }
+  });
+
+  it('sin club falla cerrado', () => {
+    expect(() => compileDelClub(builder, NOW, { clubId: '' })).toThrow(/club/);
+    expect(() =>
+      compileDelClub(builder, NOW, undefined as unknown as { clubId: string }),
+    ).toThrow();
   });
 });

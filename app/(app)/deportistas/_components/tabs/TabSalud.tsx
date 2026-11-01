@@ -29,7 +29,7 @@ function Field({
     <div className={className}>
       <label
         htmlFor={id}
-        className="block text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-1"
+        className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
       >
         {label}
       </label>
@@ -84,14 +84,14 @@ function MultiSelectDropdown({
         type="button"
         onClick={() => !disabled && setIsOpen((o) => !o)}
         disabled={disabled}
-        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 disabled:cursor-not-allowed"
+        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-secundario/30 disabled:cursor-not-allowed"
       >
-        <span className={label ? 'text-[#1C1C1C]' : 'text-[#6B7280]'}>
+        <span className={label ? 'text-foreground' : 'text-muted-foreground'}>
           {label ?? placeholder}
         </span>
         <ChevronDown
           size={16}
-          className={`text-[#6B7280] transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
+          className={`text-muted-foreground transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -100,11 +100,11 @@ function MultiSelectDropdown({
           {Object.entries(options).map(([value, optLabel]) => (
             <label
               key={value}
-              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm text-[#1C1C1C]"
+              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm text-foreground"
             >
               <input
                 type="checkbox"
-                className="w-4 h-4 rounded border-gray-300 accent-[#121A61]"
+                className="w-4 h-4 rounded border-gray-300 accent-primario"
                 checked={selected.includes(value)}
                 onChange={() => toggle(value)}
               />
@@ -121,7 +121,7 @@ function MultiSelectDropdown({
           {selected.map((v) => (
             <span
               key={v}
-              className="inline-flex items-center gap-1 text-xs bg-[#121A61]/10 text-[#121A61] px-2 py-0.5 rounded-full"
+              className="inline-flex items-center gap-1 text-xs bg-primario/10 text-primario px-2 py-0.5 rounded-full"
             >
               {options[v]}
               {!disabled && (
@@ -148,7 +148,7 @@ export default function TabSalud({ data, onChange, disabled = false }: TabSaludP
   }
 
   const inputCls = [
-    'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30',
+    'w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30',
     disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : '',
   ]
     .filter(Boolean)

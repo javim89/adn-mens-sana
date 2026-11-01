@@ -1,0 +1,51 @@
+{
+  "$comment": "Tablas que Insights puede leer y cómo se acotan a un club. Fuente única para el prelude (tenant-prelude.ts) y las RLS de insights_ro (scripts/setup-insights-rls.mjs). Orden topológico: cada padre aparece antes que sus hijos. Una tabla nueva tiene que ir acá o en 'excluidas' (lo verifica tenant-prelude.test.ts) y después hay que volver a correr setup-insights-rls.mjs.",
+  "club": "clubes",
+  "excluidas": ["_prisma_migrations", "insights_sesiones", "membresias", "invitaciones", "superadmins"],
+  "tablas": [
+    { "tabla": "deportistas" },
+    { "tabla": "disciplinas" },
+    { "tabla": "categorias" },
+    { "tabla": "equipos" },
+    { "tabla": "dias_calendario" },
+    { "tabla": "eventos_torneo" },
+    { "tabla": "turnos" },
+    { "tabla": "seguimientos" },
+    { "tabla": "entrenamientos" },
+    { "tabla": "convocatorias" },
+    { "tabla": "insights_dashboards" },
+    { "tabla": "triage" },
+    { "tabla": "entregas_comida" },
+
+    { "tabla": "clubes_anteriores", "padre": "deportistas", "fk": "deportista_id" },
+    { "tabla": "historia_deportiva", "padre": "deportistas", "fk": "deportista_id" },
+    { "tabla": "datos_escolares", "padre": "deportistas", "fk": "deportista_id" },
+    { "tabla": "datos_sociales", "padre": "deportistas", "fk": "deportista_id" },
+    { "tabla": "datos_familiares", "padre": "deportistas", "fk": "deportista_id" },
+    { "tabla": "vivienda_familiar", "padre": "deportistas", "fk": "deportista_id" },
+    { "tabla": "servicios_vivienda", "padre": "vivienda_familiar", "fk": "vivienda_familiar_id" },
+    { "tabla": "necesidades_apoyo", "padre": "deportistas", "fk": "deportista_id" },
+    { "tabla": "apoyos_requeridos", "padre": "necesidades_apoyo", "fk": "necesidades_apoyo_id" },
+    { "tabla": "datos_salud", "padre": "deportistas", "fk": "deportista_id" },
+    { "tabla": "enfermedades_preexistentes", "padre": "datos_salud", "fk": "datos_salud_id" },
+    { "tabla": "antecedentes_enfermedades_familiares", "padre": "datos_salud", "fk": "datos_salud_id" },
+    { "tabla": "pasos_por_division", "padre": "deportistas", "fk": "deportista_id" },
+
+    { "tabla": "turno_deportistas", "padre": "turnos", "fk": "turno_id" },
+
+    { "tabla": "seguimiento_deportistas", "padre": "seguimientos", "fk": "seguimiento_id" },
+    { "tabla": "seguimientos_traumatologia", "padre": "seguimientos", "fk": "seguimiento_id" },
+    { "tabla": "seguimientos_historia_clinica", "padre": "seguimientos", "fk": "seguimiento_id" },
+    { "tabla": "seguimientos_evaluacion_psicologica", "padre": "seguimientos", "fk": "seguimiento_id" },
+    { "tabla": "seguimientos_evaluacion_cardiologica", "padre": "seguimientos", "fk": "seguimiento_id" },
+    { "tabla": "seguimientos_antropometria", "padre": "seguimientos", "fk": "seguimiento_id" },
+
+    { "tabla": "disciplina_categorias", "padre": "disciplinas", "fk": "disciplina_id" },
+    { "tabla": "asistencias", "padre": "entrenamientos", "fk": "entrenamiento_id" },
+    { "tabla": "convocatoria_deportistas", "padre": "convocatorias", "fk": "convocatoria_id" },
+
+    { "tabla": "insights_widgets", "padre": "insights_dashboards", "fk": "dashboard_id" },
+    { "tabla": "insights_filters", "padre": "insights_dashboards", "fk": "dashboard_id" },
+    { "tabla": "insights_filter_targets", "padre": "insights_filters", "fk": "filter_id" }
+  ]
+}

@@ -2,7 +2,9 @@ import { test, expect } from '@playwright/test';
 
 /**
  * El ícono de BioTeam (la "b" con el punto dorado) junto al wordmark, y los app icons.
- * Solo rutas públicas: la landing, /sign-in y los archivos de metadata de `app/`.
+ * Solo rutas públicas: la landing y /sign-in (que es neutro). Los app icons de BioTeam viven en
+ * `public/brand/` y solo los declaran la landing y el superadmin; el resto hereda el
+ * ícono neutro del root layout, y la app logueada usa los del club.
  */
 test.describe('Logo de BioTeam', () => {
   test.beforeEach(async ({ context }) => {
@@ -24,12 +26,10 @@ test.describe('Logo de BioTeam', () => {
     await expect(iconoFooter).toHaveAttribute('alt', '');
   });
 
-  test('/sign-in muestra el ícono inverso sobre el fondo azul', async ({ page }) => {
+  test('/sign-in es neutro: sin el ícono ni el wordmark de BioTeam', async ({ page }) => {
     await page.goto('/sign-in');
-    const icono = page.locator('img[data-logo-bioteam]');
-    await expect(icono).toBeVisible();
-    await expect(icono).toHaveAttribute('data-logo-bioteam', 'inverso');
-    await expect.poll(() => icono.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    await expect(page.getByRole('heading', { name: 'Ingresá a tu club' })).toBeVisible();
+    await expect(page.locator('img[data-logo-bioteam]')).toHaveCount(0);
   });
 
   test('a 375px el nav con el ícono no genera scroll horizontal', async ({ page }) => {
@@ -40,15 +40,15 @@ test.describe('Logo de BioTeam', () => {
     expect(desborde).toBeLessThanOrEqual(0);
   });
 
-  test('el <head> declara favicon, icon.svg y apple-icon, y se sirven', async ({ page, request }) => {
+  test('el <head> de la landing declara los íconos de BioTeam (en /brand) y se sirven', async ({ page, request }) => {
     await page.goto('/');
     const hrefs = await page
       .locator('head link[rel="icon"], head link[rel="apple-touch-icon"]')
       .evaluateAll((links) => links.map((l) => l.getAttribute('href') ?? ''));
 
-    const favicon = hrefs.find((h) => h.startsWith('/favicon.ico'));
-    const icono = hrefs.find((h) => h.startsWith('/icon.svg'));
-    const apple = hrefs.find((h) => h.startsWith('/apple-icon.png'));
+    const favicon = hrefs.find((h) => h.startsWith('/brand/favicon.ico'));
+    const icono = hrefs.find((h) => h.startsWith('/brand/icon.svg'));
+    const apple = hrefs.find((h) => h.startsWith('/brand/apple-icon.png'));
     expect(favicon).toBeTruthy();
     expect(icono).toBeTruthy();
     expect(apple).toBeTruthy();
@@ -57,7 +57,18 @@ test.describe('Logo de BioTeam', () => {
       const r = await request.get(href);
       expect(r.status(), href).toBe(200);
     }
-    // Sin los viejos icon.png / icon1.png.
+    // Sin el ícono neutro ni los viejos icon.png / icon1.png.
+    expect(hrefs.some((h) => h.includes('icono-neutro'))).toBe(false);
     expect(hrefs.some((h) => /\/icon1?\.png/.test(h))).toBe(false);
+  });
+
+  test('/sign-in hereda el ícono neutro del root layout, no el de BioTeam', async ({ page, request }) => {
+    await page.goto('/sign-in');
+    const hrefs = await page
+      .locator('head link[rel="icon"], head link[rel="apple-touch-icon"]')
+      .evaluateAll((links) => links.map((l) => l.getAttribute('href') ?? ''));
+
+    expect(hrefs).toEqual(['/brand/icono-neutro.svg']);
+    expect((await request.get('/brand/icono-neutro.svg')).status()).toBe(200);
   });
 });

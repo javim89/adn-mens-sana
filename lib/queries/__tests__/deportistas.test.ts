@@ -7,7 +7,9 @@ const { mockPrisma, mockGetNivelTriageActual } = vi.hoisted(() => ({
   mockGetNivelTriageActual: vi.fn(),
 }));
 
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock(mockPrisma),
+);
 vi.mock('@/lib/queries/triage', () => ({ getNivelTriageActual: mockGetNivelTriageActual }));
 
 import { getDeportistas } from '../deportistas';

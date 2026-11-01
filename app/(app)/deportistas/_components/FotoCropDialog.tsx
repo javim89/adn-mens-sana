@@ -74,7 +74,7 @@ export default function FotoCropDialog({
         className="max-h-[95vh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg p-4 sm:p-6"
       >
         <DialogHeader>
-          <DialogTitle style={{ fontFamily: 'Oswald, sans-serif' }} className="text-[#121A61]">
+          <DialogTitle style={{ fontFamily: 'Oswald, sans-serif' }} className="text-primario">
             Ajustar foto
           </DialogTitle>
           <DialogDescription>
@@ -82,7 +82,7 @@ export default function FotoCropDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-[#121A61]">
+        <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-primario">
           <Cropper
             image={src}
             crop={crop}
@@ -105,7 +105,7 @@ export default function FotoCropDialog({
 
         <div className="space-y-3">
           <div>
-            <label htmlFor={zoomId} className="mb-1 block text-xs font-medium text-[#1C1C1C]">
+            <label htmlFor={zoomId} className="mb-1 block text-xs font-medium text-foreground">
               Zoom
             </label>
             <div className="flex items-center gap-2">
@@ -116,7 +116,7 @@ export default function FotoCropDialog({
                 aria-label="Alejar"
                 disabled={applying || zoom <= MIN_ZOOM}
                 onClick={() => setZoom((z) => clampZoom(z - ZOOM_STEP))}
-                className="shrink-0 border-gray-200 text-[#121A61]"
+                className="shrink-0 border-gray-200 text-primario"
               >
                 <ZoomOut />
               </Button>
@@ -130,7 +130,7 @@ export default function FotoCropDialog({
                 disabled={applying}
                 aria-valuetext={`${zoom.toFixed(1)}×`}
                 onChange={(e) => setZoom(clampZoom(Number(e.target.value)))}
-                className="h-2 min-w-0 flex-1 cursor-pointer accent-[#121A61]"
+                className="h-2 min-w-0 flex-1 cursor-pointer accent-primario"
               />
               <Button
                 type="button"
@@ -139,7 +139,7 @@ export default function FotoCropDialog({
                 aria-label="Acercar"
                 disabled={applying || zoom >= MAX_ZOOM}
                 onClick={() => setZoom((z) => clampZoom(z + ZOOM_STEP))}
-                className="shrink-0 border-gray-200 text-[#121A61]"
+                className="shrink-0 border-gray-200 text-primario"
               >
                 <ZoomIn />
               </Button>
@@ -147,7 +147,7 @@ export default function FotoCropDialog({
           </div>
 
           <div>
-            <label htmlFor={rotationId} className="mb-1 block text-xs font-medium text-[#1C1C1C]">
+            <label htmlFor={rotationId} className="mb-1 block text-xs font-medium text-foreground">
               Rotación
             </label>
             <div className="flex items-center gap-2">
@@ -158,7 +158,7 @@ export default function FotoCropDialog({
                 aria-label="Rotar 90° a la izquierda"
                 disabled={applying}
                 onClick={() => setRotation((r) => normalizeRotation(r - 90))}
-                className="shrink-0 border-gray-200 text-[#121A61]"
+                className="shrink-0 border-gray-200 text-primario"
               >
                 <RotateCcw />
               </Button>
@@ -173,7 +173,7 @@ export default function FotoCropDialog({
                 aria-valuetext={`${rotation}°`}
                 // El rango ya acota a [-180, 180]; normalizar acá haría saltar el control de 180 a -180.
                 onChange={(e) => setRotation(Number(e.target.value))}
-                className="h-2 min-w-0 flex-1 cursor-pointer accent-[#121A61]"
+                className="h-2 min-w-0 flex-1 cursor-pointer accent-primario"
               />
               <Button
                 type="button"
@@ -182,7 +182,7 @@ export default function FotoCropDialog({
                 aria-label="Rotar 90° a la derecha"
                 disabled={applying}
                 onClick={() => setRotation((r) => normalizeRotation(r + 90))}
-                className="shrink-0 border-gray-200 text-[#121A61]"
+                className="shrink-0 border-gray-200 text-primario"
               >
                 <RotateCw />
               </Button>
@@ -203,7 +203,7 @@ export default function FotoCropDialog({
             size="sm"
             disabled={applying}
             onClick={handleReset}
-            className="text-[#3346CC] hover:bg-[#3346CC]/5 hover:text-[#121A61]"
+            className="text-secundario hover:bg-secundario/5 hover:text-primario"
           >
             Restablecer
           </Button>
@@ -214,7 +214,7 @@ export default function FotoCropDialog({
               size="sm"
               disabled={applying}
               onClick={onCancel}
-              className="border-gray-200 text-[#6B7280] hover:text-[#1C1C1C]"
+              className="border-gray-200 text-muted-foreground hover:text-foreground"
             >
               Cancelar
             </Button>
@@ -223,7 +223,7 @@ export default function FotoCropDialog({
               size="sm"
               disabled={applying || !areaPixels}
               onClick={handleApply}
-              className="bg-[#121A61] text-white hover:bg-[#1E2A8A]"
+              className="bg-primario text-white hover:bg-primario-hover"
             >
               {applying && <Loader2 className="animate-spin" />}
               {applying ? 'Aplicando…' : 'Aplicar'}

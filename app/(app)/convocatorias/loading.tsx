@@ -16,7 +16,7 @@ export default function ConvocatoriasLoading() {
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-[#F3F4F6] border-b border-gray-100">
+              <tr className="bg-muted border-b border-gray-100">
                 {['Fecha', 'Disciplina', 'Categoría', 'Convocados', ''].map((h, i) => (
                   <th key={i} className="px-5 py-3 text-left">
                     <div className="h-3 w-16 bg-gray-200 rounded animate-pulse" />

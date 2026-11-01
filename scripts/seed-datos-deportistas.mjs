@@ -9,17 +9,18 @@
  * Uses Neon's HTTP driver (avoids the TCP/IPv6 issue like apply-migration.mjs).
  * NO recrea deportistas: los lee de la DB (deben estar sembrados con seed:deportistas).
  *
- * ⚠️  IDEMPOTENCIA: Al inicio ejecuta `DELETE FROM "datos_salud"` (cascade sobre
- * enfermedades_preexistentes y antecedentes_enfermedades_familiares),
- * `DELETE FROM "datos_escolares"`, `DELETE FROM "datos_sociales"` y
- * `DELETE FROM "necesidades_apoyo"` (cascade sobre apoyos_requeridos).
+ * ⚠️  IDEMPOTENCIA: Al inicio borra, para los deportistas DEL CLUB, sus filas de
+ * "datos_salud" (cascade sobre enfermedades_preexistentes y
+ * antecedentes_enfermedades_familiares), "datos_escolares", "datos_sociales" y
+ * "necesidades_apoyo" (cascade sobre apoyos_requeridos).
  * Re-correr no duplica. Corré esto sólo en entornos de prueba.
  *
- * Usage: node scripts/seed-datos-deportistas.mjs
+ * Usage: node scripts/seed-datos-deportistas.mjs [--club <id>]   (default: club_gimnasia_lp)
  */
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
+import { getClubId, assertClubExiste } from "./club-arg.mjs";
 
 config({ path: ".env.local" });
 
@@ -29,6 +30,10 @@ if (!url) {
   process.exit(1);
 }
 const sql = neon(url);
+
+// Las tablas satélite no tienen club_id: se acotan por el deportista ($1 = clubId).
+const DEL_CLUB = `"deportista_id" IN (SELECT "id" FROM "deportistas" WHERE "club_id" = $1)`;
+const SALUD_DEL_CLUB = `"datos_salud_id" IN (SELECT "id" FROM "datos_salud" WHERE ${DEL_CLUB})`;
 
 // --- Helpers aleatorios -----------------------------------------------------
 function rand(arr) {
@@ -133,9 +138,14 @@ const composicionesFamiliares = [
 
 async function main() {
   console.log("Seeding datos satélite de deportistas (datos de prueba)...");
+  const clubId = getClubId();
+  await assertClubExiste(sql, clubId);
 
   // 1. Leer deportistas.
-  const deportistas = await sql.query('SELECT id, fecha_nacimiento FROM "deportistas"');
+  const deportistas = await sql.query(
+    'SELECT id, fecha_nacimiento FROM "deportistas" WHERE "club_id" = $1',
+    [clubId]
+  );
   if (deportistas.length === 0) {
     console.error("No hay deportistas. Corré primero: npm run seed:deportistas");
     process.exit(1);
@@ -143,10 +153,10 @@ async function main() {
   console.log(`  ✓ ${deportistas.length} deportistas encontrados`);
 
   // 2. Limpiar (idempotencia). datos_salud borra en cascada sus hijos 1:N.
-  await sql.query('DELETE FROM "datos_salud"');
-  await sql.query('DELETE FROM "datos_escolares"');
-  await sql.query('DELETE FROM "datos_sociales"');
-  await sql.query('DELETE FROM "necesidades_apoyo"');
+  await sql.query(`DELETE FROM "datos_salud" WHERE ${DEL_CLUB}`, [clubId]);
+  await sql.query(`DELETE FROM "datos_escolares" WHERE ${DEL_CLUB}`, [clubId]);
+  await sql.query(`DELETE FROM "datos_sociales" WHERE ${DEL_CLUB}`, [clubId]);
+  await sql.query(`DELETE FROM "necesidades_apoyo" WHERE ${DEL_CLUB}`, [clubId]);
   console.log("  ✓ datos_salud / datos_escolares / datos_sociales / necesidades_apoyo limpiados");
 
   // 3. Generar filas.
@@ -351,13 +361,18 @@ async function main() {
   console.log(`  ✓ ${apoyosRows.length} filas en apoyos_requeridos`);
 
   // 5. Conteos reales desde la DB.
-  const [{ salud }] = await sql.query('SELECT COUNT(*)::int AS salud FROM "datos_salud"');
-  const [{ escolares }] = await sql.query('SELECT COUNT(*)::int AS escolares FROM "datos_escolares"');
-  const [{ sociales }] = await sql.query('SELECT COUNT(*)::int AS sociales FROM "datos_sociales"');
-  const [{ enfermedades }] = await sql.query('SELECT COUNT(*)::int AS enfermedades FROM "enfermedades_preexistentes"');
-  const [{ antecedentes }] = await sql.query('SELECT COUNT(*)::int AS antecedentes FROM "antecedentes_enfermedades_familiares"');
-  const [{ necesidades }] = await sql.query('SELECT COUNT(*)::int AS necesidades FROM "necesidades_apoyo"');
-  const [{ apoyos }] = await sql.query('SELECT COUNT(*)::int AS apoyos FROM "apoyos_requeridos"');
+  const p = [clubId];
+  const [{ salud }] = await sql.query(`SELECT COUNT(*)::int AS salud FROM "datos_salud" WHERE ${DEL_CLUB}`, p);
+  const [{ escolares }] = await sql.query(`SELECT COUNT(*)::int AS escolares FROM "datos_escolares" WHERE ${DEL_CLUB}`, p);
+  const [{ sociales }] = await sql.query(`SELECT COUNT(*)::int AS sociales FROM "datos_sociales" WHERE ${DEL_CLUB}`, p);
+  const [{ enfermedades }] = await sql.query(`SELECT COUNT(*)::int AS enfermedades FROM "enfermedades_preexistentes" WHERE ${SALUD_DEL_CLUB}`, p);
+  const [{ antecedentes }] = await sql.query(`SELECT COUNT(*)::int AS antecedentes FROM "antecedentes_enfermedades_familiares" WHERE ${SALUD_DEL_CLUB}`, p);
+  const [{ necesidades }] = await sql.query(`SELECT COUNT(*)::int AS necesidades FROM "necesidades_apoyo" WHERE ${DEL_CLUB}`, p);
+  const [{ apoyos }] = await sql.query(
+    `SELECT COUNT(*)::int AS apoyos FROM "apoyos_requeridos"
+      WHERE "necesidades_apoyo_id" IN (SELECT "id" FROM "necesidades_apoyo" WHERE ${DEL_CLUB})`,
+    p
+  );
   const [viandas] = await sql.query(`
     SELECT
       COUNT(*) FILTER (WHERE "recibe_almuerzo" AND "recibe_cena")::int         AS ambas,
@@ -365,7 +380,8 @@ async function main() {
       COUNT(*) FILTER (WHERE NOT "recibe_almuerzo" AND "recibe_cena")::int     AS solo_cena,
       COUNT(*) FILTER (WHERE NOT "recibe_almuerzo" AND NOT "recibe_cena")::int AS ninguna
     FROM "necesidades_apoyo"
-  `);
+    WHERE ${DEL_CLUB}
+  `, p);
 
   console.log("\nConteos finales (desde la DB):");
   console.log(`  datos_salud                          ${salud}`);

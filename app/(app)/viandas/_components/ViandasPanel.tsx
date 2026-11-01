@@ -25,7 +25,7 @@ import ComidaToggle from './ComidaToggle';
 // Espeja DeportistasTable y ConvocatoriaForm.
 const ESTADO_DEPORTISTA_BADGE: Record<string, string> = {
   ACTIVO: 'bg-green-100 text-green-700',
-  INACTIVO: 'bg-gray-100 text-[#6B7280]',
+  INACTIVO: 'bg-gray-100 text-muted-foreground',
   LESIONADO: 'bg-amber-100 text-amber-700',
   SUSPENDIDO: 'bg-red-100 text-red-700',
 };
@@ -299,15 +299,15 @@ export default function ViandasPanel({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <h1
-            className="text-2xl font-semibold text-[#121A61] flex items-center gap-2"
+            className="text-2xl font-semibold text-primario flex items-center gap-2"
             style={{ fontFamily: 'Oswald, sans-serif' }}
           >
             <UtensilsCrossed size={22} aria-hidden="true" />
             Viandas
           </h1>
-          <p className="text-sm text-[#6B7280] mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {esHistorico ? 'Histórico del ' : 'Registro del '}
-            <strong className="text-[#1C1C1C]">{formatearClaveFecha(fechaActiva)}</strong>
+            <strong className="text-foreground">{formatearClaveFecha(fechaActiva)}</strong>
             {esHistorico ? '. Solo lectura.' : '. Solo se puede registrar el día de hoy.'}
           </p>
         </div>
@@ -319,7 +319,7 @@ export default function ViandasPanel({
             <div className="flex flex-col gap-1 sm:w-52">
               <label
                 htmlFor="viandas-fecha"
-                className="text-xs font-medium text-[#6B7280] uppercase tracking-wide"
+                className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
               >
                 Fecha
               </label>
@@ -330,13 +330,13 @@ export default function ViandasPanel({
                   value={fechaInput}
                   max={fechaHoy}
                   onChange={(e) => onCambioFecha(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
                 />
                 {esHistorico && (
                   <button
                     type="button"
                     onClick={volverAHoy}
-                    className="shrink-0 px-3 py-2 text-sm font-medium text-[#3346CC] border border-gray-200 rounded-lg hover:bg-[#F3F4F6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3346CC]/30"
+                    className="shrink-0 px-3 py-2 text-sm font-medium text-secundario border border-gray-200 rounded-lg hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-secundario/30"
                   >
                     Hoy
                   </button>
@@ -345,7 +345,7 @@ export default function ViandasPanel({
             </div>
 
             <div className="flex flex-col gap-1 sm:w-64">
-              <label htmlFor="lugar" className="text-xs font-medium text-[#6B7280] uppercase tracking-wide">
+              <label htmlFor="lugar" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Lugar de retiro
               </label>
               <CustomSelect
@@ -360,8 +360,8 @@ export default function ViandasPanel({
         ) : (
           lugarActivo && (
             <div className="text-sm">
-              <span className="text-[#6B7280]">Lugar: </span>
-              <span className="font-medium text-[#1C1C1C]">
+              <span className="text-muted-foreground">Lugar: </span>
+              <span className="font-medium text-foreground">
                 {LUGAR_RETIRO_LABELS[lugarActivo]}
               </span>
             </div>
@@ -376,7 +376,7 @@ export default function ViandasPanel({
         <div
           role="status"
           aria-live="polite"
-          className="mb-5 flex items-start gap-2 px-4 py-3 bg-[#F3F4F6] border border-gray-200 rounded-lg text-sm text-[#1C1C1C]"
+          className="mb-5 flex items-start gap-2 px-4 py-3 bg-muted border border-gray-200 rounded-lg text-sm text-foreground"
         >
           <History size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
           <span>
@@ -425,7 +425,7 @@ export default function ViandasPanel({
           <div>
             <label
               htmlFor="viandas-disciplina"
-              className="block text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-1.5"
+              className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"
             >
               Disciplina
             </label>
@@ -447,7 +447,7 @@ export default function ViandasPanel({
           <div>
             <label
               htmlFor="viandas-categoria"
-              className="block text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-1.5"
+              className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"
             >
               Categoría
             </label>
@@ -466,7 +466,7 @@ export default function ViandasPanel({
           <div>
             <label
               htmlFor="viandas-comida"
-              className="block text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-1.5"
+              className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"
             >
               Comida
             </label>
@@ -482,11 +482,11 @@ export default function ViandasPanel({
       </div>
 
       {!ambosFiltros ? (
-        <div className="px-4 py-12 text-center text-sm text-[#6B7280] bg-[#F9FAFB] border border-dashed border-gray-200 rounded-lg">
+        <div className="px-4 py-12 text-center text-sm text-muted-foreground bg-subtle border border-dashed border-gray-200 rounded-lg">
           Seleccioná disciplina y categoría para ver el plantel del día.
         </div>
       ) : filas.length === 0 ? (
-        <div className="px-4 py-12 text-center text-sm text-[#6B7280] bg-[#F9FAFB] border border-dashed border-gray-200 rounded-lg">
+        <div className="px-4 py-12 text-center text-sm text-muted-foreground bg-subtle border border-dashed border-gray-200 rounded-lg">
           No hay deportistas en esta disciplina y categoría.
         </div>
       ) : (
@@ -502,11 +502,11 @@ export default function ViandasPanel({
                 key={comida}
                 className="flex items-center gap-2 text-xs bg-white border border-gray-100 rounded-lg px-3 py-2 shadow-sm"
               >
-                <span className="font-medium text-[#1C1C1C]">
+                <span className="font-medium text-foreground">
                   {TIPO_COMIDA_LABELS[comida]}
                 </span>
                 <span className="text-emerald-700">{retiradas} retiradas</span>
-                <span className="text-[#6B7280]">/ {esperadas} esperadas</span>
+                <span className="text-muted-foreground">/ {esperadas} esperadas</span>
                 {/* En un día cerrado "pendientes" miente: ya no van a retirarse.
                     Cambia la etiqueta, no el cálculo. */}
                 {pendientes > 0 && (
@@ -525,7 +525,7 @@ export default function ViandasPanel({
               </div>
             ))}
           </div>
-          <p className="text-xs text-[#6B7280] mb-4">
+          <p className="text-xs text-muted-foreground mb-4">
             Los contadores son de esta disciplina y categoría, no del club entero.
           </p>
 
@@ -533,7 +533,7 @@ export default function ViandasPanel({
           <div className="relative mb-4 max-w-sm">
             <Search
               size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
             />
             <input
@@ -542,12 +542,12 @@ export default function ViandasPanel({
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar deportista..."
               aria-label="Buscar deportista"
-              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
             />
           </div>
 
           {filtradas.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-[#6B7280]">
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               {filtroComida && !busqueda.trim()
                 ? `Nadie de esta categoría recibe ${FILTRO_COMIDA_VACIO[filtroComida]} según su ficha.`
                 : 'Sin resultados para la búsqueda.'}
@@ -587,7 +587,7 @@ export default function ViandasPanel({
               <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <table className="w-full">
                   <thead>
-                    <tr className="text-xs uppercase text-[#6B7280] bg-[#F3F4F6] border-b border-gray-100">
+                    <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-gray-100">
                       <th scope="col" className="text-left px-4 py-3 font-medium">
                         Deportista
                       </th>
@@ -651,7 +651,7 @@ function FilaEncabezado({ d }: { d: DeportistaVianda }) {
   const tag = tagElegibilidad(d);
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm font-medium text-[#1C1C1C]">
+      <span className="text-sm font-medium text-foreground">
         {d.apellido}, {d.nombre}
       </span>
       {/* El badge solo aparece si el estado NO es ACTIVO: mismo criterio que
@@ -659,7 +659,7 @@ function FilaEncabezado({ d }: { d: DeportistaVianda }) {
       {d.estado !== 'ACTIVO' && (
         <span
           className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-            ESTADO_DEPORTISTA_BADGE[d.estado] ?? 'bg-gray-100 text-[#6B7280]'
+            ESTADO_DEPORTISTA_BADGE[d.estado] ?? 'bg-gray-100 text-muted-foreground'
           }`}
         >
           {ESTADO_LABELS[d.estado]}

@@ -59,7 +59,7 @@ export function val(v: string | null | undefined): string {
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="col-span-1 sm:col-span-2 text-sm font-semibold uppercase tracking-wide text-[#6B7280] border-b border-gray-100 pb-2 mb-2">
+    <h3 className="col-span-1 sm:col-span-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground border-b border-gray-100 pb-2 mb-2">
       {children}
     </h3>
   );
@@ -76,15 +76,15 @@ export function FieldRow({
 }) {
   return (
     <div className={className}>
-      <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-0.5">{label}</p>
-      <p className="text-sm text-[#1C1C1C]">{value || '—'}</p>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">{label}</p>
+      <p className="text-sm text-foreground">{value || '—'}</p>
     </div>
   );
 }
 
 export const ESTADO_BADGE: Record<string, string> = {
   ACTIVO: 'bg-green-100 text-green-700',
-  INACTIVO: 'bg-gray-100 text-[#6B7280]',
+  INACTIVO: 'bg-gray-100 text-muted-foreground',
   LESIONADO: 'bg-amber-100 text-amber-700',
   SUSPENDIDO: 'bg-red-100 text-red-700',
 };
@@ -92,7 +92,7 @@ export const ESTADO_BADGE: Record<string, string> = {
 /** Estado vacío para tabs cuya relación de datos no existe. */
 export function EmptySection({ label }: { label?: string }) {
   return (
-    <p className="text-sm text-[#6B7280] py-8 text-center">
+    <p className="text-sm text-muted-foreground py-8 text-center">
       {label ?? 'Sin datos cargados'}
     </p>
   );
@@ -149,11 +149,11 @@ export function DatosDeportivosSection({ deportista: d }: SectionProps) {
       <FieldRow label="Categoría" value={d.categoria ? d.categoria.nombre : '—'} />
       <FieldRow label="Posición" value={val(d.posicion)} />
       <div>
-        <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-1">Estado</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Estado</p>
         <span
           className={[
             'text-xs font-medium px-2.5 py-1 rounded-full',
-            ESTADO_BADGE[d.estado as EstadoDeportista] ?? 'bg-gray-100 text-[#6B7280]',
+            ESTADO_BADGE[d.estado as EstadoDeportista] ?? 'bg-gray-100 text-muted-foreground',
           ].join(' ')}
         >
           {ESTADO_LABELS[d.estado as EstadoDeportista]}
@@ -168,11 +168,11 @@ export function DatosDeportivosSection({ deportista: d }: SectionProps) {
 
       {d.clubesAnteriores.length > 0 && (
         <div className="sm:col-span-2">
-          <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-2">Clubes anteriores</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Clubes anteriores</p>
           <div className="border border-gray-100 rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 text-xs text-[#6B7280] uppercase">
+                <tr className="bg-gray-50 text-xs text-muted-foreground uppercase">
                   <th className="px-4 py-2 text-left">Club</th>
                   <th className="px-4 py-2 text-left">Período</th>
                 </tr>
@@ -181,7 +181,7 @@ export function DatosDeportivosSection({ deportista: d }: SectionProps) {
                 {d.clubesAnteriores.map((c: { id: string; nombre: string; periodo?: string | null }) => (
                   <tr key={c.id} className="border-t border-gray-50">
                     <td className="px-4 py-2">{c.nombre}</td>
-                    <td className="px-4 py-2 text-[#6B7280]">{c.periodo ?? '—'}</td>
+                    <td className="px-4 py-2 text-muted-foreground">{c.periodo ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -229,17 +229,17 @@ export function DatosEscolaresSection({ deportista: d }: SectionProps) {
         <>
           <SectionTitle>Datos Familiares</SectionTitle>
           <div>
-            <p className="text-xs font-semibold text-[#1C1C1C] mb-2 uppercase tracking-wide">Padre</p>
-            <div className="space-y-1 text-sm text-[#1C1C1C]">
+            <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Padre</p>
+            <div className="space-y-1 text-sm text-foreground">
               <p>{val(d.datosFamiliares.padreNombre)} {val(d.datosFamiliares.padreApellido) !== '—' ? d.datosFamiliares.padreApellido : ''}</p>
-              <p className="text-[#6B7280]">{val(d.datosFamiliares.padreNacionalidad)} — {val(d.datosFamiliares.padreOcupacion)}</p>
+              <p className="text-muted-foreground">{val(d.datosFamiliares.padreNacionalidad)} — {val(d.datosFamiliares.padreOcupacion)}</p>
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold text-[#1C1C1C] mb-2 uppercase tracking-wide">Madre</p>
-            <div className="space-y-1 text-sm text-[#1C1C1C]">
+            <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Madre</p>
+            <div className="space-y-1 text-sm text-foreground">
               <p>{val(d.datosFamiliares.madreNombre)} {val(d.datosFamiliares.madreApellido) !== '—' ? d.datosFamiliares.madreApellido : ''}</p>
-              <p className="text-[#6B7280]">{val(d.datosFamiliares.madreNacionalidad)} — {val(d.datosFamiliares.madreOcupacion)}</p>
+              <p className="text-muted-foreground">{val(d.datosFamiliares.madreNacionalidad)} — {val(d.datosFamiliares.madreOcupacion)}</p>
             </div>
           </div>
         </>
@@ -289,7 +289,7 @@ export function DatosSocialesSection({ deportista: d }: SectionProps) {
           <FieldRow label="Cuenta con habitaciones" value={boolLabel(d.viviendaFamiliar.cuentaConHabitaciones)} />
           {d.viviendaFamiliar.servicios.length > 0 && (
             <div className="sm:col-span-2">
-              <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-2">Servicios</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Servicios</p>
               <div className="flex flex-wrap gap-2">
                 {d.viviendaFamiliar.servicios.map((s: { id: string; servicio: import('@/lib/generated/prisma/enums').Servicio }) => (
                   <span
@@ -317,7 +317,7 @@ export function DatosSocialesSection({ deportista: d }: SectionProps) {
           <FieldRow label="Es socio" value={boolLabel(d.necesidadesApoyo.esSocio)} />
           {d.necesidadesApoyo.apoyosRequeridos.length > 0 && (
             <div className="sm:col-span-2">
-              <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-2">Apoyos requeridos</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Apoyos requeridos</p>
               <div className="flex flex-wrap gap-2">
                 {d.necesidadesApoyo.apoyosRequeridos.map((a: { id: string; tipo: import('@/lib/generated/prisma/enums').TipoApoyo }) => (
                   <span
@@ -354,7 +354,7 @@ export function DatosSaludSection({ deportista: d }: SectionProps) {
 
       {d.datosSalud.enfermedadesPreexistentes.length > 0 && (
         <div className="sm:col-span-2">
-          <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-2">Enfermedades preexistentes</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Enfermedades preexistentes</p>
           <div className="flex flex-wrap gap-2">
             {d.datosSalud.enfermedadesPreexistentes.map(
               (e: { id: string; enfermedad: EnfermedadPreexistente }) => (
@@ -369,7 +369,7 @@ export function DatosSaludSection({ deportista: d }: SectionProps) {
 
       {d.datosSalud.antecedentesEnfermedadesFam.length > 0 && (
         <div className="sm:col-span-2">
-          <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-2">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
             Antecedentes de enfermedades familiares
           </p>
           <div className="flex flex-wrap gap-2">
@@ -385,11 +385,11 @@ export function DatosSaludSection({ deportista: d }: SectionProps) {
       )}
 
       <div>
-        <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-1">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
           Antecedente familiar de muerte súbita
         </p>
         {d.datosSalud.antecedenteMuerteSubitaFamiliar == null ? (
-          <p className="text-sm text-[#1C1C1C]">—</p>
+          <p className="text-sm text-foreground">—</p>
         ) : d.datosSalud.antecedenteMuerteSubitaFamiliar ? (
           <span className="text-xs font-medium bg-red-100 text-red-700 px-2.5 py-1 rounded-full">Sí</span>
         ) : (
@@ -401,24 +401,24 @@ export function DatosSaludSection({ deportista: d }: SectionProps) {
 
       {d.datosSalud.antecedentesQuirurgicos && (
         <div className="sm:col-span-2">
-          <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-0.5">Antecedentes quirúrgicos</p>
-          <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{d.datosSalud.antecedentesQuirurgicos}</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Antecedentes quirúrgicos</p>
+          <p className="text-sm text-foreground whitespace-pre-wrap">{d.datosSalud.antecedentesQuirurgicos}</p>
         </div>
       )}
 
       {d.datosSalud.medicacionCronica && (
         <div className="sm:col-span-2">
-          <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-0.5">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">
             Medicación / tratamientos crónicos
           </p>
-          <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{d.datosSalud.medicacionCronica}</p>
+          <p className="text-sm text-foreground whitespace-pre-wrap">{d.datosSalud.medicacionCronica}</p>
         </div>
       )}
 
       {d.datosSalud.historialLesiones && (
         <div className="sm:col-span-2">
-          <p className="text-xs uppercase tracking-wide text-[#6B7280] mb-0.5">Historial de lesiones</p>
-          <p className="text-sm text-[#1C1C1C] whitespace-pre-wrap">{d.datosSalud.historialLesiones}</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Historial de lesiones</p>
+          <p className="text-sm text-foreground whitespace-pre-wrap">{d.datosSalud.historialLesiones}</p>
         </div>
       )}
     </SectionGrid>

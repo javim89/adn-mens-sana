@@ -9,7 +9,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { getContextoClub } from '@/lib/tenant/contexto';
+import { ReadOnlyNoConfiguradoError } from '@/lib/db-readonly';
 import { runQuery, runRawSql } from '@/lib/insights/run';
 import { resolveUserLabels } from '@/lib/insights/user-labels';
 import { formatZodError, queryRequestSchema } from '@/lib/insights/schemas';
@@ -26,9 +27,11 @@ function errorResponse(status: number, error: string) {
 
 /**
  * Los errores del compilador y del guard son errores del usuario (400); los de
- * Postgres son fallas del servidor (500) y su detalle no sale de acá.
+ * Postgres (y la falta del rol read-only en prod) son fallas del servidor (500)
+ * y su detalle no sale de acá.
  */
 function isDatabaseError(error: unknown): boolean {
+  if (error instanceof ReadOnlyNoConfiguradoError) return true;
   if (typeof error !== 'object' || error === null) return false;
   const name = (error as { name?: unknown }).name;
   return typeof name === 'string' && name.startsWith('PrismaClient');
@@ -53,11 +56,10 @@ function fitPayload(rows: Row[]): { rows: Row[]; truncated: boolean } {
 }
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
-  if (!userId) return errorResponse(401, 'No autorizado');
+  const contexto = await getContextoClub();
+  if (!contexto) return errorResponse(401, 'No autorizado');
 
-  const user = await currentUser();
-  if (user?.publicMetadata?.role !== 'admin') {
+  if (contexto.rol !== 'admin') {
     return errorResponse(403, 'Acceso denegado: se requiere rol admin');
   }
 
@@ -74,11 +76,22 @@ export async function POST(request: Request) {
   }
 
   const { spec } = parsed.data;
+
+  // El modo SQL queda para el staff de BioTeam hasta verificar las RLS de
+  // `insights_ro` en producción: el prelude lo acota, pero `public.<tabla>` lo
+  // salta y ahí solo queda la RLS. Ser admin del club no alcanza.
+  if (spec.mode === 'sql' && !contexto.esSuperadmin) {
+    return errorResponse(403, 'El modo SQL está disponible solo para el equipo de soporte');
+  }
+
   const startedAt = Date.now();
 
   let result: { columns: ColumnMeta[]; rows: Record<string, unknown>[] };
   try {
-    result = spec.mode === 'builder' ? await runQuery(spec) : await runRawSql(spec.sql);
+    result =
+      spec.mode === 'builder'
+        ? await runQuery(spec, contexto.clubId)
+        : await runRawSql(spec.sql, contexto.clubId);
   } catch (error) {
     if (isDatabaseError(error)) {
       console.error('POST /api/insights/query error:', error);
@@ -97,7 +110,7 @@ export async function POST(request: Request) {
   const { rows, truncated } = fitPayload(result.rows as Row[]);
 
   // Después de recortar, así no se resuelven ids de filas que no se devuelven.
-  const labeled = await resolveUserLabels({ columns: result.columns, rows });
+  const labeled = await resolveUserLabels({ columns: result.columns, rows }, contexto.clubId);
 
   return NextResponse.json({
     data: labeled.rows,

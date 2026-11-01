@@ -1,5 +1,5 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
-import { deleteFoto, isValidFotoKey } from '@/lib/s3';
+import { contextoApi } from '@/lib/tenant/contexto';
+import { deleteFoto, keyEsDelClub } from '@/lib/s3';
 import { isFotoKeyEnUso } from '@/lib/foto-deportista';
 import type { JsonApiErrors } from '@/lib/types/jsonapi';
 
@@ -18,22 +18,19 @@ function errorResponse(status: number, body: JsonApiErrors): Response {
  * después del upload). Nunca borra una key que algún deportista tenga asignada.
  */
 export async function DELETE(request: Request) {
-  const { userId } = await auth();
-  if (!userId) {
-    return errorResponse(401, {
-      errors: [{ status: '401', code: 'UNAUTHENTICATED', title: 'No autorizado' }],
-    });
-  }
+  const acceso = await contextoApi();
+  if (!acceso.ok) return acceso.response;
 
-  const clerkUser = await currentUser();
-  if (String(clerkUser?.publicMetadata?.role ?? '') === 'social') {
+  if (acceso.contexto.rol === 'social') {
     return errorResponse(403, {
       errors: [{ status: '403', code: 'FORBIDDEN', title: 'No tenés permiso para borrar fotos' }],
     });
   }
 
+  // Solo se descartan subidas del propio club: una key legacy o de otro club se
+  // trata como inválida, sin decir si existe.
   const key = new URL(request.url).searchParams.get('key');
-  if (!isValidFotoKey(key)) {
+  if (!keyEsDelClub(key, acceso.contexto.clubId)) {
     return errorResponse(422, {
       errors: [
         {

@@ -92,7 +92,7 @@ describe('applyDashboardFilters', () => {
 describe('integración con el compilador', () => {
   it('el spec filtrado compila a SQL parametrizado', () => {
     const out = applyDashboardFilters(spec, 'w1', [filtro()]) as QuerySpec;
-    const { sql, params } = compile(out);
+    const { sql, params } = compile(out, new Date(), { clubId: 'club_test' });
 
     expect(sql).toContain('WHERE');
     expect(params).toContain('ACTIVO');
@@ -105,7 +105,7 @@ describe('integración con el compilador', () => {
       filtro({ dimension: 'columna_inventada' }),
     ]) as QuerySpec;
 
-    expect(() => compile(out)).toThrow(/Dimensión desconocida/);
+    expect(() => compile(out, new Date(), { clubId: 'club_test' })).toThrow(/Dimensión desconocida/);
   });
 
   it('un intento de inyección en el valor sigue viajando como parámetro', () => {
@@ -113,7 +113,7 @@ describe('integración con el compilador', () => {
       filtro({ value: "' OR '1'='1" }),
     ]) as QuerySpec;
 
-    const { sql, params } = compile(out);
+    const { sql, params } = compile(out, new Date(), { clubId: 'club_test' });
     expect(params).toContain("' OR '1'='1");
     expect(sql).not.toContain("OR '1'='1");
   });

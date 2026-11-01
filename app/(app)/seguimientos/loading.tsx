@@ -16,7 +16,7 @@ export default function SeguimientosLoading() {
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-[#F3F4F6] border-b border-gray-100">
+              <tr className="bg-muted border-b border-gray-100">
                 {['Deportista', 'Fecha', 'Título', 'Prioridad', 'Tipo', 'Próxima cita', ''].map(
                   (h, i) => (
                     <th key={i} className="px-5 py-3 text-left">

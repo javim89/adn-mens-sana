@@ -408,7 +408,7 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
 
       {isAdmin && (
         <div>
-          <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Área responsable <span className="text-red-500">*</span>
           </label>
           <Controller
@@ -431,8 +431,8 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
       {disciplinas.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
-              Disciplina <span className="text-[#6B7280] font-normal">(filtro)</span>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Disciplina <span className="text-muted-foreground font-normal">(filtro)</span>
             </label>
             <CustomSelect
               value={filtroDisciplina || '__all__'}
@@ -448,8 +448,8 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
-              Categoría <span className="text-[#6B7280] font-normal">(filtro)</span>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Categoría <span className="text-muted-foreground font-normal">(filtro)</span>
             </label>
             <CustomSelect
               value={filtroCategoria || '__all__'}
@@ -466,7 +466,7 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
       )}
 
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+        <label className="block text-sm font-medium text-foreground mb-1.5">
           Deportista <span className="text-red-500">*</span>
         </label>
         <Controller
@@ -491,13 +491,13 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Fecha <span className="text-red-500">*</span>
           </label>
           <input
             type="date"
             {...register('fecha')}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 aria-[invalid=true]:border-red-400"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30 aria-[invalid=true]:border-red-400"
             aria-invalid={errors.fecha ? 'true' : 'false'}
           />
           {errors.fecha && (
@@ -505,20 +505,20 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Próxima cita
           </label>
           <input
             type="datetime-local"
             {...register('proximaCita')}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
           />
         </div>
       </div>
 
       {tiposDisponibles.length > 1 && (
         <div>
-          <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Tipo de seguimiento
           </label>
           <Controller
@@ -537,14 +537,14 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
       )}
 
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+        <label className="block text-sm font-medium text-foreground mb-1.5">
           Título / Motivo <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           {...register('titulo')}
           placeholder="Ej: Evaluación de rodilla post-lesión"
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 aria-[invalid=true]:border-red-400"
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30 aria-[invalid=true]:border-red-400"
           aria-invalid={errors.titulo ? 'true' : 'false'}
         />
         {errors.titulo && (
@@ -553,7 +553,7 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">Prioridad</label>
+        <label className="block text-sm font-medium text-foreground mb-1.5">Prioridad</label>
         <Controller
           name="prioridad"
           control={control}
@@ -573,7 +573,7 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
         <>
           <hr className="border-gray-100" />
           <div>
-            <p className="text-xs font-semibold uppercase text-[#6B7280] mb-3 tracking-wide">
+            <p className="text-xs font-semibold uppercase text-muted-foreground mb-3 tracking-wide">
               Datos traumatológicos
             </p>
             <TraumatologiaSection register={register} errors={errors} />
@@ -585,7 +585,7 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
         <>
           <hr className="border-gray-100" />
           <div>
-            <p className="text-xs font-semibold uppercase text-[#6B7280] mb-3 tracking-wide">
+            <p className="text-xs font-semibold uppercase text-muted-foreground mb-3 tracking-wide">
               Historia clínica
             </p>
             <HistoriaClinicaSection register={register} errors={errors} />
@@ -597,7 +597,7 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
         <>
           <hr className="border-gray-100" />
           <div>
-            <p className="text-xs font-semibold uppercase text-[#6B7280] mb-3 tracking-wide">
+            <p className="text-xs font-semibold uppercase text-muted-foreground mb-3 tracking-wide">
               Evaluación psicológica
             </p>
             <EvaluacionPsicologicaSection register={register} errors={errors} />
@@ -609,7 +609,7 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
         <>
           <hr className="border-gray-100" />
           <div>
-            <p className="text-xs font-semibold uppercase text-[#6B7280] mb-3 tracking-wide">
+            <p className="text-xs font-semibold uppercase text-muted-foreground mb-3 tracking-wide">
               Evaluación cardiológica
             </p>
             <EvaluacionCardiologicaSection register={register} errors={errors} />
@@ -621,7 +621,7 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
         <>
           <hr className="border-gray-100" />
           <div>
-            <p className="text-xs font-semibold uppercase text-[#6B7280] mb-3 tracking-wide">
+            <p className="text-xs font-semibold uppercase text-muted-foreground mb-3 tracking-wide">
               Antropometría
             </p>
             <AntropometriaSection register={register} watch={watch} errors={errors} />
@@ -632,50 +632,50 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
       <hr className="border-gray-100" />
 
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+        <label className="block text-sm font-medium text-foreground mb-1.5">
           Descripción / Observaciones
         </label>
         <textarea
           {...register('descripcion')}
           rows={3}
           placeholder="Detalles del seguimiento, estado actual del deportista..."
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-secundario/30"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+        <label className="block text-sm font-medium text-foreground mb-1.5">
           Recomendaciones
         </label>
         <textarea
           {...register('recomendaciones')}
           rows={3}
           placeholder="Indicaciones, plan de acción..."
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-secundario/30"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+        <label className="block text-sm font-medium text-foreground mb-1.5">
           Resultados de evaluación
         </label>
         <textarea
           {...register('resultadosEvaluacion')}
           rows={3}
           placeholder="Mediciones, diagnósticos, resultados de tests..."
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-secundario/30"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+        <label className="block text-sm font-medium text-foreground mb-1.5">
           Alerta de seguimiento
         </label>
         <textarea
           {...register('alertaSeguimiento')}
           rows={2}
           placeholder="Señales de alerta a monitorear..."
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-secundario/30"
         />
       </div>
 
@@ -684,14 +684,14 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
           type="button"
           onClick={() => router.push('/seguimientos')}
           disabled={isPending}
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
+          className="text-sm text-muted-foreground hover:text-foreground border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={isPending}
-          className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-primario-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isPending ? (
             <>

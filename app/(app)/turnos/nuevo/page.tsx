@@ -1,12 +1,11 @@
 import Link from 'next/link';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getProfesionales } from '@/lib/actions/turnos';
 import TurnoForm from '../_components/TurnoForm';
 
 export default async function NuevoTurnoPage() {
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
-  const isAdmin = role === 'admin';
+  const { rol } = await requireContexto();
+  const isAdmin = rol === 'admin';
 
   const profesionales = isAdmin ? await getProfesionales() : [];
 
@@ -15,13 +14,13 @@ export default async function NuevoTurnoPage() {
       <div className="mb-2">
         <Link
           href="/turnos"
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Turnos
         </Link>
       </div>
       <h1
-        className="text-3xl font-bold text-[#121A61] mb-6"
+        className="text-3xl font-bold text-primario mb-6"
         style={{ fontFamily: 'Oswald, sans-serif' }}
       >
         Nuevo turno

@@ -74,7 +74,7 @@ export default function DeportistaMultiSelect({ value, onChange }: Props) {
           {value.map((dep) => (
             <span
               key={dep.id}
-              className="inline-flex items-center gap-1 text-xs font-medium bg-[#121A61] text-white px-2.5 py-1 rounded-full"
+              className="inline-flex items-center gap-1 text-xs font-medium bg-primario text-white px-2.5 py-1 rounded-full"
             >
               {dep.apellido}, {dep.nombre}
               <button
@@ -93,16 +93,16 @@ export default function DeportistaMultiSelect({ value, onChange }: Props) {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:border-[#3346CC]/50 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 transition-colors text-left"
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:border-secundario/50 focus:outline-none focus:ring-2 focus:ring-secundario/30 transition-colors text-left"
       >
-        <span className="text-[#6B7280]">
+        <span className="text-muted-foreground">
           {value.length === 0
             ? 'Buscar y seleccionar deportistas...'
             : `${value.length} deportista${value.length !== 1 ? 's' : ''} seleccionado${value.length !== 1 ? 's' : ''}`}
         </span>
         <ChevronDown
           size={14}
-          className={`text-[#6B7280] shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`text-muted-foreground shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -110,23 +110,23 @@ export default function DeportistaMultiSelect({ value, onChange }: Props) {
         <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
           <div className="p-2 border-b border-gray-100">
             <div className="relative">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 autoFocus
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar por nombre, apellido o DNI..."
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-secundario/30"
               />
             </div>
           </div>
 
           <ul className="max-h-52 overflow-y-auto">
             {isLoading ? (
-              <li className="px-3 py-6 text-center text-sm text-[#6B7280]">Cargando...</li>
+              <li className="px-3 py-6 text-center text-sm text-muted-foreground">Cargando...</li>
             ) : availableOptions.length === 0 ? (
-              <li className="px-3 py-6 text-center text-sm text-[#6B7280]">
+              <li className="px-3 py-6 text-center text-sm text-muted-foreground">
                 {options.length === 0 ? 'No se encontraron deportistas' : 'Todos ya seleccionados'}
               </li>
             ) : (
@@ -135,9 +135,9 @@ export default function DeportistaMultiSelect({ value, onChange }: Props) {
                   <button
                     type="button"
                     onClick={() => toggle(dep)}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-[#F3F4F6] transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-muted transition-colors"
                   >
-                    <span className="font-medium text-[#1C1C1C]">
+                    <span className="font-medium text-foreground">
                       {dep.apellido}, {dep.nombre}
                     </span>
                   </button>

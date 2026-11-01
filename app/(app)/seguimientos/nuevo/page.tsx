@@ -1,12 +1,11 @@
 import Link from 'next/link';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import SeguimientoForm from '../_components/SeguimientoForm';
 
 export default async function NuevoSeguimientoPage() {
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
+  const { rol: role } = await requireContexto();
   const isAdmin = role === 'admin';
 
   const profesionales = isAdmin ? await getProfesionalesSeguimientos() : [];
@@ -17,13 +16,13 @@ export default async function NuevoSeguimientoPage() {
       <div className="mb-2">
         <Link
           href="/seguimientos"
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Seguimientos
         </Link>
       </div>
       <h1
-        className="text-3xl font-bold text-[#121A61] mb-6"
+        className="text-3xl font-bold text-primario mb-6"
         style={{ fontFamily: 'Oswald, sans-serif' }}
       >
         Nuevo seguimiento

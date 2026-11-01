@@ -1,18 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockGetUserList, mockClerkClient } = vi.hoisted(() => {
-  const mockGetUserList = vi.fn();
-  return {
-    mockGetUserList,
-    mockClerkClient: vi.fn().mockResolvedValue({ users: { getUserList: mockGetUserList } }),
-  };
-});
+const { mockGetMiembros } = vi.hoisted(() => ({ mockGetMiembros: vi.fn() }));
 
-vi.mock('@clerk/nextjs/server', () => ({ clerkClient: mockClerkClient }));
+vi.mock('@/lib/db', () => ({ prisma: {} }));
+vi.mock('@clerk/nextjs/server', () => ({ clerkClient: vi.fn(), auth: vi.fn() }));
+vi.mock('@/lib/tenant/miembros', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/tenant/miembros')>()),
+  getMiembrosDelClub: mockGetMiembros,
+}));
 
 const { collectUserIds, resolveUserLabels } = await import('../user-labels');
 
 import type { ColumnMeta, QueryResult } from '../types';
+
+const CLUB = 'club_a';
 
 const COL_ENTREGADO: ColumnMeta = {
   id: 'entregado_por',
@@ -42,24 +43,24 @@ function resultado(rows: Record<string, unknown>[]): QueryResult {
   return { columns: [COL_ENTREGADO, COL_LUGAR, COL_ENTREGAS], rows };
 }
 
-function clerkUser(
-  id: string,
-  overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+function miembro(userId: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    id,
-    firstName: 'Ana',
-    lastName: 'López',
-    publicMetadata: {},
-    emailAddresses: [{ emailAddress: `${id}@club.com` }],
+    userId,
+    rol: 'entrenador',
+    lugarRetiro: null,
+    activo: true,
+    nombre: 'Ana',
+    apellido: 'López',
+    email: `${userId}@club.com`,
+    lastSignInAt: null,
+    createdAt: new Date('2026-01-01'),
     ...overrides,
   };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClerkClient.mockResolvedValue({ users: { getUserList: mockGetUserList } });
-  mockGetUserList.mockResolvedValue({ data: [clerkUser('user_1')] });
+  mockGetMiembros.mockResolvedValue([miembro('user_1')]);
 });
 
 describe('collectUserIds', () => {
@@ -94,15 +95,14 @@ describe('collectUserIds', () => {
 
 describe('resolveUserLabels', () => {
   it('deja el nombre en enumLabels de la columna marcada', async () => {
-    mockGetUserList.mockResolvedValue({
-      data: [clerkUser('user_1'), clerkUser('user_2', { firstName: 'Beto', lastName: 'Díaz' })],
-    });
+    mockGetMiembros.mockResolvedValue([miembro('user_1'), miembro('user_2', { nombre: 'Beto', apellido: 'Díaz' })]);
 
     const out = await resolveUserLabels(
       resultado([
         { entregado_por: 'user_1', lugar: 'SEDE', entregas: 3 },
         { entregado_por: 'user_2', lugar: 'SEDE', entregas: 1 },
       ]),
+      CLUB,
     );
 
     const columna = out.columns.find((c) => c.id === 'entregado_por');
@@ -112,35 +112,41 @@ describe('resolveUserLabels', () => {
     });
   });
 
-  it('pide a Clerk solo los ids que aparecieron en el resultado', async () => {
-    await resolveUserLabels(resultado([{ entregado_por: 'user_1', entregas: 3 }]));
+  it('busca entre los miembros del club de la sesión, incluidos los inactivos', async () => {
+    await resolveUserLabels(resultado([{ entregado_por: 'user_1', entregas: 3 }]), CLUB);
 
-    expect(mockGetUserList).toHaveBeenCalledWith({ userId: ['user_1'], limit: 1 });
+    expect(mockGetMiembros).toHaveBeenCalledWith({ clubId: CLUB, incluirInactivos: true });
+  });
+
+  it('un id que no es miembro del club queda como id (no se resuelve contra Clerk)', async () => {
+    mockGetMiembros.mockResolvedValue([miembro('user_1')]);
+
+    const out = await resolveUserLabels(
+      resultado([{ entregado_por: 'user_1' }, { entregado_por: 'user_otro_club' }]),
+      CLUB,
+    );
+
+    expect(out.columns[0].enumLabels).toEqual({ user_1: 'Ana López' });
   });
 
   it('no toca las filas ni las otras columnas', async () => {
     const entrada = resultado([{ entregado_por: 'user_1', lugar: 'SEDE', entregas: 3 }]);
-    const out = await resolveUserLabels(entrada);
+    const out = await resolveUserLabels(entrada, CLUB);
 
     expect(out.rows).toEqual(entrada.rows);
     expect(out.columns.find((c) => c.id === 'lugar')).toEqual(COL_LUGAR);
     expect(out.columns.find((c) => c.id === 'entregas')).toEqual(COL_ENTREGAS);
   });
 
-  it('cae al mail y después al id cuando el usuario no tiene nombre', async () => {
-    mockGetUserList.mockResolvedValue({
-      data: [
-        clerkUser('user_1', { firstName: null, lastName: null }),
-        clerkUser('user_2', {
-          firstName: null,
-          lastName: null,
-          emailAddresses: [],
-        }),
-      ],
-    });
+  it('cae al mail y después al id cuando el miembro no tiene nombre', async () => {
+    mockGetMiembros.mockResolvedValue([
+      miembro('user_1', { nombre: '', apellido: '' }),
+      miembro('user_2', { nombre: '', apellido: '', email: '' }),
+    ]);
 
     const out = await resolveUserLabels(
       resultado([{ entregado_por: 'user_1' }, { entregado_por: 'user_2' }]),
+      CLUB,
     );
 
     expect(out.columns[0].enumLabels).toEqual({
@@ -149,39 +155,23 @@ describe('resolveUserLabels', () => {
     });
   });
 
-  it('usa el nombre de publicMetadata si el perfil de Clerk está vacío', async () => {
-    mockGetUserList.mockResolvedValue({
-      data: [
-        clerkUser('user_1', {
-          firstName: null,
-          lastName: null,
-          publicMetadata: { firstName: 'Carla', lastName: 'Ruiz' },
-        }),
-      ],
-    });
-
-    const out = await resolveUserLabels(resultado([{ entregado_por: 'user_1' }]));
-
-    expect(out.columns[0].enumLabels).toEqual({ user_1: 'Carla Ruiz' });
-  });
-
-  it('no consulta Clerk si ninguna columna lo pide', async () => {
+  it('no consulta miembros si ninguna columna lo pide', async () => {
     const entrada: QueryResult = {
       columns: [COL_LUGAR, COL_ENTREGAS],
       rows: [{ lugar: 'SEDE', entregas: 3 }],
     };
 
-    const out = await resolveUserLabels(entrada);
+    const out = await resolveUserLabels(entrada, CLUB);
 
-    expect(mockClerkClient).not.toHaveBeenCalled();
+    expect(mockGetMiembros).not.toHaveBeenCalled();
     expect(out).toBe(entrada);
   });
 
-  it('devuelve el resultado intacto si Clerk falla — se ven los ids', async () => {
-    mockGetUserList.mockRejectedValue(new Error('Clerk caído'));
+  it('devuelve el resultado intacto si falla la consulta — se ven los ids', async () => {
+    mockGetMiembros.mockRejectedValue(new Error('Clerk caído'));
     const entrada = resultado([{ entregado_por: 'user_1', entregas: 3 }]);
 
-    const out = await resolveUserLabels(entrada);
+    const out = await resolveUserLabels(entrada, CLUB);
 
     expect(out.columns.find((c) => c.id === 'entregado_por')?.enumLabels).toBeUndefined();
     expect(out.rows).toEqual(entrada.rows);

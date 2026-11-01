@@ -126,7 +126,7 @@ export function tagElegibilidad(
   flags: FlagsAlmuerzoCena,
 ): { label: string; className: string } | null {
   if (!flags.recibeAlmuerzo && !flags.recibeCena) {
-    return { label: 'No recibe vianda', className: 'bg-gray-100 text-[#6B7280]' };
+    return { label: 'No recibe vianda', className: 'bg-gray-100 text-muted-foreground' };
   }
   if (flags.recibeAlmuerzo && !flags.recibeCena) {
     return { label: 'Recibe solo almuerzo', className: 'bg-amber-50 text-amber-700' };

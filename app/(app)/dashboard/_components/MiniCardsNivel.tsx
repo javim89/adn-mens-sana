@@ -35,7 +35,7 @@ const COLUMNAS = {
  * Cada una es un link a su filtro exacto, así que el número que muestra es el que va a
  * contar el listado. **Las de 0 no se esconden**: "no hay nadie en naranja" es
  * información; se atenúan para que el ojo vaya a las que tienen gente. La atenuación
- * es con gris `#6B7280` y sin tinte, NO con `opacity`: siguen siendo links activos y
+ * es con gris (`text-muted-foreground`) y sin tinte, NO con `opacity`: siguen siendo links activos y
  * con `opacity-50` el texto caía a ~3:1 (no pasa AA).
  *
  * `total === 0` no divide: el % se omite.
@@ -59,7 +59,7 @@ export default function MiniCardsNivel({
               href={it.href}
               aria-label={it.ariaLabel}
               data-vacio={vacio || undefined}
-              className={`group flex h-full flex-col rounded-xl px-3 py-2.5 transition-colors hover:ring-2 hover:ring-[#121A61]/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3346CC] ${vacio ? 'bg-gray-50' : it.tinte}`}
+              className={`group flex h-full flex-col rounded-xl px-3 py-2.5 transition-colors hover:ring-2 hover:ring-primario/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secundario ${vacio ? 'bg-gray-50' : it.tinte}`}
             >
               <span className="flex min-w-0 items-center gap-1.5">
                 <span
@@ -67,19 +67,19 @@ export default function MiniCardsNivel({
                   aria-hidden
                 />
                 <span
-                  className={`truncate text-xs font-medium group-hover:underline ${vacio ? 'text-[#6B7280]' : 'text-[#1C1C1C]'}`}
+                  className={`truncate text-xs font-medium group-hover:underline ${vacio ? 'text-muted-foreground' : 'text-foreground'}`}
                 >
                   {it.label}
                 </span>
               </span>
               <span
-                className={`mt-1 text-3xl font-semibold leading-none tabular-nums ${vacio ? 'text-[#6B7280]' : 'text-[#121A61]'}`}
+                className={`mt-1 text-3xl font-semibold leading-none tabular-nums ${vacio ? 'text-muted-foreground' : 'text-primario'}`}
                 style={OSWALD}
               >
                 {it.cantidad}
               </span>
               {total > 0 && (
-                <span className="mt-1 text-xs tabular-nums text-[#4A5368]">
+                <span className="mt-1 text-xs tabular-nums text-gray-600">
                   {Math.round((it.cantidad / total) * 100)}%
                 </span>
               )}

@@ -47,7 +47,7 @@ describe('BloqueDashboard', () => {
     const titulo = screen.getByRole('heading', { level: 2 });
     expect(titulo.className).toContain('uppercase');
     expect(titulo.className).toContain('tracking-[0.14em]');
-    expect(titulo.parentElement!.className).toContain('bg-[#DFE3EF]');
+    expect(titulo.parentElement!.className).toContain('bg-primario/12');
   });
 
   /**

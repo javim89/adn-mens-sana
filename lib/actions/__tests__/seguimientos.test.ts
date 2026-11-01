@@ -1,18 +1,10 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // All mocks must be hoisted before vi.mock calls
-const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma, mockClerkClient } = vi.hoisted(
+const { mockRevalidatePath, mockPrisma, mockGetMiembros } = vi.hoisted(
   () => {
-    const mockAuth = vi.fn().mockResolvedValue({ userId: 'user_medico_123' });
-    const mockCurrentUser = vi.fn().mockResolvedValue({
-      publicMetadata: { role: 'medico' },
-    });
     const mockRevalidatePath = vi.fn();
-    const mockClerkClient = vi.fn().mockResolvedValue({
-      users: {
-        getUserList: vi.fn().mockResolvedValue({ data: [] }),
-      },
-    });
+    const mockGetMiembros = vi.fn().mockResolvedValue([]);
 
     const mockTx = {
       seguimiento: {
@@ -69,24 +61,27 @@ const { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma, mockClerkClie
       $transaction: mockTransaction,
       _tx: mockTx,
     };
-    return { mockAuth, mockCurrentUser, mockRevalidatePath, mockPrisma, mockClerkClient };
+    return { mockRevalidatePath, mockPrisma, mockGetMiembros };
   },
 );
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: mockAuth,
-  currentUser: mockCurrentUser,
-  clerkClient: mockClerkClient,
-}));
-vi.mock('@/lib/db', () => ({ prisma: mockPrisma }));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
+vi.mock('@/lib/tenant/miembros', () => ({ getMiembrosDelClub: mockGetMiembros }));
+vi.mock('@/lib/tenant/db', async () =>
+  (await import('@/test-utils/tenant')).moduloDbMock(mockPrisma),
+);
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
 import {
   createSeguimiento,
   updateSeguimiento,
   deleteSeguimiento,
+  getProfesionalesSeguimientos,
 } from '../seguimientos';
 import type { SeguimientoFormData } from '@/lib/types/seguimientos';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
 
 const validData: SeguimientoFormData = {
   deportistaIds: ['dep-123'],
@@ -97,38 +92,31 @@ const validData: SeguimientoFormData = {
 };
 
 function setCallerAsMedico(userId = 'user_medico_123') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'medico' } });
+  setContexto(mockContexto('medico', { userId }));
 }
 
 function setCallerAsPsicologo(userId = 'user_psicologo_123') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'psicologo' } });
+  setContexto(mockContexto('psicologo', { userId }));
 }
 
 function setCallerAsCardiologo(userId = 'user_cardiologo_123') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'cardiologo' } });
+  setContexto(mockContexto('cardiologo', { userId }));
 }
 
 function setCallerAsNutricionista(userId = 'user_nutri_123') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'nutricionista' } });
+  setContexto(mockContexto('nutricionista', { userId }));
 }
 
 function setCallerAsAdmin(userId = 'user_admin_456') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+  setContexto(mockContexto('admin', { userId }));
 }
 
 function setCallerAsEntrenador(userId = 'user_entrenador_789') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'entrenador' } });
+  setContexto(mockContexto('entrenador', { userId }));
 }
 
 function setCallerAsSocial(userId = 'user_social_111') {
-  mockAuth.mockResolvedValue({ userId });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'social' } });
+  setContexto(mockContexto('social', { userId }));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -153,7 +141,7 @@ describe('createSeguimiento', () => {
   });
 
   test('1. rechaza si no autenticado (userId = null)', async () => {
-    mockAuth.mockResolvedValueOnce({ userId: null });
+    setContexto(null);
     const result = await createSeguimiento(validData);
     expect(result).toEqual({ success: false, error: 'No autorizado' });
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
@@ -760,5 +748,36 @@ describe('deleteSeguimiento', () => {
     expect(result.success).toBe(false);
     expect((result as { success: false; error: string }).error).toContain('No autorizado');
     expect(mockPrisma.seguimiento.delete).not.toHaveBeenCalled();
+  });
+});
+
+// ─── getProfesionalesSeguimientos ─────────────────────────────────────────────────────────────
+
+describe('getProfesionalesSeguimientos', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('lista solo miembros del club activo con los roles del módulo', async () => {
+    setContexto(mockContexto('admin'));
+    mockGetMiembros.mockResolvedValue([
+      { userId: 'u1', rol: 'medico', nombre: 'Ana', apellido: 'Paz', email: 'a@x.com' },
+    ]);
+
+    const lista = await getProfesionalesSeguimientos();
+
+    expect(mockGetMiembros).toHaveBeenCalledWith({ roles: ['medico', 'kinesiologo', 'nutricionista', 'psicologo', 'cardiologo'] });
+    expect(lista).toEqual([{ id: 'u1', nombre: 'Ana', apellido: 'Paz', rol: 'medico' }]);
+  });
+
+  test('un no-admin recibe una lista vacía sin consultar miembros', async () => {
+    setContexto(mockContexto('entrenador'));
+    await expect(getProfesionalesSeguimientos()).resolves.toEqual([]);
+    expect(mockGetMiembros).not.toHaveBeenCalled();
+  });
+
+  test('sin club activo, lista vacía', async () => {
+    setContexto(null);
+    await expect(getProfesionalesSeguimientos()).resolves.toEqual([]);
   });
 });

@@ -7,7 +7,8 @@ import { getCategorias } from '@/lib/queries/categorias';
 import DeportistaDetailTabs from '../_components/DeportistaDetailTabs';
 import DeleteDeportistaModal from '../_components/DeleteDeportistaModal';
 import { ESTADO_LABELS } from '@/lib/utils/enum-labels';
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getFotoUrl } from '@/lib/s3';
 import { Avatar } from '@/app/components/ui/avatar';
 import type { EstadoDeportista } from '@/lib/generated/prisma/enums';
@@ -15,7 +16,7 @@ import type { TriageContribucion } from '@/lib/types/triage';
 
 const ESTADO_BADGE: Record<string, string> = {
   ACTIVO: 'bg-green-100 text-green-700',
-  INACTIVO: 'bg-gray-100 text-[#6B7280]',
+  INACTIVO: 'bg-gray-100 text-muted-foreground',
   LESIONADO: 'bg-amber-100 text-amber-700',
   SUSPENDIDO: 'bg-red-100 text-red-700',
 };
@@ -26,6 +27,8 @@ export default async function DeportistaDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  // Antes de cualquier query: sin club, a /bienvenida (y no un SinContextoError).
+  await requireContexto();
   const deportista = await getDeportistaById(id);
 
   const [{ items: seguimientosRaw }, fotoUrl] = await Promise.all([
@@ -47,7 +50,8 @@ export default async function DeportistaDetailPage({
   const disciplinas = disciplinasCatalogo.map((d) => ({ id: d.id, nombre: d.nombre }));
   const categorias = categoriasCatalogo.map((c) => ({ id: c.id, nombre: c.nombre }));
 
-  const triageRow = await prisma.triage.findFirst({
+  const db = await getDb();
+  const triageRow = await db.triage.findFirst({
     where: { deportistaId: id },
     orderBy: { calculatedAt: 'desc' },
   });
@@ -68,7 +72,7 @@ export default async function DeportistaDetailPage({
       <div className="mb-2">
         <Link
           href="/deportistas"
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Deportistas
         </Link>
@@ -85,7 +89,7 @@ export default async function DeportistaDetailPage({
           />
           <div className="flex min-w-0 items-center gap-3 flex-wrap">
             <h1
-              className="min-w-0 break-words text-3xl font-bold text-[#121A61]"
+              className="min-w-0 break-words text-3xl font-bold text-primario"
               style={{ fontFamily: 'Oswald, sans-serif' }}
             >
               {nombreCompleto}
@@ -93,7 +97,7 @@ export default async function DeportistaDetailPage({
             <span
               className={[
                 'text-xs font-medium px-2.5 py-1 rounded-full',
-                ESTADO_BADGE[deportista.estado] ?? 'bg-gray-100 text-[#6B7280]',
+                ESTADO_BADGE[deportista.estado] ?? 'bg-gray-100 text-muted-foreground',
               ].join(' ')}
             >
               {ESTADO_LABELS[deportista.estado as EstadoDeportista]}
@@ -104,7 +108,7 @@ export default async function DeportistaDetailPage({
         <div className="flex items-center gap-2 flex-shrink-0">
           <Link
             href={`/deportistas/${id}/editar`}
-            className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors"
+            className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover transition-colors"
           >
             Editar
           </Link>

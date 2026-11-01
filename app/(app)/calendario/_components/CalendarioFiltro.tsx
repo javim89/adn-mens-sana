@@ -19,7 +19,7 @@ export default function CalendarioFiltro({ categorias, value, onChange }: Calend
     <div className="w-full sm:w-56">
       <label
         htmlFor="cal-filtro-categoria"
-        className="block text-xs font-medium text-[#6B7280] mb-1"
+        className="block text-xs font-medium text-muted-foreground mb-1"
       >
         Categoría
       </label>

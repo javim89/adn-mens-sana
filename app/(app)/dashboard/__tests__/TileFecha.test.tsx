@@ -14,7 +14,7 @@ describe('TileFecha', () => {
     const { container } = render(<TileFecha arriba="MIÉ 30/9" abajo="10:30" />);
 
     const tile = container.firstElementChild!;
-    expect(tile.className).toContain('bg-[#121A61]');
+    expect(tile.className).toContain('bg-primario');
     expect(tile.className).toContain('text-white');
   });
 
@@ -26,7 +26,7 @@ describe('TileFecha', () => {
     const tile = container.firstElementChild!;
     expect(tile.className).toContain('bg-amber-100');
     expect(tile.className).toContain('text-amber-900');
-    expect(tile.className).not.toContain('bg-[#121A61]');
+    expect(tile.className).not.toContain('bg-primario');
   });
 
   test('la línea grande usa tabular-nums', () => {

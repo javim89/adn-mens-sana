@@ -1,12 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import DeportistaForm from '../_components/DeportistaForm';
 
 export default async function NuevoDeportistaPage() {
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
+  const { rol: role } = await requireContexto();
   if (role === 'social') redirect('/deportistas');
 
   const disciplinas = await getDisciplinasConCategorias();
@@ -16,13 +15,13 @@ export default async function NuevoDeportistaPage() {
       <div className="mb-2">
         <Link
           href="/deportistas"
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Deportistas
         </Link>
       </div>
       <h1
-        className="text-3xl font-bold text-[#121A61] mb-6"
+        className="text-3xl font-bold text-primario mb-6"
         style={{ fontFamily: 'Oswald, sans-serif' }}
       >
         Nuevo deportista

@@ -21,18 +21,18 @@ export default function ProgressChart({ data, config, columns }: ChartProps) {
     <div className="h-full w-full flex flex-col justify-center gap-3 px-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span
-          className="text-3xl font-semibold text-[#121A61] tabular-nums leading-none"
+          className="text-3xl font-semibold text-primario tabular-nums leading-none"
           style={{ fontFamily: 'Oswald, sans-serif' }}
         >
           {formatValue(value, format)}
         </span>
-        <span className="text-xs text-[#6B7280]">
+        <span className="text-xs text-muted-foreground">
           Objetivo: {formatValue(target, format)}
         </span>
       </div>
 
       <div
-        className="h-3 w-full rounded-full bg-[#F3F4F6] overflow-hidden"
+        className="h-3 w-full rounded-full bg-muted overflow-hidden"
         role="progressbar"
         aria-label={config.label ?? measure.label}
         aria-valuenow={Math.round(pct)}
@@ -46,8 +46,8 @@ export default function ProgressChart({ data, config, columns }: ChartProps) {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs text-[#6B7280]">{config.label ?? measure.label}</span>
-        <span className="text-xs font-medium text-[#1C1C1C] tabular-nums">
+        <span className="text-xs text-muted-foreground">{config.label ?? measure.label}</span>
+        <span className="text-xs font-medium text-foreground tabular-nums">
           {formatValue(ratio * 100, 'percent')}
         </span>
       </div>

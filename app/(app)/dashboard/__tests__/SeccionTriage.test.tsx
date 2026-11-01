@@ -26,7 +26,7 @@ describe('SeccionTriage', () => {
     // El 80 aparece también en la mini-card de Rojo: el primero es el del hero.
     const numero = screen.getAllByText('80')[0];
     expect(numero.className).toContain('text-white');
-    expect(numero.closest('div.rounded-2xl')!.className).toContain('bg-[#121A61]');
+    expect(numero.closest('div.rounded-2xl')!.className).toContain('bg-primario');
     expect(
       screen.getByRole('link', { name: 'Ver los deportistas activos en nivel Rojo' }),
     ).toBeInTheDocument();

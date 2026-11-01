@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 import { toDateString } from '@/lib/queries/calendario';
 import { getSeguimientos } from '@/lib/queries/seguimientos';
 import type {
@@ -14,7 +14,8 @@ import type {
 export async function getPasosPorDivision(
   deportistaId: string,
 ): Promise<PeriodoDivision[]> {
-  const pasos = await prisma.pasoPorDivision.findMany({
+  const db = await getDb();
+  const pasos = await db.pasoPorDivision.findMany({
     where: { deportistaId },
     include: {
       categoria: { select: { id: true, nombre: true } },
@@ -56,7 +57,8 @@ async function getEventosSeguimiento(
 async function getEventosConvocatoria(
   deportistaId: string,
 ): Promise<TrayectoriaEvento[]> {
-  const convocatorias = await prisma.convocatoriaDeportista.findMany({
+  const db = await getDb();
+  const convocatorias = await db.convocatoriaDeportista.findMany({
     where: { deportistaId },
     include: {
       convocatoria: {
@@ -97,7 +99,8 @@ async function getEventosConvocatoria(
 async function getEventosPresentismo(
   deportistaId: string,
 ): Promise<TrayectoriaEvento[]> {
-  const asistencias = await prisma.asistencia.findMany({
+  const db = await getDb();
+  const asistencias = await db.asistencia.findMany({
     where: { deportistaId },
     include: {
       entrenamiento: {
@@ -128,7 +131,8 @@ async function getEventosPresentismo(
 async function getEventosTurno(
   deportistaId: string,
 ): Promise<TrayectoriaEvento[]> {
-  const turnos = await prisma.turnoDeportista.findMany({
+  const db = await getDb();
+  const turnos = await db.turnoDeportista.findMany({
     where: { deportistaId },
     include: { turno: true },
   });
@@ -150,7 +154,8 @@ async function getEventosTurno(
 async function getEventosHistoria(
   deportistaId: string,
 ): Promise<TrayectoriaEvento[]> {
-  const historias = await prisma.historiaDeportiva.findMany({
+  const db = await getDb();
+  const historias = await db.historiaDeportiva.findMany({
     where: { deportistaId },
   });
 

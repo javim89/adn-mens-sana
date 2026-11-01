@@ -12,9 +12,10 @@
  * un widget es una bomba de tiempo que revienta recién al renderizar.
  */
 
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { getContextoClub } from '@/lib/tenant/contexto';
 import { revalidatePath } from 'next/cache';
-import { prisma } from '@/lib/db';
+import { dbDelClub, type DbClub } from '@/lib/tenant/db';
+import { mensajeDeError } from '@/lib/tenant/errores';
 import {
   dashboardInputSchema,
   dashboardLayoutSchema,
@@ -87,18 +88,52 @@ export type DashboardDetail = {
 // Guard
 // ---------------------------------------------------------------------------
 
-async function assertAdmin(): Promise<Fail | { success: true; userId: string }> {
-  const { userId } = await auth();
-  if (!userId) return { success: false, error: 'No autorizado' };
-  const user = await currentUser();
-  if (user?.publicMetadata?.role !== 'admin') {
+async function assertAdmin(): Promise<
+  Fail | { success: true; userId: string; db: DbClub; esSuperadmin: boolean }
+> {
+  const contexto = await getContextoClub();
+  if (!contexto) return { success: false, error: 'No autorizado' };
+  if (contexto.rol !== 'admin') {
     return { success: false, error: 'Acceso denegado: se requiere rol admin' };
   }
-  return { success: true, userId };
+  // Los dashboards son por club: todo el CRUD va por el cliente acotado.
+  return {
+    success: true,
+    userId: contexto.userId,
+    db: dbDelClub(contexto.clubId),
+    esSuperadmin: contexto.esSuperadmin,
+  };
+}
+
+/**
+ * El modo SQL es solo para el staff de BioTeam hasta verificar las RLS de
+ * `insights_ro` en producción (el mismo gate está en `POST /api/insights/query`).
+ * Un admin del club no puede crear ni editar un widget SQL; uno que ya existía
+ * se conserva tal cual.
+ */
+const SQL_SOLO_SUPERADMIN = 'El modo SQL está disponible solo para el equipo de soporte';
+
+class SqlSoloSuperadminError extends Error {
+  constructor() {
+    super(SQL_SOLO_SUPERADMIN);
+  }
+}
+
+function esSql(spec: unknown): boolean {
+  return (spec as { mode?: unknown } | null)?.mode === 'sql';
+}
+
+/** Mismo SQL guardado (no se compara el JSON entero: jsonb reordena las claves). */
+function mismoSpec(guardado: unknown, nuevo: unknown): boolean {
+  return (
+    esSql(guardado) &&
+    esSql(nuevo) &&
+    (guardado as { sql?: unknown }).sql === (nuevo as { sql?: unknown }).sql
+  );
 }
 
 function fail(error: unknown, fallback: string): Fail {
-  return { success: false, error: error instanceof Error ? error.message : fallback };
+  return { success: false, error: mensajeDeError(error, fallback) };
 }
 
 // ---------------------------------------------------------------------------
@@ -176,9 +211,9 @@ function slugify(nombre: string): string {
   return base || 'dashboard';
 }
 
-async function uniqueSlug(nombre: string): Promise<string> {
+async function uniqueSlug(db: DbClub, nombre: string): Promise<string> {
   const base = slugify(nombre);
-  const taken = await prisma.insightsDashboard.findMany({
+  const taken = await db.insightsDashboard.findMany({
     where: { slug: { startsWith: base } },
     select: { slug: true },
   });
@@ -189,8 +224,8 @@ async function uniqueSlug(nombre: string): Promise<string> {
   return `${base}-${n}`;
 }
 
-async function nextOrden(): Promise<number> {
-  const last = await prisma.insightsDashboard.findFirst({
+async function nextOrden(db: DbClub): Promise<number> {
+  const last = await db.insightsDashboard.findFirst({
     orderBy: { orden: 'desc' },
     select: { orden: true },
   });
@@ -207,8 +242,9 @@ export async function getDashboards(): Promise<
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
-    const rows = await prisma.insightsDashboard.findMany({
+    const rows = await db.insightsDashboard.findMany({
       orderBy: [{ orden: 'asc' }, { nombre: 'asc' }],
       select: {
         id: true,
@@ -248,8 +284,9 @@ export async function getDashboard(
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
-    const row = await prisma.insightsDashboard.findFirst({
+    const row = await db.insightsDashboard.findFirst({
       where: { OR: [{ id }, { slug: id }] },
       include: {
         widgets: { orderBy: [{ y: 'asc' }, { x: 'asc' }] },
@@ -283,16 +320,17 @@ export async function createDashboard(
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
     const parsed = dashboardInputSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: formatZodError(parsed.error) };
 
-    const created = await prisma.insightsDashboard.create({
+    const created = await db.insightsDashboard.create({
       data: {
-        slug: await uniqueSlug(parsed.data.nombre),
+        slug: await uniqueSlug(db, parsed.data.nombre),
         nombre: parsed.data.nombre,
         descripcion: parsed.data.descripcion ?? null,
-        orden: await nextOrden(),
+        orden: await nextOrden(db),
         creadoPor: guard.userId,
       },
       select: { id: true, slug: true },
@@ -313,14 +351,15 @@ export async function updateDashboard(
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
     const parsed = dashboardInputSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: formatZodError(parsed.error) };
 
-    const existing = await prisma.insightsDashboard.findUnique({ where: { id } });
+    const existing = await db.insightsDashboard.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Dashboard no encontrado' };
 
-    await prisma.insightsDashboard.update({
+    await db.insightsDashboard.update({
       where: { id },
       data: {
         nombre: parsed.data.nombre,
@@ -340,14 +379,15 @@ export async function deleteDashboard(id: string): Promise<ActionResult> {
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
-    const existing = await prisma.insightsDashboard.findUnique({ where: { id } });
+    const existing = await db.insightsDashboard.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Dashboard no encontrado' };
     if (existing.esSistema) {
       return { success: false, error: 'No se puede eliminar un dashboard del sistema' };
     }
 
-    await prisma.insightsDashboard.delete({ where: { id } });
+    await db.insightsDashboard.delete({ where: { id } });
 
     revalidatePath('/insights');
     return { success: true };
@@ -363,8 +403,9 @@ export async function duplicateDashboard(
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
-    const source = await prisma.insightsDashboard.findUnique({
+    const source = await db.insightsDashboard.findUnique({
       where: { id },
       include: {
         widgets: true,
@@ -374,11 +415,11 @@ export async function duplicateDashboard(
     if (!source) return { success: false, error: 'Dashboard no encontrado' };
 
     const nombre = `${source.nombre} (copia)`;
-    const slug = await uniqueSlug(nombre);
-    const orden = await nextOrden();
+    const slug = await uniqueSlug(db, nombre);
+    const orden = await nextOrden(db);
     const creadoPor = guard.userId;
 
-    const created = await prisma.$transaction(async (tx) => {
+    const created = await db.$transaction(async (tx) => {
       const dashboard = await tx.insightsDashboard.create({
         data: {
           slug,
@@ -465,19 +506,31 @@ export async function saveDashboardLayout(
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
     const parsed = dashboardLayoutSchema.safeParse(widgets);
     if (!parsed.success) return { success: false, error: formatZodError(parsed.error) };
 
-    const dashboard = await prisma.insightsDashboard.findUnique({ where: { id } });
+    const dashboard = await db.insightsDashboard.findUnique({ where: { id } });
     if (!dashboard) return { success: false, error: 'Dashboard no encontrado' };
 
-    const saved = await prisma.$transaction(async (tx) => {
+    const saved = await db.$transaction(async (tx) => {
       const existing = await tx.insightsWidget.findMany({
         where: { dashboardId: id },
-        select: { id: true },
+        select: { id: true, querySpec: true },
       });
       const existingIds = new Set(existing.map((w) => w.id));
+      const specGuardado = new Map(existing.map((w) => [w.id, w.querySpec]));
+
+      if (!guard.esSuperadmin) {
+        const sqlNuevo = parsed.data.some(
+          (widget) =>
+            esSql(widget.querySpec) &&
+            !(widget.id && existingIds.has(widget.id) && mismoSpec(specGuardado.get(widget.id), widget.querySpec)),
+        );
+        if (sqlNuevo) throw new SqlSoloSuperadminError();
+      }
+
       const keptIds = new Set<string>();
       const result: DashboardWidget[] = [];
 
@@ -532,11 +585,12 @@ export async function saveWidget(
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
     const parsed = widgetInputSchema.safeParse(widget);
     if (!parsed.success) return { success: false, error: formatZodError(parsed.error) };
 
-    const dashboard = await prisma.insightsDashboard.findUnique({
+    const dashboard = await db.insightsDashboard.findUnique({
       where: { id: dashboardId },
     });
     if (!dashboard) return { success: false, error: 'Dashboard no encontrado' };
@@ -555,13 +609,21 @@ export async function saveWidget(
     };
 
     const existing = input.id
-      ? await prisma.insightsWidget.findUnique({ where: { id: input.id } })
+      ? await db.insightsWidget.findUnique({ where: { id: input.id } })
       : null;
+
+    if (
+      !guard.esSuperadmin &&
+      esSql(input.querySpec) &&
+      !(existing && existing.dashboardId === dashboardId && mismoSpec(existing.querySpec, input.querySpec))
+    ) {
+      return { success: false, error: SQL_SOLO_SUPERADMIN };
+    }
 
     const saved =
       existing && existing.dashboardId === dashboardId
-        ? await prisma.insightsWidget.update({ where: { id: existing.id }, data })
-        : await prisma.insightsWidget.create({ data: { dashboardId, ...data } });
+        ? await db.insightsWidget.update({ where: { id: existing.id }, data })
+        : await db.insightsWidget.create({ data: { dashboardId, ...data } });
 
     revalidatePath('/insights');
     return { success: true, widget: toWidget(saved) };
@@ -575,11 +637,12 @@ export async function deleteWidget(id: string): Promise<ActionResult> {
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
-    const existing = await prisma.insightsWidget.findUnique({ where: { id } });
+    const existing = await db.insightsWidget.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Widget no encontrado' };
 
-    await prisma.insightsWidget.delete({ where: { id } });
+    await db.insightsWidget.delete({ where: { id } });
 
     revalidatePath('/insights');
     return { success: true };
@@ -595,11 +658,12 @@ export async function duplicateWidget(
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
-    const source = await prisma.insightsWidget.findUnique({ where: { id } });
+    const source = await db.insightsWidget.findUnique({ where: { id } });
     if (!source) return { success: false, error: 'Widget no encontrado' };
 
-    const created = await prisma.insightsWidget.create({
+    const created = await db.insightsWidget.create({
       data: {
         dashboardId: source.dashboardId,
         titulo: `${source.titulo} (copia)`,
@@ -633,18 +697,19 @@ export async function saveFilter(
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
     const parsed = filterInputSchema.safeParse(filter);
     if (!parsed.success) return { success: false, error: formatZodError(parsed.error) };
 
-    const dashboard = await prisma.insightsDashboard.findUnique({
+    const dashboard = await db.insightsDashboard.findUnique({
       where: { id: dashboardId },
     });
     if (!dashboard) return { success: false, error: 'Dashboard no encontrado' };
 
     const input = parsed.data;
 
-    const targetWidgets = await prisma.insightsWidget.findMany({
+    const targetWidgets = await db.insightsWidget.findMany({
       where: { id: { in: input.widgetIds }, dashboardId },
       select: { id: true },
     });
@@ -668,10 +733,10 @@ export async function saveFilter(
     };
 
     const existing = input.id
-      ? await prisma.insightsFilter.findUnique({ where: { id: input.id } })
+      ? await db.insightsFilter.findUnique({ where: { id: input.id } })
       : null;
 
-    const saved = await prisma.$transaction(async (tx) => {
+    const saved = await db.$transaction(async (tx) => {
       if (existing && existing.dashboardId === dashboardId) {
         await tx.insightsFilterTarget.deleteMany({ where: { filterId: existing.id } });
         return tx.insightsFilter.update({
@@ -709,11 +774,12 @@ export async function deleteFilter(id: string): Promise<ActionResult> {
   try {
     const guard = await assertAdmin();
     if (!guard.success) return guard;
+    const db = guard.db;
 
-    const existing = await prisma.insightsFilter.findUnique({ where: { id } });
+    const existing = await db.insightsFilter.findUnique({ where: { id } });
     if (!existing) return { success: false, error: 'Filtro no encontrado' };
 
-    await prisma.insightsFilter.delete({ where: { id } });
+    await db.insightsFilter.delete({ where: { id } });
 
     revalidatePath('/insights');
     return { success: true };

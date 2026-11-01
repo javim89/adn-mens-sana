@@ -1,22 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
-}));
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 
 vi.mock('@/lib/queries/categorias', () => ({
   getCategorias: vi.fn(),
 }));
 
-import { auth } from '@clerk/nextjs/server';
 import { getCategorias } from '@/lib/queries/categorias';
 import { GET } from '../route';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
 
 describe('GET /api/categorias', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns 401 when not authenticated', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: null } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(null);
 
     const res = await GET();
 
@@ -27,7 +27,7 @@ describe('GET /api/categorias', () => {
   });
 
   it('returns 200 with JSON:API collection ordered by orden', async () => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user1' } as ReturnType<typeof auth> extends Promise<infer T> ? T : never);
+    setContexto(mockContexto('admin', { userId: 'user1' }));
     vi.mocked(getCategorias).mockResolvedValue([
       { id: 'cat-4', nombre: '4ta', orden: 1 },
       { id: 'cat-sub12', nombre: 'SUB-12', orden: 7 },

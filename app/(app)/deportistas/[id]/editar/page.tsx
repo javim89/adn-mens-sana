@@ -1,10 +1,9 @@
 import Link from 'next/link';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getDeportistaById } from '@/lib/queries/deportistas';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { getFotoUrl } from '@/lib/s3';
 import DeportistaForm from '../../_components/DeportistaForm';
-import type { AppRole } from '@/lib/roles';
 
 export default async function EditarDeportistaPage({
   params,
@@ -12,26 +11,25 @@ export default async function EditarDeportistaPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [deportista, user, disciplinas] = await Promise.all([
+  const { rol: role } = await requireContexto();
+  const [deportista, disciplinas] = await Promise.all([
     getDeportistaById(id),
-    currentUser(),
     getDisciplinasConCategorias(),
   ]);
   const fotoUrl = await getFotoUrl(deportista.fotoKey);
-  const role = (user?.publicMetadata?.role as AppRole | undefined) ?? undefined;
 
   return (
     <div className="p-4 md:p-8">
       <div className="mb-2">
         <Link
           href={`/deportistas/${id}`}
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← {deportista.apellido}, {deportista.nombre}
         </Link>
       </div>
       <h1
-        className="text-3xl font-bold text-[#121A61] mb-6"
+        className="text-3xl font-bold text-primario mb-6"
         style={{ fontFamily: 'Oswald, sans-serif' }}
       >
         Editar — {deportista.apellido}, {deportista.nombre}

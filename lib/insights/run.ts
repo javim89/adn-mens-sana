@@ -7,12 +7,19 @@
  * Los dos caminos usan `getReadOnlyPrisma()`. El del builder también, aunque el
  * compilador solo emite SELECT: si alguna vez tuviera un bug, el rol de la base
  * es lo que lo contiene. Sin `DATABASE_URL_READONLY` seteada devuelve el
- * cliente normal, así que el comportamiento por defecto no cambia.
+ * cliente normal (solo fuera de producción).
+ *
+ * Multi-tenant, dos capas: las dos queries llevan el prelude de
+ * `tenant-prelude.ts` (CTEs acotados al club, `$1`), y corren en una
+ * transacción read-only con el token de `insights_sesiones` seteado, que es lo
+ * que leen las RLS de `insights_ro`.
  */
 
 import { getReadOnlyPrisma } from '@/lib/db-readonly';
+import { tokenDeInsights } from '@/lib/tenant/insights-sesion';
 import { compile } from './compile';
 import { validateRawSql } from './sql-guard';
+import { withTenantPrelude } from './tenant-prelude';
 import type { ColumnMeta, FieldType, QueryResult, QuerySpec } from './types';
 
 const RAW_SQL_LIMIT = 1000;
@@ -75,13 +82,31 @@ export function inferColumns(rows: Record<string, unknown>[]): ColumnMeta[] {
   });
 }
 
-export async function runQuery(spec: QuerySpec, now: Date = new Date()): Promise<QueryResult> {
-  const { sql, params, columns } = compile(spec, now);
-  const rows = await getReadOnlyPrisma().$queryRawUnsafe(sql, ...params);
+/**
+ * Ejecuta `sql` como el club: abre la transacción read-only, setea el token de
+ * la sesión (lo leen las RLS de `insights_ro`) y recién ahí corre la query.
+ */
+async function ejecutarComoClub(clubId: string, sql: string, params: unknown[]): Promise<unknown> {
+  const token = await tokenDeInsights(clubId);
+  return getReadOnlyPrisma().$transaction(async (tx) => {
+    await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
+    await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '10s'");
+    await tx.$queryRawUnsafe("SELECT set_config('app.insights_token', $1, true)", token);
+    return tx.$queryRawUnsafe(sql, ...params);
+  });
+}
+
+export async function runQuery(
+  spec: QuerySpec,
+  clubId: string,
+  now: Date = new Date(),
+): Promise<QueryResult> {
+  const { sql, params, columns } = compile(spec, now, { clubId });
+  const rows = await ejecutarComoClub(clubId, sql, params);
   return { columns, rows: serializeRows(rows) };
 }
 
-export async function runRawSql(sql: string): Promise<QueryResult> {
+export async function runRawSql(sql: string, clubId: string): Promise<QueryResult> {
   const validation = validateRawSql(sql);
   if (!validation.ok) {
     throw new Error(validation.error);
@@ -92,13 +117,13 @@ export async function runRawSql(sql: string): Promise<QueryResult> {
   // ')' es lo que evita que un comentario `--` al final se coma el paréntesis.
   const inner = sql.trim().replace(/;(?:\s|--[^\n]*|\/\*[\s\S]*?\*\/)*$/, '');
 
-  const rows = await getReadOnlyPrisma().$transaction(async (tx) => {
-    await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
-    await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '10s'");
-    return tx.$queryRawUnsafe(
-      `SELECT * FROM (\n${inner}\n) __q LIMIT ${RAW_SQL_LIMIT}`,
-    );
-  });
+  // El prelude va afuera de la subquery: el SQL del usuario (incluso con su
+  // propio WITH) ve las tablas ya acotadas al club, que viaja como `$1`.
+  const rows = await ejecutarComoClub(
+    clubId,
+    withTenantPrelude(`SELECT * FROM (\n${inner}\n) __q LIMIT ${RAW_SQL_LIMIT}`),
+    [clubId],
+  );
 
   const serialized = serializeRows(rows);
   return { columns: inferColumns(serialized), rows: serialized };

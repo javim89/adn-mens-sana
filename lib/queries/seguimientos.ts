@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 import type { Prisma } from '@/lib/generated/prisma/client';
 import type { PrioridadSeguimiento, TipoSeguimiento } from '@/lib/types/seguimientos';
 
@@ -101,26 +101,28 @@ function buildWhere(params: GetSeguimientosParams): Prisma.SeguimientoWhereInput
 export async function getSeguimientos(
   params: GetSeguimientosParams = {},
 ): Promise<{ items: SeguimientoRow[]; total: number }> {
+  const db = await getDb();
   const page = params.page ?? 0;
   const pageSize = params.pageSize ?? 50;
   const where = buildWhere(params);
 
-  const [items, total] = await prisma.$transaction([
-    prisma.seguimiento.findMany({
+  const [items, total] = await db.$transaction([
+    db.seguimiento.findMany({
       where,
       select: SEGUIMIENTO_SELECT,
       orderBy: [{ fecha: 'desc' }],
       take: pageSize,
       skip: page * pageSize,
     }),
-    prisma.seguimiento.count({ where }),
+    db.seguimiento.count({ where }),
   ]);
 
   return { items, total };
 }
 
 export async function getSeguimientoById(id: string) {
-  return prisma.seguimiento.findUnique({
+  const db = await getDb();
+  return db.seguimiento.findUnique({
     where: { id },
     include: {
       deportistas: {

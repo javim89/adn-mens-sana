@@ -1,4 +1,5 @@
-import { prisma } from '@/lib/db';
+import type { Prisma } from '@/lib/generated/prisma/client';
+import type { DbClub } from '@/lib/tenant/db';
 import type { TriageInput } from '@/lib/types/triage';
 
 /**
@@ -38,20 +39,19 @@ const DEPORTISTA_SELECT = {
   },
 } as const;
 
-type DeportistaRow = Awaited<
-  ReturnType<typeof prisma.deportista.findMany<{ select: typeof DEPORTISTA_SELECT }>>
->[number];
+type DeportistaRow = Prisma.DeportistaGetPayload<{ select: typeof DEPORTISTA_SELECT }>;
 
 /**
  * Cuenta las ausencias (AUSENTE) de cada deportista dentro de la ventana
  * semanal. Devuelve un Map deportistaId -> cantidad.
  */
 async function ausenciasPorDeportista(
+  db: DbClub,
   now: Date,
   deportistaId?: string,
 ): Promise<Map<string, number>> {
   const { from, to } = weekWindow(now);
-  const grouped = await prisma.asistencia.groupBy({
+  const grouped = await db.asistencia.groupBy({
     by: ['deportistaId'],
     where: {
       estado: 'AUSENTE',
@@ -73,6 +73,7 @@ async function ausenciasPorDeportista(
  * suficiente de un patrón de no-citación.
  */
 async function sinCitacionPorDeportista(
+  db: DbClub,
   deportistas: Pick<DeportistaRow, 'id' | 'disciplinaId' | 'categoriaId'>[],
 ): Promise<Map<string, boolean>> {
   const result = new Map<string, boolean>();
@@ -93,7 +94,7 @@ async function sinCitacionPorDeportista(
 
   for (const [key, ids] of porDivision) {
     const [disciplinaId, categoriaId] = key.split('::');
-    const ultimas = await prisma.convocatoria.findMany({
+    const ultimas = await db.convocatoria.findMany({
       where: { disciplinaId, categoriaId },
       orderBy: { evento: { dia: { fecha: 'desc' } } },
       take: 3,
@@ -149,32 +150,38 @@ function buildInput(
   };
 }
 
+/**
+ * Los datos salen de `db`, el cliente acotado a UN club: la request (`getDb()`)
+ * o el cron, que recorre los clubes con `dbDelClub(club.id)`.
+ */
 export async function getTriageInput(
+  db: DbClub,
   deportistaId: string,
   now: Date,
 ): Promise<TriageInput> {
-  const d = await prisma.deportista.findUnique({
+  const d = await db.deportista.findUnique({
     where: { id: deportistaId },
     select: DEPORTISTA_SELECT,
   });
   if (!d) throw new Error('Deportista no encontrado');
 
   const [ausencias, sinCitacion] = await Promise.all([
-    ausenciasPorDeportista(now, deportistaId),
-    sinCitacionPorDeportista([d]),
+    ausenciasPorDeportista(db, now, deportistaId),
+    sinCitacionPorDeportista(db, [d]),
   ]);
 
   return buildInput(d, ausencias.get(deportistaId) ?? 0, sinCitacion.get(deportistaId) ?? false);
 }
 
 export async function getAllTriageInputs(
+  db: DbClub,
   now: Date,
 ): Promise<{ deportistaId: string; input: TriageInput }[]> {
-  const deportistas = await prisma.deportista.findMany({ select: DEPORTISTA_SELECT });
+  const deportistas = await db.deportista.findMany({ select: DEPORTISTA_SELECT });
 
   const [ausencias, sinCitacion] = await Promise.all([
-    ausenciasPorDeportista(now),
-    sinCitacionPorDeportista(deportistas),
+    ausenciasPorDeportista(db, now),
+    sinCitacionPorDeportista(db, deportistas),
   ]);
 
   return deportistas.map((d) => ({

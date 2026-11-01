@@ -150,7 +150,7 @@ export default function GestionDivisionesModal({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors shrink-0"
+        className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover transition-colors shrink-0"
       >
         <Plus size={15} />
         Registrar cambio de división
@@ -168,7 +168,7 @@ export default function GestionDivisionesModal({
           <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
             <h2
               id="gestion-divisiones-title"
-              className="text-lg font-bold text-[#1C1C1C]"
+              className="text-lg font-bold text-foreground"
               style={{ fontFamily: 'Oswald, sans-serif' }}
             >
               Gestión de divisiones
@@ -176,7 +176,7 @@ export default function GestionDivisionesModal({
             <button
               type="button"
               onClick={close}
-              className="text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Cerrar"
             >
               <X size={18} />
@@ -192,12 +192,12 @@ export default function GestionDivisionesModal({
 
             {/* Registrar cambio de división */}
             <section className="mb-8">
-              <h3 className="text-sm font-semibold text-[#1C1C1C] mb-3">
+              <h3 className="text-sm font-semibold text-foreground mb-3">
                 Registrar cambio de división
               </h3>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div>
-                  <label className="block text-xs text-[#6B7280] mb-1">Disciplina</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Disciplina</label>
                   <CustomSelect
                     value={nuevaDisciplina}
                     onChange={setNuevaDisciplina}
@@ -207,7 +207,7 @@ export default function GestionDivisionesModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-[#6B7280] mb-1">Categoría</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Categoría</label>
                   <CustomSelect
                     value={nuevaCategoria}
                     onChange={setNuevaCategoria}
@@ -217,12 +217,12 @@ export default function GestionDivisionesModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-[#6B7280] mb-1">Fecha</label>
+                  <label className="block text-xs text-muted-foreground mb-1">Fecha</label>
                   <input
                     type="date"
                     value={nuevaFecha}
                     onChange={(e) => setNuevaFecha(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
                   />
                 </div>
               </div>
@@ -230,7 +230,7 @@ export default function GestionDivisionesModal({
                 type="button"
                 onClick={handleCrear}
                 disabled={loading}
-                className="mt-3 flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="mt-3 flex items-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 Registrar
@@ -239,11 +239,11 @@ export default function GestionDivisionesModal({
 
             {/* Períodos existentes */}
             <section>
-              <h3 className="text-sm font-semibold text-[#1C1C1C] mb-3">
+              <h3 className="text-sm font-semibold text-foreground mb-3">
                 Períodos registrados
               </h3>
               {periodosOrdenados.length === 0 ? (
-                <p className="text-sm text-[#6B7280]">No hay períodos registrados.</p>
+                <p className="text-sm text-muted-foreground">No hay períodos registrados.</p>
               ) : (
                 <ul className="divide-y divide-gray-100">
                   {periodosOrdenados.map((p) => (
@@ -252,7 +252,7 @@ export default function GestionDivisionesModal({
                         <div className="space-y-3">
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div>
-                              <label className="block text-xs text-[#6B7280] mb-1">
+                              <label className="block text-xs text-muted-foreground mb-1">
                                 Disciplina
                               </label>
                               <CustomSelect
@@ -264,7 +264,7 @@ export default function GestionDivisionesModal({
                               />
                             </div>
                             <div>
-                              <label className="block text-xs text-[#6B7280] mb-1">
+                              <label className="block text-xs text-muted-foreground mb-1">
                                 Categoría
                               </label>
                               <CustomSelect
@@ -276,23 +276,23 @@ export default function GestionDivisionesModal({
                               />
                             </div>
                             <div>
-                              <label className="block text-xs text-[#6B7280] mb-1">Desde</label>
+                              <label className="block text-xs text-muted-foreground mb-1">Desde</label>
                               <input
                                 type="date"
                                 value={editDesde}
                                 onChange={(e) => setEditDesde(e.target.value)}
-                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
                               />
                             </div>
                             <div>
-                              <label className="block text-xs text-[#6B7280] mb-1">
+                              <label className="block text-xs text-muted-foreground mb-1">
                                 Hasta (vacío = actual)
                               </label>
                               <input
                                 type="date"
                                 value={editHasta}
                                 onChange={(e) => setEditHasta(e.target.value)}
-                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
                               />
                             </div>
                           </div>
@@ -301,7 +301,7 @@ export default function GestionDivisionesModal({
                               type="button"
                               onClick={handleUpdate}
                               disabled={loading}
-                              className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors disabled:opacity-60"
+                              className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover transition-colors disabled:opacity-60"
                             >
                               {loading && <Loader2 size={14} className="animate-spin" />}
                               Guardar
@@ -310,7 +310,7 @@ export default function GestionDivisionesModal({
                               type="button"
                               onClick={() => setEditandoId(null)}
                               disabled={loading}
-                              className="text-sm text-[#6B7280] hover:text-[#1C1C1C] border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
+                              className="text-sm text-muted-foreground hover:text-foreground border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
                             >
                               Cancelar
                             </button>
@@ -319,12 +319,12 @@ export default function GestionDivisionesModal({
                       ) : (
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <p className="text-sm font-medium text-[#1C1C1C]">
+                            <p className="text-sm font-medium text-foreground">
                               {[p.categoriaNombre, p.disciplinaNombre]
                                 .filter(Boolean)
                                 .join(' · ') || 'Sin división'}
                             </p>
-                            <p className="text-xs text-[#6B7280]">
+                            <p className="text-xs text-muted-foreground">
                               {formatDate(p.desde)} – {p.hasta ? formatDate(p.hasta) : 'Actual'}
                             </p>
                           </div>
@@ -333,7 +333,7 @@ export default function GestionDivisionesModal({
                               type="button"
                               onClick={() => startEdit(p)}
                               disabled={loading}
-                              className="p-2 text-[#6B7280] hover:text-[#121A61] rounded-lg hover:bg-[#F3F4F6] transition-colors disabled:opacity-50"
+                              className="p-2 text-muted-foreground hover:text-primario rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
                               aria-label="Editar período"
                             >
                               <Pencil size={15} />

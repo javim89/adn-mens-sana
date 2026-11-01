@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { getSeguimientoById } from '@/lib/queries/seguimientos';
 import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
@@ -13,11 +13,10 @@ interface Props {
 
 export default async function EditarSeguimientoPage({ params }: Props) {
   const { id } = await params;
+  const { rol: role } = await requireContexto();
   const seguimiento = await getSeguimientoById(id);
   if (!seguimiento) notFound();
 
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
   const isAdmin = role === 'admin';
 
   const profesionales = isAdmin ? await getProfesionalesSeguimientos() : [];
@@ -128,13 +127,13 @@ export default async function EditarSeguimientoPage({ params }: Props) {
       <div className="mb-2">
         <Link
           href={`/seguimientos/${id}`}
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Volver al seguimiento
         </Link>
       </div>
       <h1
-        className="text-3xl font-bold text-[#121A61] mb-6"
+        className="text-3xl font-bold text-primario mb-6"
         style={{ fontFamily: 'Oswald, sans-serif' }}
       >
         Editar seguimiento

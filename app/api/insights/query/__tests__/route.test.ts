@@ -1,19 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockAuth, mockCurrentUser, mockRunQuery, mockRunRawSql, mockGetUserList } =
+const { mockRunQuery, mockRunRawSql, mockGetMiembros } =
   vi.hoisted(() => ({
-    mockAuth: vi.fn().mockResolvedValue({ userId: 'user_admin_1' }),
-    mockCurrentUser: vi.fn().mockResolvedValue({ publicMetadata: { role: 'admin' } }),
     mockRunQuery: vi.fn(),
     mockRunRawSql: vi.fn(),
-    mockGetUserList: vi.fn(),
+    mockGetMiembros: vi.fn(),
   }));
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: mockAuth,
-  currentUser: mockCurrentUser,
-  clerkClient: async () => ({ users: { getUserList: mockGetUserList } }),
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
+vi.mock('@/lib/tenant/miembros', () => ({
+  getMiembrosDelClub: mockGetMiembros,
+  nombreVisible: (m: { nombre: string; apellido: string; email: string; userId: string }) =>
+    `${m.nombre} ${m.apellido}`.trim() || m.email || m.userId,
 }));
+vi.mock('@/lib/db', () => ({ prisma: {} }));
 vi.mock('@/lib/insights/run', () => ({
   runQuery: mockRunQuery,
   runRawSql: mockRunRawSql,
@@ -21,6 +23,7 @@ vi.mock('@/lib/insights/run', () => ({
 
 import { POST } from '../route';
 import type { QuerySpec } from '@/lib/insights/types';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
 
 const specValido: QuerySpec = {
   mode: 'builder',
@@ -52,16 +55,20 @@ function post(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAuth.mockResolvedValue({ userId: 'user_admin_1' });
-  mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'admin' } });
+  setContexto(mockContexto('admin', { userId: 'user_admin_1' }));
   mockRunQuery.mockResolvedValue(resultado);
   mockRunRawSql.mockResolvedValue(resultado);
-  mockGetUserList.mockResolvedValue({ data: [] });
+  mockGetMiembros.mockResolvedValue([]);
 });
+
+/** El modo SQL es solo para el staff de BioTeam. */
+function comoSuperadmin() {
+  setContexto(mockContexto('admin', { userId: 'user_staff', esSuperadmin: true }));
+}
 
 describe('POST /api/insights/query — autorización', () => {
   it('401 sin sesión', async () => {
-    mockAuth.mockResolvedValue({ userId: null });
+    setContexto(null);
 
     const res = await post({ spec: specValido });
 
@@ -70,7 +77,7 @@ describe('POST /api/insights/query — autorización', () => {
   });
 
   it('403 con un rol que no es admin', async () => {
-    mockCurrentUser.mockResolvedValue({ publicMetadata: { role: 'entrenador' } });
+    setContexto(mockContexto('entrenador'));
 
     const res = await post({ spec: specValido });
 
@@ -81,12 +88,13 @@ describe('POST /api/insights/query — autorización', () => {
     expect(mockRunQuery).not.toHaveBeenCalled();
   });
 
-  it('403 con un usuario sin rol asignado', async () => {
-    mockCurrentUser.mockResolvedValue({ publicMetadata: {} });
+  it('403 con un rol de salud (el rol sale de la membresía del club activo)', async () => {
+    setContexto(mockContexto('medico'));
 
     const res = await post({ spec: specValido });
 
     expect(res.status).toBe(403);
+    expect(mockRunRawSql).not.toHaveBeenCalled();
   });
 });
 
@@ -128,7 +136,18 @@ describe('POST /api/insights/query — validación', () => {
     expect(mockRunQuery).not.toHaveBeenCalled();
   });
 
+  it('403 con SQL crudo si el admin del club no es superadmin', async () => {
+    const res = await post({ spec: { mode: 'sql', sql: 'SELECT 1 AS uno' } });
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toEqual({
+      error: 'El modo SQL está disponible solo para el equipo de soporte',
+    });
+    expect(mockRunRawSql).not.toHaveBeenCalled();
+  });
+
   it('400 con SQL crudo que no pasa el guard', async () => {
+    comoSuperadmin();
     const res = await post({ spec: { mode: 'sql', sql: 'DROP TABLE deportistas' } });
 
     expect(res.status).toBe(400);
@@ -154,15 +173,17 @@ describe('POST /api/insights/query — ejecución', () => {
     expect(typeof body.meta.elapsedMs).toBe('number');
     expect(mockRunQuery).toHaveBeenCalledWith(
       expect.objectContaining({ dataset: 'deportistas' }),
+      mockContexto().clubId,
     );
     expect(mockRunRawSql).not.toHaveBeenCalled();
   });
 
-  it('200 con SQL crudo válido', async () => {
+  it('200 con SQL crudo válido (superadmin), acotado al club activo', async () => {
+    comoSuperadmin();
     const res = await post({ spec: { mode: 'sql', sql: 'SELECT 1 AS uno' } });
 
     expect(res.status).toBe(200);
-    expect(mockRunRawSql).toHaveBeenCalledWith('SELECT 1 AS uno');
+    expect(mockRunRawSql).toHaveBeenCalledWith('SELECT 1 AS uno', mockContexto().clubId);
     expect(mockRunQuery).not.toHaveBeenCalled();
   });
 
@@ -193,6 +214,19 @@ describe('POST /api/insights/query — ejecución', () => {
     consoleError.mockRestore();
   });
 
+  it('500 genérico si falta el rol read-only en producción', async () => {
+    const { ReadOnlyNoConfiguradoError } = await import('@/lib/db-readonly');
+    mockRunQuery.mockRejectedValue(new ReadOnlyNoConfiguradoError());
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await post({ spec: specValido });
+
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).not.toContain('DATABASE_URL');
+    consoleError.mockRestore();
+  });
+
   it('trunca el payload cuando supera el tope y lo marca en meta', async () => {
     const relleno = 'x'.repeat(2000);
     mockRunQuery.mockResolvedValue({
@@ -212,7 +246,7 @@ describe('POST /api/insights/query — ejecución', () => {
     expect(body.meta.rowCount).toBe(body.data.length);
   });
 
-  it('resuelve contra Clerk los labels de una columna de userId', async () => {
+  it('resuelve los labels de una columna de userId con los miembros del club', async () => {
     mockRunQuery.mockResolvedValue({
       columns: [
         {
@@ -226,17 +260,9 @@ describe('POST /api/insights/query — ejecución', () => {
       ],
       rows: [{ entregado_por: 'user_emp_1', entregas: 12 }],
     });
-    mockGetUserList.mockResolvedValue({
-      data: [
-        {
-          id: 'user_emp_1',
-          firstName: 'Ana',
-          lastName: 'López',
-          publicMetadata: {},
-          emailAddresses: [{ emailAddress: 'ana@club.com' }],
-        },
-      ],
-    });
+    mockGetMiembros.mockResolvedValue([
+      { userId: 'user_emp_1', nombre: 'Ana', apellido: 'López', email: 'ana@club.com' },
+    ]);
 
     const res = await post({ spec: specValido });
     const body = (await res.json()) as {
@@ -248,5 +274,6 @@ describe('POST /api/insights/query — ejecución', () => {
     // El id sigue siendo el valor de la fila; el nombre viaja en la columna.
     expect(body.data[0].entregado_por).toBe('user_emp_1');
     expect(body.columns[0].enumLabels).toEqual({ user_emp_1: 'Ana López' });
+    expect(mockGetMiembros).toHaveBeenCalledWith({ clubId: mockContexto().clubId, incluirInactivos: true });
   });
 });

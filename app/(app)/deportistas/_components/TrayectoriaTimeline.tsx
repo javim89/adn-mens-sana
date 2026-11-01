@@ -125,7 +125,7 @@ function EventoCard({ evento }: { evento: TrayectoriaEvento }) {
   const inner = (
     <>
       <div className="flex flex-wrap items-center gap-2 mb-1">
-        <span className="text-xs text-[#6B7280] whitespace-nowrap">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
           {formatDate(evento.fecha)}
         </span>
         <span
@@ -142,10 +142,10 @@ function EventoCard({ evento }: { evento: TrayectoriaEvento }) {
         )}
       </div>
 
-      <p className="text-sm font-semibold text-[#1C1C1C]">{evento.titulo}</p>
+      <p className="text-sm font-semibold text-foreground">{evento.titulo}</p>
 
       {evento.detalle && (
-        <p className="text-sm text-[#6B7280] mt-1 line-clamp-3 whitespace-pre-wrap">
+        <p className="text-sm text-muted-foreground mt-1 line-clamp-3 whitespace-pre-wrap">
           {evento.detalle}
         </p>
       )}
@@ -156,7 +156,7 @@ function EventoCard({ evento }: { evento: TrayectoriaEvento }) {
     return (
       <Link
         href={evento.href}
-        className="block rounded-lg border border-gray-100 bg-white p-4 shadow-sm transition-colors hover:border-[#121A61]/30 hover:bg-[#F3F4F6]"
+        className="block rounded-lg border border-gray-100 bg-white p-4 shadow-sm transition-colors hover:border-primario/30 hover:bg-muted"
       >
         {inner}
       </Link>
@@ -209,17 +209,17 @@ export default function TrayectoriaTimeline({
       </div>
 
       {sinEventos ? (
-        <p className="text-sm text-[#6B7280] py-12 text-center">
+        <p className="text-sm text-muted-foreground py-12 text-center">
           Este deportista no tiene eventos en su trayectoria.
         </p>
       ) : totalVisibles === 0 ? (
-        <p className="text-sm text-[#6B7280] py-12 text-center">
+        <p className="text-sm text-muted-foreground py-12 text-center">
           No hay eventos que coincidan con los filtros.
           {hayFiltros && (
             <button
               type="button"
               onClick={() => setTipoFiltro('')}
-              className="block mx-auto mt-2 text-[#121A61] underline hover:no-underline"
+              className="block mx-auto mt-2 text-primario underline hover:no-underline"
             >
               Limpiar filtros
             </button>
@@ -231,16 +231,16 @@ export default function TrayectoriaTimeline({
             <section key={grupo.periodo.id}>
               <div className="mb-3">
                 <h3
-                  className="text-base font-bold text-[#121A61]"
+                  className="text-base font-bold text-primario"
                   style={{ fontFamily: 'Oswald, sans-serif' }}
                 >
                   {periodoTitulo(grupo.periodo)}
                 </h3>
-                <p className="text-xs text-[#6B7280]">{periodoRango(grupo.periodo)}</p>
+                <p className="text-xs text-muted-foreground">{periodoRango(grupo.periodo)}</p>
               </div>
 
               {grupo.eventos.length === 0 ? (
-                <p className="text-sm text-[#6B7280] pl-2">
+                <p className="text-sm text-muted-foreground pl-2">
                   Sin eventos en este período.
                 </p>
               ) : (

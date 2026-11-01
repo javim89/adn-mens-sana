@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 import type { Prisma } from '@/lib/generated/prisma/client';
 import type { TipoSesion } from '@/lib/types/presentismo';
 
@@ -43,24 +43,25 @@ function buildWhere(params: GetEntrenamientosParams): Prisma.EntrenamientoWhereI
 export async function getEntrenamientos(
   params: GetEntrenamientosParams,
 ): Promise<{ items: EntrenamientoRow[]; total: number }> {
+  const db = await getDb();
   const page = params.page ?? 0;
   const pageSize = params.pageSize ?? 50;
   const where = buildWhere(params);
 
-  const [items, total] = await prisma.$transaction([
-    prisma.entrenamiento.findMany({
+  const [items, total] = await db.$transaction([
+    db.entrenamiento.findMany({
       where,
       include: ENTRENAMIENTO_LIST_INCLUDE,
       orderBy: [{ fecha: 'desc' }],
       take: pageSize,
       skip: page * pageSize,
     }),
-    prisma.entrenamiento.count({ where }),
+    db.entrenamiento.count({ where }),
   ]);
 
   if (items.length === 0) return { items: [], total };
 
-  const presentesPorEntrenamiento = await prisma.asistencia.groupBy({
+  const presentesPorEntrenamiento = await db.asistencia.groupBy({
     by: ['entrenamientoId'],
     where: {
       entrenamientoId: { in: items.map((i) => i.id) },
@@ -95,7 +96,8 @@ export type EntrenamientoDetail = Prisma.EntrenamientoGetPayload<{
 }>;
 
 export async function getEntrenamientoById(id: string): Promise<EntrenamientoDetail | null> {
-  return prisma.entrenamiento.findUnique({
+  const db = await getDb();
+  return db.entrenamiento.findUnique({
     where: { id },
     include: ENTRENAMIENTO_DETAIL_INCLUDE,
   });
@@ -111,7 +113,8 @@ export async function getDeportistasParaAsistencia(
   disciplinaId: string,
   categoriaId: string,
 ): Promise<DeportistaAsistenciaItem[]> {
-  return prisma.deportista.findMany({
+  const db = await getDb();
+  return db.deportista.findMany({
     where: { disciplinaId, categoriaId, estado: 'ACTIVO' },
     select: { id: true, nombre: true, apellido: true },
     orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],

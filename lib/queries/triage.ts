@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 import { Prisma } from '@/lib/generated/prisma/client';
 import type { NivelTriage } from '@/lib/generated/prisma/enums';
 import { NIVEL_TRIAGE_LABELS } from '@/lib/utils/enum-labels';
@@ -27,22 +27,25 @@ const SQL_ORDEN_SNAPSHOT_VIGENTE = Prisma.sql`ORDER BY triage.deportista_id, tri
 export async function getNivelTriageActual(
   deportistaIds?: string[],
 ): Promise<Map<string, NivelTriage>> {
+  const db = await getDb();
   // `Prisma.join([])` lanza error, y un filtro vacío no tiene resultados posibles.
   if (deportistaIds && deportistaIds.length === 0) {
     return new Map();
   }
 
-  const whereClause = deportistaIds
-    ? Prisma.sql`WHERE triage.deportista_id IN (${Prisma.join(deportistaIds)})`
+  // El SQL crudo no pasa por el cliente del club: el `club_id` va explícito.
+  const filtroIds = deportistaIds
+    ? Prisma.sql`AND triage.deportista_id IN (${Prisma.join(deportistaIds)})`
     : Prisma.empty;
 
-  const rows = await prisma.$queryRaw<{ deportista_id: string; nivel: NivelTriage }[]>(
+  const rows = await db.$queryRaw<{ deportista_id: string; nivel: NivelTriage }[]>(
     Prisma.sql`
       SELECT ${SQL_SNAPSHOT_VIGENTE}
         triage.deportista_id,
         triage.nivel
       FROM triage
-      ${whereClause}
+      WHERE triage.club_id = ${db.$clubId()}
+      ${filtroIds}
       ${SQL_ORDEN_SNAPSHOT_VIGENTE}
     `,
   );
@@ -121,10 +124,14 @@ function conteoVacio(): ConteoPorNivel {
 export async function getDistribucionTriage(
   corteInstante: Date,
 ): Promise<DistribucionTriage> {
+  const db = await getDb();
+  const clubId = db.$clubId();
+  // `triage` lleva `club_id` denormalizado: se filtra también ahí (además de por
+  // `activos`) para que el índice `(club_id, calculated_at)` sirva.
   const [filas, totalActivos] = await Promise.all([
-    prisma.$queryRaw<FilaDistribucion[]>(Prisma.sql`
+    db.$queryRaw<FilaDistribucion[]>(Prisma.sql`
       WITH activos AS (
-        SELECT id FROM deportistas WHERE estado = 'ACTIVO'
+        SELECT id FROM deportistas WHERE club_id = ${clubId} AND estado = 'ACTIVO'
       ),
       vigente AS (
         SELECT ${SQL_SNAPSHOT_VIGENTE}
@@ -132,6 +139,7 @@ export async function getDistribucionTriage(
           triage.nivel
         FROM triage
         JOIN activos ON activos.id = triage.deportista_id
+        WHERE triage.club_id = ${clubId}
         ${SQL_ORDEN_SNAPSHOT_VIGENTE}
       ),
       previo AS (
@@ -141,7 +149,8 @@ export async function getDistribucionTriage(
           triage.calculated_at
         FROM triage
         JOIN activos ON activos.id = triage.deportista_id
-        WHERE triage.calculated_at < ${corteInstante}
+        WHERE triage.club_id = ${clubId}
+          AND triage.calculated_at < ${corteInstante}
         ${SQL_ORDEN_SNAPSHOT_VIGENTE}
       ),
       conteo_actual AS (
@@ -162,7 +171,7 @@ export async function getDistribucionTriage(
       FULL OUTER JOIN conteo_previo p ON p.nivel = a.nivel
       CROSS JOIN meta
     `),
-    prisma.deportista.count({ where: { estado: 'ACTIVO' } }),
+    db.deportista.count({ where: { estado: 'ACTIVO' } }),
   ]);
 
   const actual = conteoVacio();

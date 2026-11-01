@@ -31,9 +31,11 @@ describe('Modelos Insights', () => {
       expect(block).toContain('@@map("insights_dashboards")')
     })
 
-    it('tiene id cuid y slug único', () => {
+    it('tiene id cuid y slug único por club', () => {
       expect(block).toMatch(/id\s+String\s+@id @default\(cuid\(\)\)/)
-      expect(block).toMatch(/slug\s+String\s+@unique/)
+      expect(block).toContain('@@unique([clubId, slug])')
+      // Un slug global impediría que dos clubes tengan su "panorama-general".
+      expect(block).not.toMatch(/slug\s+String\s+@unique/)
     })
 
     it('mapea los campos compuestos a snake_case', () => {

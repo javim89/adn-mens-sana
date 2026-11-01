@@ -35,8 +35,9 @@
  * `gap-5` entre las cards de un mismo bloque. El doble de distancia significa "esto ya
  * es otro tema".
  */
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { requireContexto } from '@/lib/tenant/contexto';
 import { LayoutDashboard } from 'lucide-react';
 import {
   fechaDbDesdeClave,
@@ -44,7 +45,6 @@ import {
   semanaActual,
   semanaAnterior,
 } from '@/lib/utils/fecha';
-import { esLugarRetiro } from '@/lib/utils/viandas';
 import { cardsVisibles } from './_lib/visibilidad';
 import { rangoSemana } from './_lib/formato';
 import {
@@ -62,12 +62,12 @@ import SeccionSeguimientos from './_components/SeccionSeguimientos';
 import SeccionPlantel from './_components/SeccionPlantel';
 import SeccionEventos from './_components/SeccionEventos';
 
+export const metadata: Metadata = { title: 'Dashboard' };
+
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  const { userId } = await auth();
-  const user = await currentUser();
-  const role = String(user?.publicMetadata?.role ?? '');
+  const { userId, rol: role, lugarRetiro } = await requireContexto();
   const isAdmin = role === 'admin';
 
   const cards = cardsVisibles(role);
@@ -76,20 +76,18 @@ export default async function DashboardPage() {
   const previa = semanaAnterior();
   const hoyDb = fechaDbDesdeClave(hoyEnArgentina());
 
-  // El lugar del responsable de viandas sale de Clerk, igual que en `/viandas`.
-  const metaLugar = (user?.publicMetadata as Record<string, unknown> | undefined)
-    ?.lugarRetiro;
-  const lugarResponsable = esLugarRetiro(metaLugar) ? metaLugar : null;
+  // El lugar del responsable de viandas sale de su membresía, igual que en `/viandas`.
+  const lugarResponsable = lugarRetiro;
 
   return (
     <div className="p-4 md:p-8">
       <h1
-        className="text-3xl font-bold text-[#121A61] mb-1"
+        className="text-3xl font-bold text-primario mb-1"
         style={{ fontFamily: 'Oswald, sans-serif' }}
       >
         Dashboard
       </h1>
-      <p className="text-[#6B7280] mb-6">
+      <p className="text-muted-foreground mb-6">
         Resumen de la semana {rangoSemana(semana.desdeClave, semana.hastaClave)}.
       </p>
 
@@ -100,11 +98,11 @@ export default async function DashboardPage() {
          * en blanco, que se leería como un bug: el mensaje dice qué pasa y qué hacer.
          */
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-12 text-center">
-          <LayoutDashboard size={28} className="mx-auto text-[#6B7280] mb-3" />
-          <p className="text-[#1C1C1C] font-medium mb-1">
+          <LayoutDashboard size={28} className="mx-auto text-muted-foreground mb-3" />
+          <p className="text-foreground font-medium mb-1">
             Tu usuario todavía no tiene un rol asignado
           </p>
-          <p className="text-sm text-[#6B7280]">
+          <p className="text-sm text-muted-foreground">
             Pedile al administrador del club que te asigne uno para ver el resumen que
             te corresponde.
           </p>
@@ -157,7 +155,7 @@ export default async function DashboardPage() {
                 <SeccionTurnos
                   semana={semana}
                   hoyDb={hoyDb}
-                  profesionalId={isAdmin ? undefined : (userId ?? undefined)}
+                  profesionalId={isAdmin ? undefined : userId}
                 />
               </Suspense>
             </BloqueDashboard>
@@ -174,7 +172,7 @@ export default async function DashboardPage() {
                 <SeccionPresentismo
                   semana={semana}
                   semanaPrevia={previa}
-                  entrenadorId={isAdmin ? undefined : (userId ?? undefined)}
+                  entrenadorId={isAdmin ? undefined : userId}
                 />
               </Suspense>
             </BloqueDashboard>

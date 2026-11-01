@@ -18,7 +18,7 @@ import React from 'react';
  * `page.tsx`, la query se llamaría sin que ninguna sección esté montada y este test
  * fallaría.
  */
-const { mockQueries, mockTriage, mockClerk } = vi.hoisted(() => ({
+const { mockQueries, mockTriage } = vi.hoisted(() => ({
   mockQueries: {
     getResumenViandas: vi.fn(),
     getResumenTurnos: vi.fn(),
@@ -28,14 +28,29 @@ const { mockQueries, mockTriage, mockClerk } = vi.hoisted(() => ({
     getProximosEventos: vi.fn(),
   },
   mockTriage: { getDistribucionTriage: vi.fn() },
-  mockClerk: { auth: vi.fn(), currentUser: vi.fn() },
 }));
 
 vi.mock('@/lib/queries/dashboard', () => mockQueries);
 vi.mock('@/lib/queries/triage', () => mockTriage);
-vi.mock('@clerk/nextjs/server', () => mockClerk);
+vi.mock('@/lib/tenant/contexto', async () =>
+  (await import('@/test-utils/tenant')).moduloContextoMock(),
+);
 
 import DashboardPage from '../page';
+import { mockContexto, setContexto } from '@/test-utils/tenant';
+import type { AppRole, LugarRetiro } from '@/lib/generated/prisma/client';
+
+/**
+ * Sesión con el rol (y el lugar de retiro) de la membresía del club activo.
+ * `undefined` = sin club accesible.
+ */
+function comoSesion(role: string | undefined, extra: { lugarRetiro?: LugarRetiro } = {}) {
+  setContexto(
+    role === undefined
+      ? null
+      : mockContexto(role as AppRole, { userId: 'user_1', lugarRetiro: extra.lugarRetiro ?? null }),
+  );
+}
 
 /** Qué query pertenece a cada sección. Es el mapa que el test verifica. */
 const QUERY_DE_SECCION = {
@@ -90,20 +105,19 @@ function buscarSecciones(
 /** Monta la page para un rol y devuelve los nombres de las secciones presentes. */
 async function seccionesDe(
   role: string | undefined,
-  extraMeta: object = {},
+  extraMeta: { lugarRetiro?: LugarRetiro } = {},
 ): Promise<NombreSeccion[]> {
-  mockClerk.currentUser.mockResolvedValue(
-    role === undefined ? null : { publicMetadata: { role, ...extraMeta } },
-  );
+  comoSesion(role, extraMeta);
   const arbol = await DashboardPage();
   return buscarSecciones(arbol).map((s) => s.nombre);
 }
 
 /** Monta la page y EJECUTA todas las secciones, para ver qué queries se disparan. */
-async function ejecutarSecciones(role: string | undefined, extraMeta: object = {}) {
-  mockClerk.currentUser.mockResolvedValue(
-    role === undefined ? null : { publicMetadata: { role, ...extraMeta } },
-  );
+async function ejecutarSecciones(
+  role: string | undefined,
+  extraMeta: { lugarRetiro?: LugarRetiro } = {},
+) {
+  comoSesion(role, extraMeta);
   const arbol = await DashboardPage();
   const secciones = buscarSecciones(arbol);
   for (const s of secciones) await s.componente(s.props);
@@ -112,7 +126,6 @@ async function ejecutarSecciones(role: string | undefined, extraMeta: object = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClerk.auth.mockResolvedValue({ userId: 'user_1' });
   mockTriage.getDistribucionTriage.mockResolvedValue({
     actual: { VERDE: 0, AMARILLO: 0, NARANJA: 0, ROJO: 0 },
     previo: null,
@@ -277,16 +290,24 @@ describe('DashboardPage — las queries de las cards ocultas NO se ejecutan', ()
 
   // Rol desconocido: cero secciones y cero queries. Es el fallback de
   // `getNavItemsForRole`, y no puede filtrar nada.
-  test.each([undefined, 'cualquier-cosa', ''])(
+  test.each(['cualquier-cosa', ''])(
     'el rol %o no ejecuta ninguna query',
     async (rol) => {
-      expect(await ejecutarSecciones(rol as string | undefined)).toEqual([]);
+      expect(await ejecutarSecciones(rol)).toEqual([]);
 
       for (const query of Object.values(QUERY_DE_SECCION)) {
         expect(query).not.toHaveBeenCalled();
       }
     },
   );
+
+  test('sin club accesible redirige a /bienvenida sin ejecutar queries', async () => {
+    await expect(ejecutarSecciones(undefined)).rejects.toThrow('NEXT_REDIRECT:/bienvenida');
+
+    for (const query of Object.values(QUERY_DE_SECCION)) {
+      expect(query).not.toHaveBeenCalled();
+    }
+  });
 });
 
 /**
@@ -329,9 +350,7 @@ describe('DashboardPage — un bloque rotulado por módulo', () => {
   }
 
   async function bloquesDe(role: string | undefined) {
-    mockClerk.currentUser.mockResolvedValue(
-      role === undefined ? null : { publicMetadata: { role } },
-    );
+    comoSesion(role);
     return buscarBloques(await DashboardPage());
   }
 
@@ -355,7 +374,7 @@ describe('DashboardPage — un bloque rotulado por módulo', () => {
   test.each(['admin', 'entrenador', 'medico', 'social', 'responsable_viandas'])(
     'rol %s: hay exactamente un bloque por sección montada',
     async (rol) => {
-      mockClerk.currentUser.mockResolvedValue({ publicMetadata: { role: rol } });
+      comoSesion(rol);
       const arbol = await DashboardPage();
 
       expect(buscarBloques(arbol)).toHaveLength(buscarSecciones(arbol).length);
@@ -386,7 +405,7 @@ describe('DashboardPage — un bloque rotulado por módulo', () => {
 describe('DashboardPage — scoping que se pasa a las secciones', () => {
   /** Encuentra las props con las que la page montó una sección. */
   async function propsDe(role: string, nombre: NombreSeccion) {
-    mockClerk.currentUser.mockResolvedValue({ publicMetadata: { role } });
+    comoSesion(role);
     const arbol = await DashboardPage();
     return buscarSecciones(arbol).find((s) => s.nombre === nombre)?.props as Record<
       string,
@@ -424,25 +443,13 @@ describe('DashboardPage — scoping que se pasa a las secciones', () => {
     }
   });
 
-  // El lugar del responsable sale de Clerk; el admin ve todos los lugares.
-  test('el responsable de viandas recibe su lugar de publicMetadata', async () => {
-    mockClerk.currentUser.mockResolvedValue({
-      publicMetadata: { role: 'responsable_viandas', lugarRetiro: 'SEDE' },
-    });
+  // El lugar del responsable sale de su membresía; el admin ve todos los lugares.
+  test('el responsable de viandas recibe el lugar de su membresía', async () => {
+    comoSesion('responsable_viandas', { lugarRetiro: 'SEDE' });
     const arbol = await DashboardPage();
     const props = buscarSecciones(arbol)[0].props as Record<string, unknown>;
 
     expect(props.lugar).toBe('SEDE');
     expect(props.isAdmin).toBe(false);
-  });
-
-  test('un lugarRetiro inválido en el metadata se descarta', async () => {
-    mockClerk.currentUser.mockResolvedValue({
-      publicMetadata: { role: 'responsable_viandas', lugarRetiro: 'MARTE' },
-    });
-    const arbol = await DashboardPage();
-    const props = buscarSecciones(arbol)[0].props as Record<string, unknown>;
-
-    expect(props.lugar).toBeNull();
   });
 });

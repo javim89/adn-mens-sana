@@ -123,7 +123,7 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
 
       {isAdmin && (
         <div>
-          <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Área responsable <span className="text-red-500">*</span>
           </label>
           <Controller
@@ -144,14 +144,14 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
       )}
 
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+        <label className="block text-sm font-medium text-foreground mb-1.5">
           Título <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           {...register('titulo')}
           placeholder="Ej: Revisión médica pretemporada"
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 aria-[invalid=true]:border-red-400"
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30 aria-[invalid=true]:border-red-400"
           aria-invalid={errors.titulo ? 'true' : 'false'}
         />
         {errors.titulo && (
@@ -161,13 +161,13 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Fecha <span className="text-red-500">*</span>
           </label>
           <input
             type="date"
             {...register('fecha')}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 aria-[invalid=true]:border-red-400"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30 aria-[invalid=true]:border-red-400"
             aria-invalid={errors.fecha ? 'true' : 'false'}
           />
           {errors.fecha && (
@@ -175,13 +175,13 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Hora <span className="text-red-500">*</span>
           </label>
           <input
             type="time"
             {...register('hora')}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 aria-[invalid=true]:border-red-400"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30 aria-[invalid=true]:border-red-400"
             aria-invalid={errors.hora ? 'true' : 'false'}
           />
           {errors.hora && (
@@ -191,14 +191,14 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">
+        <label className="block text-sm font-medium text-foreground mb-1.5">
           Lugar <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           {...register('lugar')}
           placeholder="Ej: Consultorio 3 — Sector Médico"
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 aria-[invalid=true]:border-red-400"
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30 aria-[invalid=true]:border-red-400"
           aria-invalid={errors.lugar ? 'true' : 'false'}
         />
         {errors.lugar && (
@@ -207,17 +207,17 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">Descripción</label>
+        <label className="block text-sm font-medium text-foreground mb-1.5">Descripción</label>
         <textarea
           {...register('descripcion')}
           rows={3}
           placeholder="Detalles adicionales del turno..."
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-secundario/30"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1C] mb-1.5">Deportista/s</label>
+        <label className="block text-sm font-medium text-foreground mb-1.5">Deportista/s</label>
         <Controller
           name="deportistaIds"
           control={control}
@@ -238,14 +238,14 @@ export default function TurnoForm({ mode, isAdmin, profesionales, initialData }:
           type="button"
           onClick={() => router.push('/turnos')}
           disabled={isPending}
-          className="text-sm text-[#6B7280] hover:text-[#1C1C1C] border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
+          className="text-sm text-muted-foreground hover:text-foreground border border-gray-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={isPending}
-          className="flex items-center gap-2 bg-[#121A61] text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-[#1E2A8A] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-primario-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isPending ? (
             <>

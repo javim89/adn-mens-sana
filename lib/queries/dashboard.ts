@@ -19,7 +19,7 @@
  *
  * Usa `prisma` de `lib/db.ts`, NO `getReadOnlyPrisma()`, que es exclusivo de Insights.
  */
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 import { Prisma } from '@/lib/generated/prisma/client';
 import type {
   EstadoAsistencia,
@@ -90,6 +90,7 @@ export async function getResumenViandas(params: {
   /** Solo para `responsable_viandas`: el admin ve todos los lugares. */
   lugar?: LugarRetiro | null;
 }): Promise<ResumenViandas> {
+  const db = await getDb();
   const { rango, lugar } = params;
 
   // `e.lugar::text = $n` y no `e.lugar = $n`: el driver tipa el parámetro como
@@ -98,7 +99,7 @@ export async function getResumenViandas(params: {
   // El prefijo `fecha` del índice `@@index([fecha, lugar])` se sigue usando.
   const filtroLugar = lugar ? Prisma.sql`AND e.lugar::text = ${lugar}` : Prisma.empty;
 
-  const filas = await prisma.$queryRaw<FilaViandas[]>(Prisma.sql`
+  const filas = await db.$queryRaw<FilaViandas[]>(Prisma.sql`
     SELECT e.comida::text AS comida,
            COUNT(*)::int  AS entregas,
            COUNT(*) FILTER (
@@ -110,7 +111,8 @@ export async function getResumenViandas(params: {
     LEFT JOIN necesidades_apoyo na ON na.deportista_id = e.deportista_id
     LEFT JOIN deportistas d ON d.id = e.deportista_id
     LEFT JOIN categorias c ON c.id = d.categoria_id
-    WHERE e.fecha >= ${rango.desdeDb} AND e.fecha < ${rango.finExclusivoDb}
+    WHERE e.club_id = ${db.$clubId()}
+      AND e.fecha >= ${rango.desdeDb} AND e.fecha < ${rango.finExclusivoDb}
     ${filtroLugar}
     GROUP BY e.comida
   `);
@@ -171,17 +173,18 @@ export async function getResumenTurnos(params: {
   profesionalId?: string;
   limite?: number;
 }): Promise<ResumenTurnos> {
+  const db = await getDb();
   const { rango, desdeHoyDb, profesionalId, limite = 5 } = params;
   const scope = profesionalId ? { profesionalId } : {};
 
   const [totalSemana, proximos] = await Promise.all([
-    prisma.turno.count({
+    db.turno.count({
       where: {
         ...scope,
         fecha: { gte: rango.desdeDb, lt: rango.finExclusivoDb },
       },
     }),
-    prisma.turno.findMany({
+    db.turno.findMany({
       where: { ...scope, fecha: { gte: desdeHoyDb } },
       select: {
         id: true,
@@ -326,6 +329,7 @@ export async function getResumenPresentismo(params: {
   /** `undefined` = admin (todos los entrenadores). */
   entrenadorId?: string;
 }): Promise<ResumenPresentismo> {
+  const db = await getDb();
   const { rango, rangoPrevio, entrenadorId } = params;
   const scope = entrenadorId ? { entrenadorId } : {};
 
@@ -341,12 +345,12 @@ export async function getResumenPresentismo(params: {
     : Prisma.empty;
 
   const [gruposActual, gruposPrevio, ausentes, filasPorDia] = await Promise.all([
-    prisma.asistencia.groupBy({
+    db.asistencia.groupBy({
       by: ['estado'],
       where: whereSemana,
       _count: { _all: true },
     }),
-    prisma.asistencia.groupBy({
+    db.asistencia.groupBy({
       by: ['estado'],
       where: {
         entrenamiento: {
@@ -358,14 +362,14 @@ export async function getResumenPresentismo(params: {
     }),
     // El `having` empuja el "2 o más" a SQL: sin él volvería una fila por cada
     // deportista con una sola ausencia, que es casi todo el plantel.
-    prisma.asistencia.groupBy({
+    db.asistencia.groupBy({
       by: ['deportistaId'],
       where: { ...whereSemana, estado: 'AUSENTE' },
       _count: { deportistaId: true },
       having: { deportistaId: { _count: { gte: 2 } } },
       orderBy: { _count: { deportistaId: 'desc' } },
     }),
-    prisma.$queryRaw<FilaPresentismoDia[]>(Prisma.sql`
+    db.$queryRaw<FilaPresentismoDia[]>(Prisma.sql`
       SELECT to_char(en.fecha, 'YYYY-MM-DD') AS clave,
              COUNT(*)::int AS registros,
              COUNT(*) FILTER (
@@ -373,7 +377,8 @@ export async function getResumenPresentismo(params: {
              )::int AS asistencias
       FROM asistencias a
       JOIN entrenamientos en ON en.id = a.entrenamiento_id
-      WHERE en.fecha >= ${rango.desdeDb} AND en.fecha < ${rango.finExclusivoDb}
+      WHERE en.club_id = ${db.$clubId()}
+        AND en.fecha >= ${rango.desdeDb} AND en.fecha < ${rango.finExclusivoDb}
       ${filtroEntrenador}
       GROUP BY en.fecha
     `),
@@ -381,7 +386,7 @@ export async function getResumenPresentismo(params: {
 
   let ausentismoReiterado: DeportistaAusencias[] = [];
   if (ausentes.length > 0) {
-    const nombres = await prisma.deportista.findMany({
+    const nombres = await db.deportista.findMany({
       where: { id: { in: ausentes.map((a) => a.deportistaId) } },
       select: { id: true, nombre: true, apellido: true },
     });
@@ -453,6 +458,7 @@ export async function getResumenSeguimientos(params: {
   diasFuturas?: number;
   limite?: number;
 }): Promise<ResumenSeguimientos> {
+  const db = await getDb();
   const { desdeHoyDb, diasVencidas = 90, diasFuturas = 7, limite = 6 } = params;
 
   const desde = new Date(desdeHoyDb.getTime() - diasVencidas * 86_400_000);
@@ -460,8 +466,8 @@ export async function getResumenSeguimientos(params: {
   const finExclusivo = new Date(desdeHoyDb.getTime() + (diasFuturas + 1) * 86_400_000);
 
   const [grupos, citas] = await Promise.all([
-    prisma.seguimiento.groupBy({ by: ['prioridad'], _count: { _all: true } }),
-    prisma.seguimiento.findMany({
+    db.seguimiento.groupBy({ by: ['prioridad'], _count: { _all: true } }),
+    db.seguimiento.findMany({
       where: { proximaCita: { gte: desde, lt: finExclusivo } },
       select: {
         id: true,
@@ -520,7 +526,8 @@ const ESTADOS_DEPORTISTA = ['ACTIVO', 'LESIONADO', 'SUSPENDIDO', 'INACTIVO'] as 
 
 /** Plantel por estado. Cada estado linkea a `?filter[estado]=<ESTADO>`, que la API ya acepta. */
 export async function getResumenPlantel(): Promise<ResumenPlantel> {
-  const grupos = await prisma.deportista.groupBy({
+  const db = await getDb();
+  const grupos = await db.deportista.groupBy({
     by: ['estado'],
     _count: { _all: true },
   });
@@ -564,9 +571,10 @@ export async function getProximosEventos(params: {
   desdeHoyDb: Date;
   limite?: number;
 }): Promise<EventoProximo[]> {
+  const db = await getDb();
   const { desdeHoyDb, limite = 5 } = params;
 
-  const eventos = await prisma.eventoTorneo.findMany({
+  const eventos = await db.eventoTorneo.findMany({
     where: { dia: { fecha: { gte: desdeHoyDb } } },
     select: {
       id: true,

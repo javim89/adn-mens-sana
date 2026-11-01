@@ -67,7 +67,7 @@ describe('getCroppedImage', () => {
     const output = canvases[0];
     expect(output.width).toBe(512);
     expect(output.height).toBe(512);
-    expect(contexts[0].fillStyle).toBe('#FFFFFF');
+    expect(contexts[0].fillStyle).toBe('white');
     expect(contexts[0].fillRect).toHaveBeenCalledWith(0, 0, 512, 512);
   });
 

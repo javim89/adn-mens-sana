@@ -5,43 +5,35 @@
  * gráficos no parezcan de otra app. Donde el dato ya tiene un color asignado en
  * la UI existente (triage, estado de deportista, estado de asistencia) se usa
  * una escala semántica fija, para no contradecir las tablas y badges vigentes.
+ * Los hex de esas escalas viven en `lib/branding/tokens.ts`.
  */
+import {
+  COLORES_ESTADO_ASISTENCIA,
+  COLORES_ESTADO_DEPORTISTA,
+  COLORES_TRIAGE,
+  GRISES_SERIES,
+} from '@/lib/branding/tokens';
 
-/** Orden fijo: se rota por índice de serie cuando no hay escala semántica. */
+/**
+ * Orden fijo: se rota por índice de serie cuando no hay escala semántica. Son vars del
+ * tema (`var(--club-*)`), así los gráficos siguen los colores del club: recharts pasa
+ * el string tal cual a `fill`/`stroke`, y los navegadores resuelven `var()` y
+ * `color-mix()` en los atributos de presentación de SVG (verificado en Chromium,
+ * WebKit y Firefox).
+ */
 export const SERIES_COLORS = [
-  '#121A61', // navy
-  '#3346CC', // accent
-  '#C9A84C', // gold
-  '#1E2A8A', // navy hover
-  '#6B8AE6',
-  '#8C6D1F',
-  '#4B5563',
-  '#9CA3AF',
+  'var(--club-primario)',
+  'var(--club-secundario)',
+  'var(--club-acento)',
+  'var(--club-primario-hover)',
+  'color-mix(in oklab, var(--club-secundario) 67%, white)', // secundario claro
+  'color-mix(in srgb, var(--club-acento) 70%, black)', // acento oscuro
+  ...GRISES_SERIES,
 ] as const;
 
-/** Mismos niveles que `NIVEL_TRIAGE_META` en TriagePanel.tsx. */
-export const TRIAGE_COLORS: Record<string, string> = {
-  VERDE: '#16a34a',
-  AMARILLO: '#eab308',
-  NARANJA: '#f97316',
-  ROJO: '#dc2626',
-};
-
-/** Equivalente hex del texto de `ESTADO_BADGE` en DeportistasTable.tsx. */
-export const ESTADO_DEPORTISTA_COLORS: Record<string, string> = {
-  ACTIVO: '#15803d', // green-700
-  INACTIVO: '#6B7280',
-  LESIONADO: '#b45309', // amber-700
-  SUSPENDIDO: '#b91c1c', // red-700
-};
-
-/** Equivalente hex de `ESTADO_ASISTENCIA_STYLES` en lib/utils/asistencia.ts. */
-export const ESTADO_ASISTENCIA_COLORS: Record<string, string> = {
-  PRESENTE: '#15803d', // green-700
-  AUSENTE: '#b91c1c', // red-700
-  LLEGO_TARDE: '#b45309', // amber-700
-  SE_RETIRO_ANTES: '#6B7280',
-};
+export const TRIAGE_COLORS = COLORES_TRIAGE;
+export const ESTADO_DEPORTISTA_COLORS = COLORES_ESTADO_DEPORTISTA;
+export const ESTADO_ASISTENCIA_COLORS = COLORES_ESTADO_ASISTENCIA;
 
 const SEMANTIC_COLORS: Record<string, string> = {
   ...TRIAGE_COLORS,
@@ -108,13 +100,13 @@ export function formatCompact(v: unknown, format: ValueFormat = 'integer'): stri
   return formatValue(n, format);
 }
 
-/** Tokens compartidos por los ejes/grillas de recharts. */
+/** Tokens compartidos por los ejes/grillas de recharts (vars de `app/globals.css`). */
 export const CHART_TOKENS = {
-  grid: '#F3F4F6',
-  axis: '#E5E7EB',
-  axisText: '#6B7280',
+  grid: 'var(--muted)',
+  axis: 'var(--border)',
+  axisText: 'var(--muted-foreground)',
   axisFontSize: 11,
-  tooltipBorder: '#F3F4F6',
-  /** Resalte de la barra/columna bajo el cursor. Azul del club muy diluido. */
-  cursor: 'rgba(51, 70, 204, 0.06)',
+  tooltipBorder: 'var(--muted)',
+  /** Resalte de la barra/columna bajo el cursor. Secundario del club muy diluido. */
+  cursor: 'color-mix(in srgb, var(--club-secundario) 6%, transparent)',
 } as const;

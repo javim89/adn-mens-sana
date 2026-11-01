@@ -19,7 +19,7 @@ interface TabSocialProps {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="sm:col-span-2 text-sm font-semibold uppercase tracking-wide text-[#6B7280] border-b border-gray-100 pb-2 mt-2">
+    <h3 className="sm:col-span-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground border-b border-gray-100 pb-2 mt-2">
       {children}
     </h3>
   );
@@ -40,7 +40,7 @@ function Field({
     <div className={className}>
       <label
         htmlFor={id}
-        className="block text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-1"
+        className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
       >
         {label}
       </label>
@@ -98,43 +98,43 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
       <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
         {/* Padre */}
         <div className="space-y-3">
-          <p className="text-xs font-semibold text-[#1C1C1C] uppercase tracking-wide">Padre</p>
+          <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Padre</p>
           <div>
-            <label htmlFor="padreNombre" className="block text-xs text-[#6B7280] mb-1">Nombre</label>
-            <input id="padreNombre" type="text" value={fam.padreNombre ?? ''} onChange={(e) => patchFam({ padreNombre: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30" />
+            <label htmlFor="padreNombre" className="block text-xs text-muted-foreground mb-1">Nombre</label>
+            <input id="padreNombre" type="text" value={fam.padreNombre ?? ''} onChange={(e) => patchFam({ padreNombre: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30" />
           </div>
           <div>
-            <label htmlFor="padreApellido" className="block text-xs text-[#6B7280] mb-1">Apellido</label>
-            <input id="padreApellido" type="text" value={fam.padreApellido ?? ''} onChange={(e) => patchFam({ padreApellido: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30" />
+            <label htmlFor="padreApellido" className="block text-xs text-muted-foreground mb-1">Apellido</label>
+            <input id="padreApellido" type="text" value={fam.padreApellido ?? ''} onChange={(e) => patchFam({ padreApellido: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30" />
           </div>
           <div>
-            <label htmlFor="padreNacionalidad" className="block text-xs text-[#6B7280] mb-1">Nacionalidad</label>
-            <input id="padreNacionalidad" type="text" value={fam.padreNacionalidad ?? ''} onChange={(e) => patchFam({ padreNacionalidad: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30" />
+            <label htmlFor="padreNacionalidad" className="block text-xs text-muted-foreground mb-1">Nacionalidad</label>
+            <input id="padreNacionalidad" type="text" value={fam.padreNacionalidad ?? ''} onChange={(e) => patchFam({ padreNacionalidad: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30" />
           </div>
           <div>
-            <label htmlFor="padreOcupacion" className="block text-xs text-[#6B7280] mb-1">Ocupación</label>
-            <input id="padreOcupacion" type="text" value={fam.padreOcupacion ?? ''} onChange={(e) => patchFam({ padreOcupacion: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30" />
+            <label htmlFor="padreOcupacion" className="block text-xs text-muted-foreground mb-1">Ocupación</label>
+            <input id="padreOcupacion" type="text" value={fam.padreOcupacion ?? ''} onChange={(e) => patchFam({ padreOcupacion: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30" />
           </div>
         </div>
 
         {/* Madre */}
         <div className="space-y-3">
-          <p className="text-xs font-semibold text-[#1C1C1C] uppercase tracking-wide">Madre</p>
+          <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Madre</p>
           <div>
-            <label htmlFor="madreNombre" className="block text-xs text-[#6B7280] mb-1">Nombre</label>
-            <input id="madreNombre" type="text" value={fam.madreNombre ?? ''} onChange={(e) => patchFam({ madreNombre: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30" />
+            <label htmlFor="madreNombre" className="block text-xs text-muted-foreground mb-1">Nombre</label>
+            <input id="madreNombre" type="text" value={fam.madreNombre ?? ''} onChange={(e) => patchFam({ madreNombre: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30" />
           </div>
           <div>
-            <label htmlFor="madreApellido" className="block text-xs text-[#6B7280] mb-1">Apellido</label>
-            <input id="madreApellido" type="text" value={fam.madreApellido ?? ''} onChange={(e) => patchFam({ madreApellido: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30" />
+            <label htmlFor="madreApellido" className="block text-xs text-muted-foreground mb-1">Apellido</label>
+            <input id="madreApellido" type="text" value={fam.madreApellido ?? ''} onChange={(e) => patchFam({ madreApellido: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30" />
           </div>
           <div>
-            <label htmlFor="madreNacionalidad" className="block text-xs text-[#6B7280] mb-1">Nacionalidad</label>
-            <input id="madreNacionalidad" type="text" value={fam.madreNacionalidad ?? ''} onChange={(e) => patchFam({ madreNacionalidad: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30" />
+            <label htmlFor="madreNacionalidad" className="block text-xs text-muted-foreground mb-1">Nacionalidad</label>
+            <input id="madreNacionalidad" type="text" value={fam.madreNacionalidad ?? ''} onChange={(e) => patchFam({ madreNacionalidad: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30" />
           </div>
           <div>
-            <label htmlFor="madreOcupacion" className="block text-xs text-[#6B7280] mb-1">Ocupación</label>
-            <input id="madreOcupacion" type="text" value={fam.madreOcupacion ?? ''} onChange={(e) => patchFam({ madreOcupacion: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30" />
+            <label htmlFor="madreOcupacion" className="block text-xs text-muted-foreground mb-1">Ocupación</label>
+            <input id="madreOcupacion" type="text" value={fam.madreOcupacion ?? ''} onChange={(e) => patchFam({ madreOcupacion: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30" />
           </div>
         </div>
       </div>
@@ -149,9 +149,9 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
             type="checkbox"
             checked={soc.trabaja ?? false}
             onChange={(e) => patchSoc({ trabaja: e.target.checked })}
-            className="w-4 h-4 text-[#121A61] rounded border-gray-300"
+            className="w-4 h-4 text-primario rounded border-gray-300"
           />
-          <span className="text-sm text-[#1C1C1C]">Trabaja</span>
+          <span className="text-sm text-foreground">Trabaja</span>
         </label>
       </div>
 
@@ -173,7 +173,7 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
           type="text"
           value={soc.conQuienVive ?? ''}
           onChange={(e) => patchSoc({ conQuienVive: e.target.value })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30"
         />
       </Field>
 
@@ -185,7 +185,7 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
           value={soc.composicionGrupoFamiliar ?? ''}
           onChange={(e) => patchSoc({ composicionGrupoFamiliar: e.target.value })}
           rows={3}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30 resize-none"
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30 resize-none"
         />
       </Field>
 
@@ -199,7 +199,7 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
           min={0}
           value={viv.personasDependientes ?? ''}
           onChange={(e) => patchViv({ personasDependientes: e.target.value ? Number(e.target.value) : undefined })}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30"
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30"
         />
       </Field>
 
@@ -230,14 +230,14 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
             type="checkbox"
             checked={viv.cuentaConHabitaciones ?? false}
             onChange={(e) => patchViv({ cuentaConHabitaciones: e.target.checked })}
-            className="w-4 h-4 text-[#121A61] rounded border-gray-300"
+            className="w-4 h-4 text-primario rounded border-gray-300"
           />
-          <span className="text-sm text-[#1C1C1C]">Cuenta con habitaciones propias</span>
+          <span className="text-sm text-foreground">Cuenta con habitaciones propias</span>
         </label>
       </div>
 
       <div className="sm:col-span-2">
-        <p className="text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-2">Servicios</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Servicios</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
           {Object.values(Servicio).map((s) => (
             <label key={s} className="flex items-center gap-2 cursor-pointer">
@@ -245,9 +245,9 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
                 type="checkbox"
                 checked={viv.servicios?.includes(s) ?? false}
                 onChange={() => toggleServicio(s)}
-                className="w-4 h-4 text-[#121A61] rounded border-gray-300"
+                className="w-4 h-4 text-primario rounded border-gray-300"
               />
-              <span className="text-sm text-[#1C1C1C]">{SERVICIO_LABELS[s]}</span>
+              <span className="text-sm text-foreground">{SERVICIO_LABELS[s]}</span>
             </label>
           ))}
         </div>
@@ -275,9 +275,9 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
             type="checkbox"
             checked={nec.recibeAlmuerzo ?? false}
             onChange={(e) => patchNec({ recibeAlmuerzo: e.target.checked })}
-            className="w-4 h-4 text-[#121A61] rounded border-gray-300"
+            className="w-4 h-4 text-primario rounded border-gray-300"
           />
-          <span className="text-sm text-[#1C1C1C]">Recibe almuerzo</span>
+          <span className="text-sm text-foreground">Recibe almuerzo</span>
         </label>
 
         <label className="flex items-center gap-2 cursor-pointer">
@@ -286,9 +286,9 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
             type="checkbox"
             checked={nec.recibeCena ?? false}
             onChange={(e) => patchNec({ recibeCena: e.target.checked })}
-            className="w-4 h-4 text-[#121A61] rounded border-gray-300"
+            className="w-4 h-4 text-primario rounded border-gray-300"
           />
-          <span className="text-sm text-[#1C1C1C]">Recibe cena</span>
+          <span className="text-sm text-foreground">Recibe cena</span>
         </label>
 
         <label className="flex items-center gap-2 cursor-pointer">
@@ -297,14 +297,14 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
             type="checkbox"
             checked={nec.esSocio ?? false}
             onChange={(e) => patchNec({ esSocio: e.target.checked })}
-            className="w-4 h-4 text-[#121A61] rounded border-gray-300"
+            className="w-4 h-4 text-primario rounded border-gray-300"
           />
-          <span className="text-sm text-[#1C1C1C]">Es socio del club</span>
+          <span className="text-sm text-foreground">Es socio del club</span>
         </label>
       </div>
 
       <div className="sm:col-span-2">
-        <p className="text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-2">Apoyos requeridos</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Apoyos requeridos</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
           {Object.values(TipoApoyo).map((t) => (
             <label key={t} className="flex items-center gap-2 cursor-pointer">
@@ -312,9 +312,9 @@ export default function TabSocial({ data, onChange }: TabSocialProps) {
                 type="checkbox"
                 checked={nec.apoyosRequeridos?.includes(t) ?? false}
                 onChange={() => toggleApoyo(t)}
-                className="w-4 h-4 text-[#121A61] rounded border-gray-300"
+                className="w-4 h-4 text-primario rounded border-gray-300"
               />
-              <span className="text-sm text-[#1C1C1C]">{TIPO_APOYO_LABELS[t]}</span>
+              <span className="text-sm text-foreground">{TIPO_APOYO_LABELS[t]}</span>
             </label>
           ))}
         </div>

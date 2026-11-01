@@ -9,7 +9,7 @@ import {
 const TONO_CLASS = {
   bueno: 'text-green-700',
   malo: 'text-red-700',
-  neutro: 'text-[#6B7280]',
+  neutro: 'text-muted-foreground',
 } as const;
 
 /** Sobre el hero navy los tonos 700 no se leen: van los 300, y el gris pasa a blanco/70. */

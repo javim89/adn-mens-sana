@@ -10,11 +10,11 @@ interface Props {
 }
 
 const inputClass =
-  'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30';
+  'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30';
 
-const labelClass = 'block text-sm font-medium text-[#1C1C1C] mb-1.5';
+const labelClass = 'block text-sm font-medium text-foreground mb-1.5';
 
-const blockTitleClass = 'text-xs font-semibold uppercase text-[#6B7280] tracking-wide mb-3';
+const blockTitleClass = 'text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-3';
 
 function NumericFieldWithSuffix({
   id,
@@ -35,7 +35,7 @@ function NumericFieldWithSuffix({
     <div>
       <label htmlFor={id} className={labelClass}>
         {label}{' '}
-        <span className="text-xs text-[#6B7280] font-normal">({unidad})</span>
+        <span className="text-xs text-muted-foreground font-normal">({unidad})</span>
       </label>
       <input
         id={id}
@@ -62,18 +62,18 @@ function SumatoriaCard({
 }) {
   const hasValue = value !== null && value !== undefined && !Number.isNaN(value);
   return (
-    <div className="rounded-lg border border-gray-100 bg-[#F3F4F6] px-4 py-3">
+    <div className="rounded-lg border border-gray-100 bg-muted px-4 py-3">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-medium text-[#6B7280]">{label}</span>
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[#6B7280]">
-          <Sparkles size={11} className="text-[#3346CC]" aria-hidden />
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <Sparkles size={11} className="text-secundario" aria-hidden />
           auto
         </span>
       </div>
-      <p className="font-mono text-2xl font-semibold leading-none text-[#121A61]">
-        {hasValue ? value : <span className="text-[#6B7280]">—</span>}
+      <p className="font-mono text-2xl font-semibold leading-none text-primario">
+        {hasValue ? value : <span className="text-muted-foreground">—</span>}
         {hasValue && suffix ? (
-          <span className="ml-1 text-sm font-normal text-[#6B7280]">{suffix}</span>
+          <span className="ml-1 text-sm font-normal text-muted-foreground">{suffix}</span>
         ) : null}
       </p>
     </div>

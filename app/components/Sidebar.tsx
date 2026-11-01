@@ -3,17 +3,46 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import { Settings, ShieldCheck } from 'lucide-react';
 import type { NavItem } from '../../lib/roles';
 import { ICON_MAP } from '../../lib/nav-icons';
-import LogoBioTeam from './LogoBioTeam';
+import MarcaClub from './branding/MarcaClub';
+import ClubSelector, { type ClubOpcion } from './ClubSelector';
+
+/** Club activo que llega desde el layout. */
+export interface ClubActivo {
+  id: string;
+  nombre: string;
+  /** `/api/clubes/<slug>/logo?v=…`; sin logo se muestran las iniciales. */
+  logoSrc?: string | null;
+}
 
 interface SidebarProps {
   navItems: NavItem[];
+  /** Club activo: su logo y nombre son la marca del sidebar. */
+  club?: ClubActivo;
+  /** Clubes con membresía activa. Con más de uno se muestra el selector. */
+  misClubes?: ClubOpcion[];
+  /** Admin del club: ve el link a Configuración (nombre, logo y colores). */
+  puedeConfigurar?: boolean;
+  /** Staff de BioTeam: ve el link al panel de clubes. */
+  esSuperadmin?: boolean;
+  /** Está dentro de un club como superadmin (no como miembro): se avisa con un banner. */
+  comoSuperadmin?: boolean;
   isOpen?: boolean;
   onClose?: () => void;
 }
 
-export default function Sidebar({ navItems, isOpen = false, onClose }: SidebarProps) {
+export default function Sidebar({
+  navItems,
+  club,
+  misClubes = [],
+  puedeConfigurar = false,
+  esSuperadmin = false,
+  comoSuperadmin = false,
+  isOpen = false,
+  onClose,
+}: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -28,8 +57,9 @@ export default function Sidebar({ navItems, isOpen = false, onClose }: SidebarPr
       )}
 
       <aside
+        data-club-id={club?.id}
         className={[
-          'w-64 flex flex-col bg-[#121A61] text-white shrink-0',
+          'w-64 flex flex-col bg-primario text-white shrink-0',
           // Mobile: fixed drawer
           'fixed inset-y-0 left-0 z-50 transition-transform duration-200',
           isOpen ? 'translate-x-0' : '-translate-x-full',
@@ -37,18 +67,23 @@ export default function Sidebar({ navItems, isOpen = false, onClose }: SidebarPr
           'md:static md:translate-x-0 md:self-stretch',
         ].join(' ')}
       >
-        {/* Marca */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-white/10">
-          <LogoBioTeam variante="inverso" className="h-9" eager />
-          <div className="min-w-0">
-            <p className="font-[family-name:var(--font-oswald)] font-semibold text-sm leading-tight uppercase tracking-wide">
-              BioTeam
-            </p>
-            <p className="text-xs text-white/50 mt-0.5">
-              Historia Deportiva
-            </p>
+        {/* Marca del club */}
+        {club && (
+          <div className="px-4 py-4 border-b border-white/10">
+            <MarcaClub nombre={club.nombre} logoSrc={club.logoSrc ?? null} />
           </div>
-        </div>
+        )}
+
+        {club && comoSuperadmin && (
+          <p
+            role="status"
+            className="mx-3 mt-3 rounded-lg border-l-2 border-acento bg-white/10 px-3 py-2 text-xs text-white/80"
+          >
+            Estás viendo <span className="font-semibold text-white">{club.nombre}</span> como superadmin
+          </p>
+        )}
+
+        {club && <ClubSelector clubes={misClubes} clubActual={club} />}
 
         {/* Navegación */}
         <nav className="flex-1 px-3 py-6 space-y-1">
@@ -63,7 +98,7 @@ export default function Sidebar({ navItems, isOpen = false, onClose }: SidebarPr
                 className={[
                   'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
                   active
-                    ? 'bg-white/15 text-white border-l-2 border-[#C9A84C]'
+                    ? 'bg-white/15 text-white border-l-2 border-acento'
                     : 'text-white/70 hover:bg-white/10 hover:text-white',
                 ].join(' ')}
               >
@@ -72,6 +107,37 @@ export default function Sidebar({ navItems, isOpen = false, onClose }: SidebarPr
               </Link>
             );
           })}
+
+          {(puedeConfigurar || esSuperadmin) && (
+            <div className="mt-4 pt-4 space-y-1 border-t border-white/10">
+              {puedeConfigurar && (
+                <Link
+                  href="/configuracion"
+                  onClick={onClose}
+                  aria-current={pathname === '/configuracion' ? 'page' : undefined}
+                  className={[
+                    'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                    pathname === '/configuracion'
+                      ? 'bg-white/15 text-white border-l-2 border-acento'
+                      : 'text-white/70 hover:bg-white/10 hover:text-white',
+                  ].join(' ')}
+                >
+                  <Settings size={18} />
+                  Configuración
+                </Link>
+              )}
+              {esSuperadmin && (
+                <Link
+                  href="/superadmin/clubes"
+                  onClick={onClose}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                >
+                  <ShieldCheck size={18} />
+                  Superadmin · Clubes
+                </Link>
+              )}
+            </div>
+          )}
         </nav>
 
         {/* Auth controls */}
@@ -84,7 +150,7 @@ export default function Sidebar({ navItems, isOpen = false, onClose }: SidebarPr
                 </button>
               </SignInButton>
               <SignUpButton>
-                <button className="w-full px-4 py-2 text-sm font-medium text-[#121A61] bg-white rounded-lg hover:bg-white/90 transition-colors">
+                <button className="w-full px-4 py-2 text-sm font-medium text-primario bg-white rounded-lg hover:bg-white/90 transition-colors">
                   Registrarse
                 </button>
               </SignUpButton>

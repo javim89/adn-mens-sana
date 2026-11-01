@@ -32,7 +32,7 @@ function Field({
     <div className={className}>
       <label
         htmlFor={id}
-        className="block text-xs font-medium text-[#6B7280] uppercase tracking-wide mb-1"
+        className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
       >
         {label}
       </label>
@@ -55,7 +55,7 @@ export default function TabPersonal({
 }: TabPersonalProps) {
   const inputCls = (extra = '') =>
     [
-      'w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3346CC]/30',
+      'w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secundario/30',
       extra,
       disabled ? disabledCls : '',
     ]
@@ -226,9 +226,9 @@ export default function TabPersonal({
             checked={data.vivePensionClub}
             onChange={(e) => onChange({ vivePensionClub: e.target.checked })}
             disabled={disabled}
-            className="w-4 h-4 text-[#121A61] rounded border-gray-300 focus:ring-[#3346CC]/30"
+            className="w-4 h-4 text-primario rounded border-gray-300 focus:ring-secundario/30"
           />
-          <span className="text-sm text-[#1C1C1C]">Vive en pensión del club</span>
+          <span className="text-sm text-foreground">Vive en pensión del club</span>
         </label>
 
         <label className={`flex items-center gap-2${disabled ? ' cursor-not-allowed' : ' cursor-pointer'}`}>
@@ -238,9 +238,9 @@ export default function TabPersonal({
             checked={data.vivePensionExterna}
             onChange={(e) => onChange({ vivePensionExterna: e.target.checked })}
             disabled={disabled}
-            className="w-4 h-4 text-[#121A61] rounded border-gray-300 focus:ring-[#3346CC]/30"
+            className="w-4 h-4 text-primario rounded border-gray-300 focus:ring-secundario/30"
           />
-          <span className="text-sm text-[#1C1C1C]">Vive en pensión externa</span>
+          <span className="text-sm text-foreground">Vive en pensión externa</span>
         </label>
       </div>
 

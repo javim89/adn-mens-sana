@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:integration": "vitest run test-integration",
     "seed:categorias": "node scripts/seed-categorias.mjs",
     "seed:calendario": "node scripts/seed-calendario.mjs",
     "seed:deportistas": "node scripts/seed-deportistas.mjs",
@@ -74,6 +75,7 @@
     "jsdom": "^29.1.1",
     "playwright": "^1.60.0",
     "prisma": "^7.8.0",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.8"

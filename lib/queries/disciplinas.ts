@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { getDb } from '@/lib/tenant/db';
 
 export interface DisciplinaConCategorias {
   id: string;
@@ -7,7 +7,8 @@ export interface DisciplinaConCategorias {
 }
 
 export async function getDisciplinasConCategorias(): Promise<DisciplinaConCategorias[]> {
-  const rows = await prisma.disciplina.findMany({
+  const db = await getDb();
+  const rows = await db.disciplina.findMany({
     orderBy: { orden: 'asc' },
     select: {
       id: true,

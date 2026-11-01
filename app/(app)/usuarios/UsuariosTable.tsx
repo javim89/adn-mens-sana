@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Mail, Loader2, ChevronDown, TriangleAlert } from 'lucide-react';
 import { CustomSelect } from '@/app/components/ui/custom-select';
 import { toast } from 'sonner';
-import { useUser } from '@clerk/nextjs';
 import { reenviarInvitacion, cambiarRol, asignarLugarRetiro, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
 import { ROLES_PERMITIDOS, ROL_LABELS } from '@/lib/roles';
 import { LUGARES_RETIRO } from '@/lib/utils/viandas';
 import { LUGAR_RETIRO_LABELS } from '@/lib/utils/enum-labels';
-import type { Usuario } from '@/lib/types/usuarios';
+import { esInvitacion, type Usuario } from '@/lib/types/usuarios';
 import ConfirmarAccionModal from './ConfirmarAccionModal';
 
 
@@ -33,18 +32,18 @@ function formatLastSignIn(date: Date | null): string {
 }
 
 const ROL_BADGE: Record<string, string> = {
-  admin:         'bg-[#121A61] text-white',
-  entrenador:    'bg-[#C9A84C] text-[#1C1C1C]',
-  medico:        'bg-[#3346CC] text-white',
-  kinesiologo:   'bg-[#0F766E] text-white',
-  nutricionista: 'bg-[#7C3AED] text-white',
-  psicologo:     'bg-[#B45309] text-white',
-  cardiologo:    'bg-[#DC2626] text-white',
-  responsable_viandas: 'bg-[#0E7490] text-white',
+  admin:         'bg-primario text-white',
+  entrenador:    'bg-acento text-foreground',
+  medico:        'bg-secundario text-white',
+  kinesiologo:   'bg-teal-700 text-white',
+  nutricionista: 'bg-violet-600 text-white',
+  psicologo:     'bg-amber-700 text-white',
+  cardiologo:    'bg-red-600 text-white',
+  responsable_viandas: 'bg-cyan-700 text-white',
 };
 
 function RolBadge({ rol }: { rol: string }) {
-  const classes = ROL_BADGE[rol] ?? 'bg-gray-100 text-[#6B7280]';
+  const classes = ROL_BADGE[rol] ?? 'bg-gray-100 text-muted-foreground';
   const label = (ROL_LABELS as Record<string, string>)[rol] ?? (rol || '—');
   return (
     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${classes}`}>
@@ -71,7 +70,7 @@ function LugarRetiroChip({ lugarRetiro }: { lugarRetiro: string | null }) {
   const label =
     (LUGAR_RETIRO_LABELS as Record<string, string>)[lugarRetiro] ?? lugarRetiro;
   return (
-    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#F3F4F6] text-[#1C1C1C] border border-gray-200">
+    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-muted text-foreground border border-gray-200">
       {label}
     </span>
   );
@@ -116,7 +115,7 @@ function LugarRetiroSelector({
 interface UsuarioAccionesProps {
   usuario: Usuario;
   isAdmin: boolean;
-  currentUserId: string | undefined;
+  currentUserId: string;
   openConfirm: (action: 'deshabilitar' | 'reactivar' | 'eliminar', usuario: Usuario) => void;
 }
 
@@ -160,10 +159,9 @@ function UsuarioAcciones({ usuario, isAdmin, currentUserId, openConfirm }: Usuar
 
   if (!isAdmin) return null;
 
-  const showReenviar = usuario.status === 'pendiente';
-  const showDeshabilitar =
-    usuario.status === 'activo' && !usuario.disabled && usuario.id !== currentUserId;
-  const showReactivar = usuario.status === 'activo' && usuario.disabled;
+  const showReenviar = esInvitacion(usuario);
+  const showDeshabilitar = usuario.status === 'activo' && usuario.id !== currentUserId;
+  const showReactivar = usuario.status === 'inactivo';
 
   function handleResend() {
     setOpen(false);
@@ -179,7 +177,7 @@ function UsuarioAcciones({ usuario, isAdmin, currentUserId, openConfirm }: Usuar
   }
 
   const ITEM_BASE =
-    'flex items-center gap-2 w-full px-4 py-2 text-sm text-left text-[#1C1C1C] hover:bg-[#F3F4F6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
+    'flex items-center gap-2 w-full px-4 py-2 text-sm text-left text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
   const ITEM_DESTRUCTIVE =
     'flex items-center gap-2 w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
 
@@ -191,7 +189,7 @@ function UsuarioAcciones({ usuario, isAdmin, currentUserId, openConfirm }: Usuar
         disabled={isPending}
         aria-haspopup="true"
         aria-expanded={open}
-        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border rounded-lg bg-white text-[#1C1C1C] hover:bg-[#F3F4F6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3346CC]/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${open ? 'border-[#121A61]' : 'border-gray-200'}`}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border rounded-lg bg-white text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secundario/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${open ? 'border-primario' : 'border-gray-200'}`}
       >
         Acciones
         {isPending ? (
@@ -275,10 +273,10 @@ function RolSelector({ userId, currentRol }: { userId: string; currentRol: strin
 }
 
 function EstadoBadge({ usuario }: { usuario: Usuario }) {
-  if (usuario.status === 'activo' && usuario.disabled) {
+  if (usuario.status === 'inactivo') {
     return (
       <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-700">
-        Deshabilitado
+        Inactivo
       </span>
     );
   }
@@ -286,6 +284,16 @@ function EstadoBadge({ usuario }: { usuario: Usuario }) {
     return (
       <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700">
         Activo
+      </span>
+    );
+  }
+  if (usuario.status === 'vencida') {
+    return (
+      <span
+        className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-muted-foreground"
+        title="La invitación venció: reenviala para que pueda entrar"
+      >
+        Vencida
       </span>
     );
   }
@@ -298,6 +306,9 @@ function EstadoBadge({ usuario }: { usuario: Usuario }) {
 
 interface UsuariosTableProps {
   usuarios: Usuario[];
+  /** Rol del usuario logueado en el club activo (sale de su `Membresia`). */
+  rol: string;
+  currentUserId: string;
 }
 
 type ConfirmModalState = {
@@ -306,10 +317,8 @@ type ConfirmModalState = {
   usuario: Usuario | null;
 };
 
-export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
-  const { user, isLoaded } = useUser();
-  const isAdmin = isLoaded && user?.publicMetadata?.role === 'admin';
-  const currentUserId = user?.id;
+export default function UsuariosTable({ usuarios, rol, currentUserId }: UsuariosTableProps) {
+  const isAdmin = rol === 'admin';
 
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -348,8 +357,8 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
           toast.success('Usuario deshabilitado');
         } else if (action === 'reactivar') {
           toast.success('Usuario reactivado');
-        } else if (usuario.status === 'activo') {
-          toast.success('Usuario eliminado');
+        } else if (!esInvitacion(usuario)) {
+          toast.success('Usuario eliminado del club');
         } else {
           toast.success('Invitación revocada');
         }
@@ -368,7 +377,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
     if (action === 'deshabilitar') {
       return {
         title: 'Deshabilitar usuario',
-        description: `¿Seguro que querés deshabilitar a ${nombre}? No podrá iniciar sesión hasta que sea reactivado.`,
+        description: `¿Seguro que querés deshabilitar a ${nombre}? No podrá entrar a este club hasta que sea reactivado.`,
         confirmLabel: 'Deshabilitar',
         danger: true,
       };
@@ -376,12 +385,12 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
     if (action === 'reactivar') {
       return {
         title: 'Reactivar usuario',
-        description: `¿Seguro que querés reactivar a ${nombre}? Recuperará acceso para iniciar sesión.`,
+        description: `¿Seguro que querés reactivar a ${nombre}? Recuperará el acceso a este club.`,
         confirmLabel: 'Reactivar',
         danger: false,
       };
     }
-    if (usuario?.status === 'pendiente') {
+    if (usuario && esInvitacion(usuario)) {
       return {
         title: 'Eliminar invitación',
         description: `¿Seguro que querés eliminar la invitación de ${nombre}? Esta acción no se puede deshacer.`,
@@ -391,7 +400,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
     }
     return {
       title: 'Eliminar usuario',
-      description: `¿Seguro que querés eliminar a ${nombre}? Esta acción no se puede deshacer.`,
+      description: `¿Seguro que querés quitar a ${nombre} del club? Su cuenta sigue existiendo, pero tendrá que ser invitado de nuevo para volver.`,
       confirmLabel: 'Eliminar',
       danger: true,
     };
@@ -406,12 +415,12 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
         {/* Mobile card list — hidden on lg+ */}
         <ul className="lg:hidden divide-y divide-gray-100">
           {usuarios.length === 0 ? (
-            <li className="px-4 py-12 text-center text-sm text-[#6B7280]">
+            <li className="px-4 py-12 text-center text-sm text-muted-foreground">
               No hay usuarios registrados
             </li>
           ) : (
             usuarios.map((usuario) => {
-              const isDisabled = usuario.status === 'activo' && usuario.disabled;
+              const isDisabled = usuario.status === 'inactivo';
               return (
                 <li
                   key={usuario.id}
@@ -419,14 +428,14 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-medium text-[#1C1C1C]">
+                      <p className="text-sm font-medium text-foreground">
                         {usuario.firstName} {usuario.lastName}
                       </p>
-                      <p className="text-xs text-[#6B7280] mt-0.5">{usuario.email}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{usuario.email}</p>
                     </div>
                     <UsuarioAcciones
                       usuario={usuario}
-                      isAdmin={!!isAdmin}
+                      isAdmin={isAdmin}
                       currentUserId={currentUserId}
                       openConfirm={openConfirm}
                     />
@@ -438,26 +447,26 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                     )}
                     <EstadoBadge usuario={usuario} />
                   </div>
-                  {isAdmin && usuario.status === 'activo' && (
+                  {isAdmin && !esInvitacion(usuario) && (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#6B7280]">Rol:</span>
+                      <span className="text-xs text-muted-foreground">Rol:</span>
                       <RolSelector userId={usuario.id} currentRol={usuario.rol} />
                     </div>
                   )}
                   {isAdmin &&
-                    usuario.status === 'activo' &&
+                    !esInvitacion(usuario) &&
                     usuario.rol === 'responsable_viandas' && (
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-[#6B7280]">Lugar:</span>
+                        <span className="text-xs text-muted-foreground">Lugar:</span>
                         <LugarRetiroSelector
                           userId={usuario.id}
                           currentLugar={usuario.lugarRetiro}
                         />
                       </div>
                     )}
-                  <p className="text-xs text-[#6B7280]">
+                  <p className="text-xs text-muted-foreground">
                     Último ingreso:{' '}
-                    {usuario.status === 'activo' ? formatLastSignIn(usuario.lastSignInAt) : '—'}
+                    {!esInvitacion(usuario) ? formatLastSignIn(usuario.lastSignInAt) : '—'}
                   </p>
                 </li>
               );
@@ -469,7 +478,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-xs uppercase text-[#6B7280] bg-[#F3F4F6] border-b border-gray-100">
+              <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-gray-100">
                 <th className="px-4 py-3 text-left">Nombre</th>
                 <th className="px-4 py-3 text-left">Email</th>
                 <th className="px-4 py-3 text-left">Rol</th>
@@ -484,23 +493,23 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                 <tr>
                   <td
                     colSpan={isAdmin ? 7 : 6}
-                    className="px-5 py-12 text-center text-sm text-[#6B7280]"
+                    className="px-5 py-12 text-center text-sm text-muted-foreground"
                   >
                     No hay usuarios registrados
                   </td>
                 </tr>
               ) : (
                 usuarios.map((usuario) => {
-                  const isDisabled = usuario.status === 'activo' && usuario.disabled;
+                  const isDisabled = usuario.status === 'inactivo';
                   return (
                     <tr
                       key={usuario.id}
-                      className={`border-b border-gray-50 hover:bg-[#F3F4F6] transition-colors${isDisabled ? ' opacity-60' : ''}`}
+                      className={`border-b border-gray-50 hover:bg-muted transition-colors${isDisabled ? ' opacity-60' : ''}`}
                     >
-                      <td className="px-4 py-3.5 text-sm font-medium text-[#1C1C1C]">
+                      <td className="px-4 py-3.5 text-sm font-medium text-foreground">
                         {usuario.firstName} {usuario.lastName}
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-[#6B7280]">{usuario.email}</td>
+                      <td className="px-4 py-3.5 text-sm text-muted-foreground">{usuario.email}</td>
                       <td className="px-4 py-3.5">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <RolBadge rol={usuario.rol} />
@@ -509,8 +518,8 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                           )}
                         </div>
                       </td>
-                      <td className="hidden xl:table-cell px-4 py-3.5 text-sm text-[#6B7280]">
-                        {usuario.status === 'activo'
+                      <td className="hidden xl:table-cell px-4 py-3.5 text-sm text-muted-foreground">
+                        {!esInvitacion(usuario)
                           ? formatLastSignIn(usuario.lastSignInAt)
                           : '—'}
                       </td>
@@ -519,7 +528,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                       </td>
                       {isAdmin && (
                         <td className="hidden xl:table-cell px-4 py-3.5">
-                          {usuario.status === 'activo' ? (
+                          {!esInvitacion(usuario) ? (
                             <div className="flex flex-col gap-1.5">
                               <RolSelector userId={usuario.id} currentRol={usuario.rol} />
                               {usuario.rol === 'responsable_viandas' && (
@@ -530,14 +539,14 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-[#6B7280]">—</span>
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </td>
                       )}
                       <td className="px-4 py-3.5">
                         <UsuarioAcciones
                           usuario={usuario}
-                          isAdmin={!!isAdmin}
+                          isAdmin={isAdmin}
                           currentUserId={currentUserId}
                           openConfirm={openConfirm}
                         />

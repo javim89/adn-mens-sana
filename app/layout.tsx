@@ -15,9 +15,16 @@ const inter = Inter({
   subsets: ['latin'],
 });
 
+/**
+ * Metadata neutra: la heredan las pantallas sin marca (login genérico, /bienvenida).
+ * La landing y el superadmin declaran los íconos de BioTeam, y la app los del club.
+ * Por eso en `app/` no puede haber `icon.*`, `apple-icon.*` ni `favicon.ico`: le
+ * ganarían a la metadata de cada segmento.
+ */
 export const metadata: Metadata = {
-  title: 'BioTeam',
-  description: 'BioTeam — gestión integral del deportista para clubes',
+  title: 'Gestión integral del deportista',
+  description: 'Gestión integral del deportista para clubes',
+  icons: { icon: [{ url: '/brand/icono-neutro.svg', type: 'image/svg+xml' }] },
 };
 
 export default function RootLayout({
@@ -25,7 +32,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es" className={`${oswald.variable} ${inter.variable}`}>
-      <body suppressHydrationWarning className="flex min-h-screen bg-[#F3F4F6] text-[#1C1C1C] font-[family-name:var(--font-inter)]">
+      <body suppressHydrationWarning className="flex min-h-screen bg-muted text-foreground font-[family-name:var(--font-inter)]">
         <ClerkProvider>
           {children}
           <Toaster richColors position="top-right" />

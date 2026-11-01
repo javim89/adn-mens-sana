@@ -56,7 +56,7 @@ export default function TriageDistribucion({ datos }: { datos: DistribucionTriag
       label: 'Sin calcular',
       cantidad: sinCalcular,
       clase: 'bg-gray-300',
-      claseTexto: 'text-[#1C1C1C]',
+      claseTexto: 'text-foreground',
       punto: 'bg-gray-400',
       tinte: 'bg-gray-100',
       href: linkTriage(SIN_CALCULAR),
