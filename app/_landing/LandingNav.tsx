@@ -16,6 +16,8 @@ export default function LandingNav({ conSesion }: { conSesion: boolean }) {
       <nav aria-label="Principal" className="flex shrink-0 items-center gap-2">
         <a
           href={CONTACTO_HREF}
+          target="_blank"
+          rel="noopener noreferrer"
           className="hidden rounded-full px-4 py-2 text-sm font-medium text-[#1C1C1C] transition-colors hover:bg-[#121A61]/[0.06] focus-visible:outline-2 focus-visible:outline-[#3346CC] sm:inline-flex"
         >
           Contacto

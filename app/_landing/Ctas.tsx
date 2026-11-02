@@ -22,6 +22,8 @@ export function CtaContacto({ className, sobreOscuro = false }: { className?: st
   return (
     <a
       href={CONTACTO_HREF}
+      target="_blank"
+      rel="noopener noreferrer"
       className={`inline-flex h-12 items-center justify-center rounded-full border px-7 text-base font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${sobreOscuro ? 'border-white/40 text-white hover:bg-white/10 focus-visible:outline-white' : 'border-[#121A61]/20 bg-white/70 text-[#121A61] hover:bg-[#3346CC]/5 focus-visible:outline-[#3346CC]'} ${className ?? ''}`}
     >
       Contactanos

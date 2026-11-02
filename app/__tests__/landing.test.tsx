@@ -50,6 +50,18 @@ describe('Landing pública (/)', () => {
       .forEach((link) => expect(link).toHaveAttribute('href', CONTACTO_HREF));
   });
 
+  it('el contacto es WhatsApp y todos sus links abren en una pestaña nueva', async () => {
+    await renderHome(null);
+    expect(CONTACTO_HREF).toMatch(/^https:\/\/wa\.me\/5492216230592\?text=/);
+    const links = screen.getAllByRole('link').filter((link) => link.getAttribute('href') === CONTACTO_HREF);
+    // Nav, hero, funcionalidades, CTA final y footer.
+    expect(links.length).toBeGreaterThanOrEqual(5);
+    links.forEach((link) => {
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link.getAttribute('rel')).toContain('noopener');
+    });
+  });
+
   it('lista los módulos reales del panel', async () => {
     await renderHome(null);
     const seccion = screen.getByRole('region', { name: /todo el seguimiento del deportista/i });
