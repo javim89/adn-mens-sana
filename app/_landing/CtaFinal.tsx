@@ -21,6 +21,8 @@ export default function CtaFinal({ conSesion }: { conSesion: boolean }) {
         </p>
         <a
           href={CONTACTO_HREF}
+          target="_blank"
+          rel="noopener noreferrer"
           className="mt-8 inline-flex h-12 w-full items-center justify-center rounded-full bg-[#121A61] px-7 text-base font-semibold text-white shadow-lg shadow-[#121A61]/20 transition-colors hover:bg-[#1E2A8A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3346CC] sm:w-auto"
         >
           Contactanos

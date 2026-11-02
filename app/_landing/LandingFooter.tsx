@@ -12,6 +12,8 @@ export default function LandingFooter() {
         <div className="flex items-center gap-6 text-sm text-white/70">
           <a
             href={CONTACTO_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
             className="rounded font-medium text-white hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             Contacto

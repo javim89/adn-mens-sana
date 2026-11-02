@@ -40,6 +40,8 @@ export default function SeccionFuncionalidades() {
           </p>
           <a
             href={CONTACTO_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
             className="group mt-6 inline-flex items-center gap-1.5 rounded-sm text-base font-semibold text-[#3346CC] underline-offset-4 transition-colors hover:text-[#121A61] hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#3346CC]"
           >
             Hablemos
