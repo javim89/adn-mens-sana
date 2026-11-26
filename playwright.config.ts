@@ -24,7 +24,7 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
-        command: 'npm run dev',
+        command: 'pnpm dev',
         url: baseURL,
         reuseExistingServer: !process.env.CI,
       },
