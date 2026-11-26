@@ -17,7 +17,7 @@ export const ROL_LABELS: Record<AppRole, string> = {
   responsable_viandas: 'Responsable de Viandas',
 };
 
-export type IconKey = 'LayoutDashboard' | 'Users' | 'CalendarDays' | 'UserCog' | 'ClipboardList' | 'Calendar' | 'ClipboardCheck' | 'Megaphone' | 'ChartColumn' | 'UtensilsCrossed';
+export type IconKey = 'LayoutDashboard' | 'Users' | 'CalendarDays' | 'UserCog' | 'ClipboardList' | 'Calendar' | 'ClipboardCheck' | 'Megaphone' | 'ChartColumn' | 'UtensilsCrossed' | 'Activity' | 'Palette';
 
 export interface NavItem {
   href: string;

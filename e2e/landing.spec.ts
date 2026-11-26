@@ -25,7 +25,14 @@ test.describe('Landing pública', () => {
     const locales = cadena.map((u) => new URL(u)).filter((u) => u.hostname === 'localhost');
     expect(locales.map((u) => u.pathname)).not.toContain('/sign-in');
     expect(locales.map((u) => u.pathname)).not.toContain('/dashboard');
-    await expect(page.getByRole('heading', { level: 1, name: 'Todo tu club, en una sola pantalla' })).toBeVisible();
+    // El H1 lleva la keyword del título ("Software de gestión…") y el claim, en ese orden.
+    const h1 = page.getByRole('heading', { level: 1 });
+    await expect(h1).toHaveCount(1);
+    await expect(h1).toBeVisible();
+    await expect(h1).toHaveAccessibleName(
+      /^Software de gestión para clubes deportivos\s+Todo tu club, en una sola pantalla$/,
+    );
+    await expect(page).toHaveTitle('BioTeam — Software de gestión para clubes deportivos');
   });
 
   test('"Ingresar" lleva a /sign-in', async ({ page }) => {

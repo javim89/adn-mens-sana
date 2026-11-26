@@ -29,7 +29,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" className={`${oswald.variable} ${inter.variable}`}>
+    <html lang="es-AR" className={`${oswald.variable} ${inter.variable}`}>
       <body suppressHydrationWarning className="flex min-h-screen bg-muted text-foreground font-[family-name:var(--font-inter)]">
         <ClerkProvider>
           {children}

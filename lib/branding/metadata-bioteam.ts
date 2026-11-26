@@ -16,15 +16,52 @@ export const OG_IMAGEN_BIOTEAM = {
   type: 'image/png',
 };
 
-const TITULO = 'BioTeam — Todo tu club, en una sola pantalla';
-const DESCRIPCION =
-  'Ficha, seguimientos médicos, psicológicos y sociales, turnos, presentismo, viandas y triage de los deportistas de tu club, todo en una sola plataforma.';
+export const TITULO_BIOTEAM = 'BioTeam — Software de gestión para clubes deportivos';
+export const DESCRIPCION_BIOTEAM =
+  'Software de gestión para clubes deportivos: ficha, seguimientos médicos, turnos, presentismo, viandas y triage de tus deportistas, en una sola plataforma.';
+
+export interface PaginaPublica {
+  titulo: string;
+  descripcion: string;
+  /** Path canónico (`/funcionalidades/turnos`); `metadataBase` lo hace absoluto. */
+  ruta: string;
+}
+
+/**
+ * Metadata de una página pública indexable de BioTeam: título absoluto (sin el template
+ * del root), canonical propio, `index` (el root es `noindex`, falla cerrado) y la OG
+ * estática de BioTeam.
+ */
+export function metadataPaginaPublica({ titulo, descripcion, ruta }: PaginaPublica): Metadata {
+  return {
+    title: { absolute: titulo },
+    description: descripcion,
+    applicationName: 'BioTeam',
+    alternates: { canonical: ruta },
+    robots: ROBOTS_INDEX,
+    icons: ICONOS_BIOTEAM,
+    openGraph: {
+      type: 'website',
+      siteName: 'BioTeam',
+      locale: 'es_AR',
+      url: ruta,
+      title: titulo,
+      description: descripcion,
+      images: [OG_IMAGEN_BIOTEAM],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: titulo,
+      description: descripcion,
+      images: [OG_IMAGEN_BIOTEAM],
+    },
+  };
+}
 
 export const METADATA_LANDING: Metadata = {
-  title: { absolute: TITULO },
-  description: DESCRIPCION,
-  applicationName: 'BioTeam',
+  ...metadataPaginaPublica({ titulo: TITULO_BIOTEAM, descripcion: DESCRIPCION_BIOTEAM, ruta: '/' }),
   keywords: [
+    'software de gestión para clubes deportivos',
     'gestión deportiva',
     'clubes',
     'deportistas',
@@ -39,24 +76,6 @@ export const METADATA_LANDING: Metadata = {
   creator: 'BioTeam',
   publisher: 'BioTeam',
   category: 'sports',
-  alternates: { canonical: '/' },
-  robots: ROBOTS_INDEX,
-  icons: ICONOS_BIOTEAM,
-  openGraph: {
-    type: 'website',
-    siteName: 'BioTeam',
-    locale: 'es_AR',
-    url: '/',
-    title: TITULO,
-    description: DESCRIPCION,
-    images: [OG_IMAGEN_BIOTEAM],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: TITULO,
-    description: DESCRIPCION,
-    images: [OG_IMAGEN_BIOTEAM],
-  },
 };
 
 export const VIEWPORT_LANDING: Viewport = { themeColor: TEMA_BIOTEAM.primario };
