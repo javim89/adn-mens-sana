@@ -1,0 +1,17 @@
+# Build de Netlify versionado en el repo (pisa lo configurado en la UI de Netlify).
+# El adaptador de Next.js (OpenNext) lo agrega Netlify solo: no hace falta declararlo.
+
+[build]
+  command = "pnpm build"
+  publish = ".next"
+
+[build.environment]
+  # Next 16 pide Node >= 20.9. 22 es la misma versión que usa Dockerfile.dev.
+  NODE_VERSION = "22"
+  # pnpm: la versión sale de `packageManager` en package.json (Corepack).
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[functions]
+  # Funciones propias (p. ej. triage-weekly, programada). Es el directorio por defecto;
+  # se deja explícito para que no dependa de la UI.
+  directory = "netlify/functions"
