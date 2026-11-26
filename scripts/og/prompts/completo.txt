@@ -1,0 +1,31 @@
+Create a 1200x630 (1.91:1) social share card for a sports-club management
+software called BioTeam. Use the two attached images as exact references.
+
+Background: deep navy #121A61 with a soft radial gradient to #1E2A8A behind
+the product, a subtle vignette, and a very fine thin-line grid (white, 5%
+opacity) fading out toward the top. One single soft warm gold glow (#C9A84C)
+behind the product window. Minimal, modern, editorial, matte.
+
+Top center: the logo from image 2 (a white stylized letter "b" with a small
+gold dot), reproduced EXACTLY as given — same shape, same proportions, not
+redrawn, not stretched — followed on its right by the word "BIOTEAM" in a
+tall condensed bold sans-serif (Oswald style), white, uppercase, letter-spaced.
+
+Below it, centered, the headline in two lines, white, uppercase, tall condensed
+bold sans-serif (Oswald style), large and very legible:
+"TODO TU CLUB,"
+"EN UNA SOLA PANTALLA"
+Spell it exactly like that, in Spanish, including the comma. No other text
+anywhere besides what is inside the product window.
+
+Bottom: the software window from image 1, centered, large (about 83% of the
+image width), flat or with a very slight backward tilt, cropped by the bottom
+edge of the card, with a deep soft navy shadow. Reproduce the window
+faithfully as a screenshot: do NOT redraw, rearrange, translate or invent any
+of its UI, labels or numbers. The visible part must include the colored
+triage bar, the "Presentismo por día" bar chart and the large "87%" figure.
+
+Avoid: extra text, taglines, misspellings, invented UI, changed numbers,
+distorted or redrawn logo, people, hands, sports balls, players, stadiums,
+trophies, glossy plastic 3D, lens flares, neon, purple or teal casts, more
+than one gold light.

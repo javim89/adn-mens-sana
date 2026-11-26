@@ -1,14 +1,10 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { auth } from '@clerk/nextjs/server';
 import Landing from './_landing/Landing';
-import { ICONOS_BIOTEAM } from '@/lib/branding/iconos-bioteam';
+import { METADATA_LANDING, VIEWPORT_LANDING } from '@/lib/branding/metadata-bioteam';
 
-export const metadata: Metadata = {
-  title: 'BioTeam — Todo tu club, en una sola pantalla',
-  description:
-    'El seguimiento integral de los deportistas de tu club: ficha, seguimientos médicos, psicológicos y sociales, turnos, presentismo, viandas y triage.',
-  icons: ICONOS_BIOTEAM,
-};
+export const metadata: Metadata = METADATA_LANDING;
+export const viewport: Viewport = VIEWPORT_LANDING;
 
 /**
  * Landing pública de `/`. Vive fuera del grupo `(app)` para no heredar el `AppShell`

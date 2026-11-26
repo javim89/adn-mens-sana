@@ -6,7 +6,8 @@ import { HEADER_CLUB_SLUG, HEADER_RUTA, slugDesdeHost, urlDelClub } from "@/lib/
 // de Netlify y se autentican con CRON_SECRET en el propio route handler.
 // "/" es la landing pública y va EXACTA: "/(.*)" abriría el sitio entero.
 // El login con la marca de cada club (/c/<slug>/sign-in) y su logo e íconos son
-// públicos: se ven antes de iniciar sesión.
+// públicos: se ven antes de iniciar sesión. `robots.txt` y `sitemap.xml` los piden
+// los crawlers sin sesión (el matcher no excluye .txt/.xml).
 export const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
@@ -16,6 +17,8 @@ export const isPublicRoute = createRouteMatcher([
   "/api/clubes/:slug/logo",
   "/api/clubes/:slug/icono",
   "/api/cron/(.*)",
+  "/robots.txt",
+  "/sitemap.xml",
 ]);
 
 export type RuteoPorHost =

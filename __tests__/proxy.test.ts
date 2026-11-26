@@ -42,6 +42,13 @@ describe('isPublicRoute', () => {
     expect(isPublicRoute(req('/insights'))).toBe(false);
   });
 
+  it('exime robots.txt y sitemap.xml, que piden los crawlers sin sesión', () => {
+    expect(isPublicRoute(req('/robots.txt'))).toBe(true);
+    expect(isPublicRoute(req('/sitemap.xml'))).toBe(true);
+    expect(isPublicRoute(req('/dashboard'))).toBe(false);
+    expect(isPublicRoute(req('/otro.xml'))).toBe(false);
+  });
+
   it('mantiene el resto de las rutas protegidas', () => {
     expect(isPublicRoute(req('/dashboard'))).toBe(false);
     expect(isPublicRoute(req('/deportistas'))).toBe(false);

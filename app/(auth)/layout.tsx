@@ -1,5 +1,16 @@
+import type { Metadata } from 'next';
 import TemaClub from '@/app/components/branding/TemaClub';
 import { TEMA_NEUTRO } from '@/lib/branding/tokens';
+
+const TITULO = 'Ingresá a tu club';
+const DESCRIPCION = 'Ingresá con tu cuenta para ver la información de tu club.';
+
+/** OG mínimo y neutro: sin `siteName` ni imagen. Hereda el `noindex` del root. */
+export const metadata: Metadata = {
+  title: TITULO,
+  description: DESCRIPCION,
+  openGraph: { title: TITULO, description: DESCRIPCION, type: 'website' },
+};
 
 /**
  * Login genérico (`/sign-in`, `/sign-up`): neutro, sin la marca de un club ni la de

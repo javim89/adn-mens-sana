@@ -11,6 +11,7 @@ import MarcaClub from '@/app/components/branding/MarcaClub';
 import { temaDelClub } from '@/lib/branding/tema';
 import { urlIconoDelClub, urlLogoDelClub } from '@/lib/branding/marca';
 import { getBrandingPublico } from '@/lib/tenant/clubes';
+import { ROBOTS_NOINDEX } from '@/lib/seo/metadata';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +21,14 @@ export async function generateMetadata({ params }: Pick<Props, 'params'>): Promi
   const { slug } = await params;
   const club = await getBrandingPublico(slug);
   if (!club) return {};
+  const titulo = `Ingresar · ${club.nombre}`;
+  const descripcion = `Ingresá con tu cuenta de ${club.nombre}`;
   return {
-    title: `Ingresar · ${club.nombre}`,
+    title: titulo,
+    description: descripcion,
+    robots: ROBOTS_NOINDEX,
+    openGraph: { title: titulo, description: descripcion, siteName: club.nombre, type: 'website' },
+    twitter: { card: 'summary' },
     icons: {
       icon: [{ url: urlIconoDelClub(club, 32), sizes: '32x32', type: 'image/png' }],
       apple: [{ url: urlIconoDelClub(club, 180), sizes: '180x180', type: 'image/png' }],
