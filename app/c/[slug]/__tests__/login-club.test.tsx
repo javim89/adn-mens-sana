@@ -59,6 +59,20 @@ describe('layout del login de un club', () => {
     expect(JSON.stringify(meta.icons)).toContain('/api/clubes/club-ejemplo/icono?tam=32');
     await expect(generateMetadata({ params: params('no-existe') })).resolves.toEqual({});
   });
+
+  it('generateMetadata: Open Graph del club, noindex y sin imagen ni marca de BioTeam', async () => {
+    const meta = await generateMetadata({ params: params(CLUB.slug) });
+    expect(meta.description).toBe('Ingresá con tu cuenta de Club Atlético Ejemplo');
+    expect(meta.openGraph).toMatchObject({
+      title: 'Ingresar · Club Atlético Ejemplo',
+      siteName: 'Club Atlético Ejemplo',
+      description: 'Ingresá con tu cuenta de Club Atlético Ejemplo',
+    });
+    expect(meta.openGraph).not.toHaveProperty('images');
+    expect(meta.twitter).not.toHaveProperty('images');
+    expect(meta.robots).toMatchObject({ index: false, follow: false });
+    expect(JSON.stringify(meta)).not.toMatch(/bioteam|og-image/i);
+  });
 });
 
 describe('páginas de Clerk del club', () => {

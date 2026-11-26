@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Oswald:wght@600;700&display=block" rel="stylesheet">
+<style>
+  /* Las --primario, --acento, etc. las inyecta componer.mjs desde PALETA (= TEMA_BIOTEAM).
+     Acá solo hay negro y blanco con alpha. */
+  :root { __PALETA__ }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body { position: relative; background: var(--primario); color: var(--blanco); font-family: Inter, sans-serif; }
+
+  .fondo { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .fondo.sin-ia {
+    background:
+      radial-gradient(ellipse 45% 35% at var(--glow-x) var(--glow-y), color-mix(in srgb, var(--acento) 22%, transparent), transparent 70%),
+      radial-gradient(ellipse 70% 60% at var(--glow-x) var(--glow-y), color-mix(in srgb, var(--secundario) 45%, transparent), transparent 75%),
+      radial-gradient(ellipse 80% 70% at var(--glow-x) var(--glow-y), var(--primarioHover), var(--primario) 80%);
+  }
+  .vineta { position: absolute; inset: 0; background: radial-gradient(ellipse 85% 85% at 50% 55%, transparent 55%, rgba(0, 0, 0, 0.4)); }
+  /* Velo detrás del texto: el fondo nunca más claro que primarioHover bajo el titular. */
+  .velo { position: absolute; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--primario) 60%, transparent), transparent 70%); }
+
+  .lockup { position: absolute; display: flex; align-items: center; gap: 12px; }
+  .lockup svg { height: 40px; width: auto; display: block; }
+  .wordmark { font-family: Oswald, sans-serif; font-weight: 600; font-size: 28px; line-height: 1; letter-spacing: 0.06em; text-transform: uppercase; }
+  h1 { position: absolute; font-family: Oswald, sans-serif; font-weight: 700; text-transform: uppercase; }
+  .bajada { position: absolute; font-size: 26px; line-height: 1.3; color: rgba(255, 255, 255, 0.75); }
+
+  .ventana { position: absolute; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08); }
+  .ventana img { display: block; width: 100%; height: auto; }
+
+  /* Centrado */
+  body.centrado { --glow-x: 50%; --glow-y: 57%; }
+  .centrado .velo { left: 250px; top: 20px; width: 700px; height: 300px; }
+  .centrado .lockup { top: 52px; left: 50%; transform: translateX(-50%); }
+  .centrado h1 { top: 116px; left: 0; right: 0; text-align: center; font-size: var(--titular, 64px); line-height: 1; letter-spacing: -0.005em; }
+  .centrado .bajada { top: 266px; left: 0; right: 0; text-align: center; }
+  .centrado .ventana { left: 100px; top: 316px; width: 1000px; }
+  /* Sin bajada: el titular baja y la ventana sube para no dejar el hueco de la bajada. */
+  .centrado.sin-bajada .lockup { top: 60px; }
+  .centrado.sin-bajada h1 { top: 128px; }
+  .centrado.sin-bajada .ventana { top: 296px; }
+  .centrado.inclinada .escena { position: absolute; inset: 0; perspective: 1800px; }
+  .centrado.inclinada .ventana { transform: rotateX(6deg); transform-origin: 50% 0; }
+
+  /* 3/4. Con 940 px el 87 % pasaba x = 1150 en la rotación: se usa 880 (og-art-direction.md §4). */
+  body.tres-cuartos { --glow-x: 75%; --glow-y: 65%; }
+  .tres-cuartos .velo { left: -100px; top: 60px; width: 640px; height: 520px; }
+  .tres-cuartos .lockup { top: 56px; left: 64px; }
+  .tres-cuartos h1 { top: 150px; left: 64px; width: 440px; font-size: 72px; line-height: 0.98; }
+  .tres-cuartos .bajada { top: 386px; left: 64px; width: 420px; }
+  .tres-cuartos .escena { position: absolute; inset: 0; perspective: 2000px; }
+  .tres-cuartos.sin-bajada h1 { top: 170px; }
+  .tres-cuartos .ventana { left: 520px; top: 250px; width: var(--ancho-ventana, 880px); transform: rotateY(-14deg) rotateX(8deg); transform-origin: 0 50%; }
+</style>
+</head>
+<body class="__CLASES__">
+  <div class="fondo __CLASE_FONDO__" style="__ESTILO_FONDO__"></div>
+  <div class="vineta"></div>
+  <div class="velo"></div>
+  <div class="escena"><div class="ventana"><img src="__DASHBOARD__" alt=""></div></div>
+  <div class="lockup">__LOGO__<span class="wordmark">BioTeam</span></div>
+  <h1>__TITULAR__</h1>
+  __BAJADA__
+</body>
+</html>

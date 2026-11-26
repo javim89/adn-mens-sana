@@ -1,0 +1,29 @@
+Abstract premium background for a SaaS product social card, 16:9, no text.
+
+Deep navy base color #121A61, with a soft radial gradient that lifts to #1E2A8A
+around the lower center of the frame (around 55% from the top) and darkens
+gently toward the edges and corners with a subtle vignette.
+
+A very fine, thin-line perspective grid (1px white lines at 4-7% opacity) lying
+like a floor in the lower half of the image, receding toward a horizon at about
+50% height, fading out completely toward the top and the left and right sides.
+
+One faint, wide horizontal band of slightly lighter navy crossing the frame
+at 50-65% height, like a soft stripe of light — barely visible.
+
+A single soft, diffused warm gold glow (#C9A84C) centered horizontally just
+behind where a product window will sit (lower center, around 57% from the top),
+low intensity, like light seeping from behind a screen. A broader, even
+softer cool blue bloom (#3346CC) around it.
+
+The upper 45% of the image must stay calm, dark and nearly flat navy: it is
+negative space for a white headline. The lower center is where a large
+software window will be placed later, so keep it free of objects.
+
+Style: minimal, modern, editorial, matte, smooth gradients, subtle film grain,
+high-end tech brand. Flat 2D lighting, no objects.
+
+Avoid: any text, letters, numbers, logos, watermarks, UI elements, screens,
+devices, people, hands, faces, sports balls, players, stadiums, trophies,
+glossy plastic 3D shapes, lens flares, bokeh circles, neon, purple or teal
+hues, busy patterns, more than one gold light source.
