@@ -32,11 +32,13 @@ describe('Open Graph de la app', () => {
     expect(statSync(OG_IMAGEN).size).toBeLessThan(300 * 1024);
   });
 
-  it('solo la landing y el superadmin importan metadata-bioteam', () => {
+  it('solo la landing, las páginas de funcionalidades y el superadmin importan metadata-bioteam', () => {
     const importan = relativos()
       .filter((f) => /\.(ts|tsx)$/.test(f) && !f.includes('__tests__'))
       .filter((f) => readFileSync(join(RAIZ, f), 'utf8').includes('metadata-bioteam'));
-    expect(importan.every((f) => ['app/page.tsx', 'app/(superadmin)/layout.tsx'].includes(f))).toBe(true);
+    const permitido = (f: string) =>
+      ['app/page.tsx', 'app/(superadmin)/layout.tsx'].includes(f) || f.startsWith('app/funcionalidades/');
+    expect(importan.filter((f) => !permitido(f))).toEqual([]);
     expect(importan).toContain('app/page.tsx');
   });
 });

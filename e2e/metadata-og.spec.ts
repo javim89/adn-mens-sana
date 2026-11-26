@@ -7,7 +7,8 @@ import { test, expect, type Page, type Response } from '@playwright/test';
  * - La landing es la única con la OG de BioTeam (imagen, twitter card, canonical, index).
  * - El login genérico es neutro: noindex, sin imagen ni "BioTeam".
  * - El login del club lleva el nombre del club en og:title/og:site_name, noindex y sin imagen.
- * - `robots.txt` y `sitemap.xml` son públicos (no pasan por /sign-in).
+ * - `robots.txt` y `sitemap.xml` son públicos (no pasan por /sign-in); el sitemap lista la
+ *   landing y las páginas de `/funcionalidades`.
  *
  * `og:image` es absoluta con el `metadataBase` del entorno (`NEXT_PUBLIC_APP_URL`), que
  * cambia entre local, Docker y Netlify: se compara el pathname y la imagen se pide
@@ -18,6 +19,24 @@ import { test, expect, type Page, type Response } from '@playwright/test';
  */
 
 const SLUG_CLUB = 'gimnasia-la-plata';
+
+/** Las URLs del sitemap: la landing, el índice de funcionalidades y sus 10 páginas. */
+const PATHS_SITEMAP = [
+  '/',
+  '/funcionalidades',
+  ...[
+    'ficha-del-deportista',
+    'seguimientos-medicos',
+    'triage-deportivo',
+    'turnos',
+    'presentismo',
+    'convocatorias',
+    'viandas',
+    'calendario',
+    'insights',
+    'branding-del-club',
+  ].map((slug) => `/funcionalidades/${slug}`),
+];
 
 /** `content` del `<meta property|name=…>`, o null si no está. */
 async function meta(page: Page, clave: string): Promise<string | null> {
@@ -148,18 +167,40 @@ test.describe('Metadata y Open Graph', () => {
     expect(cadenaLocal(doc, baseURL!)).not.toContain('/sign-in');
   });
 
-  test('/sitemap.xml: 200 sin pasar por el login, con un solo <loc> (la landing)', async ({ request, page, baseURL }) => {
+  test('/sitemap.xml: 200 sin pasar por el login, con 12 <loc> únicos y absolutos (landing + funcionalidades)', async ({ request, page, baseURL }) => {
     const r = await request.get('/sitemap.xml', { maxRedirects: 0 });
     expect(r.status()).toBe(200);
     expect(r.headers()['content-type']).toMatch(/xml/);
     const xml = await r.text();
     const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
-    expect(locs).toHaveLength(1);
-    expect(new URL(locs[0]).pathname).toBe('/');
+    expect(locs).toHaveLength(12);
+    for (const loc of locs) expect(loc).toMatch(/^https?:\/\//);
+    expect(new Set(locs).size).toBe(12);
+    expect(new Set(locs.map((l) => new URL(l).pathname))).toEqual(new Set(PATHS_SITEMAP));
 
     const doc = await page.goto('/sitemap.xml');
     expect(doc?.status()).toBe(200);
     expect(cadenaLocal(doc, baseURL!)).not.toContain('/sign-in');
+  });
+
+  test('landing: title y og:title con la keyword "Software de gestión para clubes deportivos"', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveTitle('BioTeam — Software de gestión para clubes deportivos');
+    expect(await meta(page, 'og:title')).toBe('BioTeam — Software de gestión para clubes deportivos');
+  });
+
+  test('subdominio del club: /funcionalidades/* va con 308 al dominio raíz, mismo path', async ({ request }) => {
+    const dominio = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+    test.skip(!dominio, 'Sin NEXT_PUBLIC_ROOT_DOMAIN en el entorno de test (el servicio e2e de Docker lo deja vacío)');
+    const protocolo = dominio!.startsWith('localhost') ? 'http' : 'https';
+    for (const path of ['/funcionalidades', '/funcionalidades/turnos?ref=x']) {
+      const r = await request.get(`${protocolo}://${SLUG_CLUB}.${dominio}${path}`, { maxRedirects: 0 });
+      expect(r.status(), path).toBe(308);
+      expect(r.headers()['location'], path).toBe(`${protocolo}://${dominio}${path}`);
+    }
+    // El resto de los redirects del subdominio siguen siendo temporales.
+    const raiz = await request.get(`${protocolo}://${SLUG_CLUB}.${dominio}/`, { maxRedirects: 0 });
+    expect(raiz.status()).toBe(307);
   });
 
   test('subdominio del club: <slug>.<dominio>/sign-in con la OG del club', async ({ page }) => {

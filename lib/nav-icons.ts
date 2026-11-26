@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, CalendarDays, UserCog, ClipboardList, Calendar, ClipboardCheck, Megaphone, ChartColumn, UtensilsCrossed } from 'lucide-react';
+import { Activity, LayoutDashboard, Users, CalendarDays, UserCog, ClipboardList, Calendar, ClipboardCheck, Megaphone, ChartColumn, UtensilsCrossed, Palette } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { IconKey } from './roles';
 
@@ -18,4 +18,7 @@ export const ICON_MAP: Record<IconKey, LucideIcon> = {
   Megaphone,
   ChartColumn,
   UtensilsCrossed,
+  // Solo para la landing (páginas de funcionalidades): ningún item del sidebar los usa.
+  Activity,
+  Palette,
 };

@@ -6,6 +6,7 @@ import MorphHero from './MorphHero';
 import SeccionClubes from './SeccionClubes';
 import SeccionFuncionalidades from './SeccionFuncionalidades';
 import SeccionModulos from './SeccionModulos';
+import SeccionQueEs from './SeccionQueEs';
 import VentanaDashboard from './VentanaDashboard';
 
 /**
@@ -14,8 +15,8 @@ import VentanaDashboard from './VentanaDashboard';
  *
  * Fondos por sección, para que no queden bloques blancos pegados: el hero va sobre
  * "papel" cálido (`#F5F2EA`, el fondo del `<main>`, que cubre todo el alto del pin del
- * morph), los clubes en franja navy, los módulos en un tinte azul claro, el producto en
- * gris claro (`#EFEEEB`) con las demos como ventanas blancas, el cierre vuelve al papel y el
+ * morph), "¿Qué es BioTeam?" sigue en el papel (separado por un filete), los clubes en
+ * franja navy, los módulos en un tinte azul claro, el producto en gris claro (`#EFEEEB`) con las demos como ventanas blancas, el cierre vuelve al papel y el
  * footer es navy. Sin degradés ni blobs: colores planos y bordes netos.
  *
  * `w-full min-w-0` en el `<main>`: el `<body>` del root layout es `flex`, y sin el
@@ -30,6 +31,9 @@ export default function Landing({ conSesion }: { conSesion: boolean }) {
         <Hero conSesion={conSesion} />
         <VentanaDashboard />
       </MorphHero>
+
+      {/* La respuesta corta, fuera del pin del morph para no alterar su alto. */}
+      <SeccionQueEs />
 
       <SeccionClubes />
       <SeccionModulos />

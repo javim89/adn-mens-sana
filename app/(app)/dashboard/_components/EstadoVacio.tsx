@@ -43,6 +43,7 @@ export function CardSeccion({
   modulo,
   variante = 'default',
   badge,
+  tituloComo = 'h3',
   children,
 }: {
   titulo?: string;
@@ -52,8 +53,11 @@ export function CardSeccion({
   variante?: 'default' | 'alerta-ambar' | 'alerta-rosa';
   /** Pill en la esquina superior derecha ("REVISAR"). Solo tiene sentido en las alertas. */
   badge?: string;
+  /** `p` en las demos decorativas de la landing, para no sumar headings al outline de la página. */
+  tituloComo?: 'h3' | 'p';
   children: React.ReactNode;
 }) {
+  const Titulo = tituloComo;
   const conEncabezado = Boolean(titulo || descripcion || badge);
   const alerta =
     variante === 'alerta-ambar' ? ALERTA_AMBAR : variante === 'alerta-rosa' ? ALERTA_ROSA : null;
@@ -67,12 +71,12 @@ export function CardSeccion({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             {titulo && (
-              <h3
+              <Titulo
                 className={`text-lg font-semibold ${alerta ? alerta.valor : 'text-primario'}`}
                 style={OSWALD}
               >
                 {titulo}
-              </h3>
+              </Titulo>
             )}
             {descripcion && (
               <p

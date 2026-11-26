@@ -49,6 +49,22 @@ describe('isPublicRoute', () => {
     expect(isPublicRoute(req('/otro.xml'))).toBe(false);
   });
 
+  it('exime llms.txt y llms-full.txt, que piden los buscadores con IA sin sesión', () => {
+    expect(isPublicRoute(req('/llms.txt'))).toBe(true);
+    expect(isPublicRoute(req('/llms-full.txt'))).toBe(true);
+    expect(isPublicRoute(req('/llms.txt/x'))).toBe(false);
+    expect(isPublicRoute(req('/llms-otro.txt'))).toBe(false);
+  });
+
+  it('exime las páginas públicas de funcionalidades, y solo esas', () => {
+    expect(isPublicRoute(req('/funcionalidades'))).toBe(true);
+    expect(isPublicRoute(req('/funcionalidades/triage-deportivo'))).toBe(true);
+    expect(isPublicRoute(req('/funcionalidades/turnos?x=1'))).toBe(true);
+    expect(isPublicRoute(req('/funcionalidadesx'))).toBe(false);
+    expect(isPublicRoute(req('/funcionalidades-admin'))).toBe(false);
+    expect(isPublicRoute(req('/dashboard'))).toBe(false);
+  });
+
   it('mantiene el resto de las rutas protegidas', () => {
     expect(isPublicRoute(req('/dashboard'))).toBe(false);
     expect(isPublicRoute(req('/deportistas'))).toBe(false);
@@ -119,6 +135,7 @@ describe('ruteoPorHost', () => {
     expect(enHost('club-prueba.bioteam.app', '/c/gimnasia-la-plata/sign-in?x=1')).toEqual({
       tipo: 'redirect',
       url: 'https://gimnasia-la-plata.bioteam.app/sign-in?x=1',
+      status: 307,
     });
     // /c/<el mismo>/entrar (destino del login) sigue de largo.
     expect(seguir(enHost('club-prueba.bioteam.app', '/c/club-prueba/entrar')).rewrite).toBeNull();
@@ -129,6 +146,7 @@ describe('ruteoPorHost', () => {
     expect(enHost('club-prueba.bioteam.app', '/')).toEqual({
       tipo: 'redirect',
       url: 'http://club-prueba.bioteam.app/dashboard',
+      status: 307,
     });
     // En el dominio raíz la landing sigue.
     expect(seguir(enHost('bioteam.app', '/')).rewrite).toBeNull();
@@ -138,5 +156,52 @@ describe('ruteoPorHost', () => {
     vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
     expect(seguir(enHost('bioteam.app', '/sign-in')).rewrite).toBeNull();
     expect(seguir(enHost('bioteam.app', '/c/club-prueba/sign-in')).rewrite).toBeNull();
+  });
+
+  it('en el subdominio de un club, /funcionalidades* va con 308 al dominio raíz', () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    expect(enHost('club-prueba.bioteam.app', '/funcionalidades/turnos?x=1')).toEqual({
+      tipo: 'redirect',
+      url: 'https://bioteam.app/funcionalidades/turnos?x=1',
+      status: 308,
+    });
+    expect(enHost('club-prueba.bioteam.app', '/funcionalidades')).toEqual({
+      tipo: 'redirect',
+      url: 'https://bioteam.app/funcionalidades',
+      status: 308,
+    });
+    // /funcionalidadesx no es la sección pública: sigue en el subdominio.
+    expect(seguir(enHost('club-prueba.bioteam.app', '/funcionalidadesx')).rewrite).toBeNull();
+  });
+
+  it('en el subdominio de un club, /llms.txt y /llms-full.txt van con 308 al dominio raíz', () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    expect(enHost('club-prueba.bioteam.app', '/llms.txt')).toEqual({
+      tipo: 'redirect',
+      url: 'https://bioteam.app/llms.txt',
+      status: 308,
+    });
+    expect(enHost('club-prueba.bioteam.app', '/llms-full.txt')).toEqual({
+      tipo: 'redirect',
+      url: 'https://bioteam.app/llms-full.txt',
+      status: 308,
+    });
+    expect(seguir(enHost('bioteam.app', '/llms.txt')).rewrite).toBeNull();
+  });
+
+  it('en local, el 308 de /funcionalidades usa http', () => {
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'localhost:3000');
+    expect(enHost('club-prueba.localhost:3000', '/funcionalidades/insights')).toEqual({
+      tipo: 'redirect',
+      url: 'http://localhost:3000/funcionalidades/insights',
+      status: 308,
+    });
+  });
+
+  it('en el dominio raíz o sin dominio raíz, /funcionalidades* no redirige', () => {
+    expect(seguir(enHost('localhost:3000', '/funcionalidades/turnos')).rewrite).toBeNull();
+    vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'bioteam.app');
+    expect(seguir(enHost('bioteam.app', '/funcionalidades')).rewrite).toBeNull();
+    expect(seguir(enHost('bioteam.app', '/funcionalidades/turnos?x=1')).rewrite).toBeNull();
   });
 });

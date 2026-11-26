@@ -27,11 +27,17 @@ export default function Hero({ conSesion }: { conSesion: boolean }) {
           <span aria-hidden className="text-[#6B7280]">→</span>
         </a>
 
+        {/* La keyword del título de la página va en el H1 como línea chica; el claim sigue siendo lo grande. */}
         <h1
           id="hero-titulo"
-          className="landing-entrada mt-7 font-[family-name:var(--font-oswald)] text-5xl font-bold uppercase leading-[0.95] tracking-tight text-balance text-[#121A61] [--retraso:120ms] sm:text-7xl xl:text-[5.25rem]"
+          className="landing-entrada mt-7 font-[family-name:var(--font-oswald)] font-bold uppercase text-[#121A61] [--retraso:120ms]"
         >
-          Todo tu club, en una sola pantalla
+          <span className="block text-sm font-semibold tracking-[0.2em] text-balance text-[#3346CC] sm:text-base">
+            Software de gestión para clubes deportivos
+          </span>{' '}
+          <span className="mt-4 block text-5xl leading-[0.95] tracking-tight text-balance sm:text-7xl xl:text-[5.25rem]">
+            Todo tu club, en una sola pantalla
+          </span>
         </h1>
 
         <p className="landing-entrada mt-6 max-w-xl text-base leading-relaxed text-[#4B5563] [--retraso:240ms] sm:text-lg">

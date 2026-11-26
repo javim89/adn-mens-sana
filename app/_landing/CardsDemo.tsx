@@ -57,6 +57,7 @@ export function TriageDemo({ columnas = 5 }: { columnas?: 2 | 5 }) {
 
   return (
     <CardSeccion
+      tituloComo="p"
       titulo="Distribución de triage"
       descripcion={`Sobre ${totalActivos} deportistas activos.`}
     >
@@ -137,7 +138,7 @@ export function PresentismoKpiDemo() {
 
 export function PresentismoPorDiaDemo() {
   return (
-    <CardSeccion titulo="Presentismo por día" descripcion="Esta semana, en % de asistencia." modulo="presentismo">
+    <CardSeccion tituloComo="p" titulo="Presentismo por día" descripcion="Esta semana, en % de asistencia." modulo="presentismo">
       <div className="landing-crecer-y mt-4">
         <BarrasCategoria
           categorias={PRESENTISMO_POR_DIA}
@@ -152,7 +153,7 @@ export function PresentismoPorDiaDemo() {
 
 export function ViandasPorComidaDemo() {
   return (
-    <CardSeccion titulo="Viandas entregadas" descripcion="Esta semana, por comida." modulo="viandas">
+    <CardSeccion tituloComo="p" titulo="Viandas entregadas" descripcion="Esta semana, por comida." modulo="viandas">
       <div className="landing-crecer-y mt-4">
         <BarrasCategoria
           categorias={VIANDAS_POR_COMIDA}
@@ -166,7 +167,7 @@ export function ViandasPorComidaDemo() {
 
 export function TurnosDemo({ cantidad = TURNOS_DEMO.length }: { cantidad?: number }) {
   return (
-    <CardSeccion titulo="Próximos turnos" descripcion="Los que vienen desde hoy, en orden." modulo="turnos">
+    <CardSeccion tituloComo="p" titulo="Próximos turnos" descripcion="Los que vienen desde hoy, en orden." modulo="turnos">
       <ul className="mt-4 grid grid-cols-1 gap-3">
         {TURNOS_DEMO.slice(0, cantidad).map((t) => (
           <li key={t.id} className="flex min-w-0 items-center gap-3 rounded-xl bg-gray-50 p-2.5">
