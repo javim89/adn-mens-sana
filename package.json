@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:integration": "vitest run test-integration",
+    "db:migrate": "node scripts/migrate-pending.mjs",
     "seed:categorias": "node scripts/seed-categorias.mjs",
     "seed:calendario": "node scripts/seed-calendario.mjs",
     "seed:deportistas": "node scripts/seed-deportistas.mjs",
