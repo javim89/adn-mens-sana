@@ -93,33 +93,28 @@ See `DESIGN.md` for the full design system: color palette (azul marino `#121A61`
 - **Neon** — serverless PostgreSQL database. Connection via `DATABASE_URL` env var (pooled) and `DATABASE_URL_UNPOOLED` for migrations.
 - **Prisma** — ORM. Schema at `prisma/schema.prisma`. Client singleton at `lib/db.ts`. Generate types with `pnpm exec prisma generate`.
 
-### Correr migraciones (IPv6 — IMPORTANTE)
+### Correr migraciones
 
-`pnpm exec prisma migrate dev` falla porque la red local usa IPv6 y la conexión TCP directa a Neon no funciona. El flujo correcto es:
+Se usa `prisma migrate deploy` (con `DATABASE_URL_UNPOOLED`, ver `prisma.config.ts`). Desde Docker la conexión TCP a Neon funciona:
 
-1. Agregar los modelos/enums al schema (`prisma/schema.prisma`)
-2. Crear el directorio y el SQL manualmente:
+1. Agregar los modelos/enums al schema (`prisma/schema.prisma`).
+2. Crear el directorio y el SQL a mano (no usamos `migrate dev`):
    ```
    prisma/migrations/<YYYYMMDDHHMMSS>_<nombre>/migration.sql
    ```
-3. Aplicar via HTTP (bypasea TCP):
-   ```bash
-   node scripts/apply-migration.mjs <nombre-directorio>
-   ```
-4. Regenerar el cliente:
-   ```bash
-   pnpm exec prisma generate
-   ```
+3. `make migrate-status` (solo lectura) y `make migrate` para aplicarla en la DB de `.env.local`. Sin Docker: `pnpm db:migrate:status` / `pnpm db:migrate`.
+4. Regenerar el cliente: `pnpm exec prisma generate` (en Docker el entrypoint lo hace solo si cambió el schema).
 
-El script `scripts/apply-migration.mjs` usa `@neondatabase/serverless` con el driver HTTP para ejecutar el SQL sin TCP.
+**Fallback (IPv6):** fuera de Docker, en la red local la conexión TCP directa a Neon puede fallar por IPv6. Ahí: `node scripts/apply-migration.mjs <nombre-directorio>`, que aplica el SQL por el driver HTTP de Neon y lo registra en `_prisma_migrations`.
 
 ### Migraciones en el deploy de producción
 
-El deploy de producción de Netlify corre `pnpm db:migrate` (`scripts/migrate-pending.mjs`) **antes** del build: aplica en orden las migraciones de `prisma/migrations/` que no estén en `_prisma_migrations`, cada una en su transacción. Si una falla, se revierte y el deploy se corta (sigue en línea la versión anterior). `pnpm db:migrate --dry-run` lista las pendientes sin escribir.
+El deploy de producción de Netlify corre `pnpm db:migrate` (`prisma migrate deploy`) **antes** del build (`netlify.toml`, `[context.production]`): aplica todas las migraciones de `prisma/migrations/` que no estén en `_prisma_migrations`. Si falla, el deploy se corta y sigue en línea la versión anterior.
 
 - **Se aplican antes de que el código nuevo esté en línea.** Una migración solo puede **agregar** (tablas, columnas nullable o con default, índices). Lo que rompe al código que está corriendo —`DROP` de tablas/columnas, `NOT NULL` nuevo, quitar un default, renombrar— va en un deploy **posterior**, cuando ya no se usa (expand/contract, como M5).
-- **Nada fuera de orden.** Si hay una pendiente con nombre anterior a la última aplicada, el script bloquea sin aplicar nada: hay que aplicarla o registrarla a mano.
-- **Nada que no vaya en transacción** (`CREATE INDEX CONCURRENTLY`, `VACUUM`, …): el script lo bloquea; se aplica a mano.
+- **Una migración fallida bloquea los deploys siguientes** hasta resolverla: revertir a mano lo que haya quedado aplicado y `pnpm exec prisma migrate resolve --rolled-back <nombre>`, o completarla y `--applied <nombre>`. Escribir migraciones idempotentes (`IF NOT EXISTS`) cuando se pueda.
+- **Aplica también pendientes viejas** (no solo las nuevas): antes de mergear, `make migrate-status` contra la base que corresponda para saber qué va a correr.
+- **Nada que no pueda ir en una transacción** (`CREATE INDEX CONCURRENTLY`, `VACUUM`, …) en una migración del deploy: aplicarlo a mano.
 - Una migración destructiva o pesada: antes, snapshot/branch de respaldo de Neon.
 
 ## Multi-tenant

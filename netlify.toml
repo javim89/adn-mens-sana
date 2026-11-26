@@ -11,9 +11,9 @@
   # pnpm: la versión sale de `packageManager` en package.json (Corepack).
   NEXT_TELEMETRY_DISABLED = "1"
 
-# Solo producción: aplica las migraciones pendientes antes del build. Si una falla, se
-# revierte (cada una va en su transacción), el deploy se corta y sigue la versión anterior.
-# Bloquea sin aplicar nada si hay pendientes fuera de orden. Ver CLAUDE.md > Migraciones.
+# Solo producción: `prisma migrate deploy` aplica las migraciones pendientes antes del
+# build (usa DATABASE_URL_UNPOOLED, ver prisma.config.ts). Si una falla, el deploy se corta
+# y sigue la versión anterior. Ver CLAUDE.md > Migraciones en el deploy de producción.
 [context.production]
   command = "pnpm db:migrate && pnpm build"
 
