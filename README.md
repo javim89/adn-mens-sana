@@ -4,21 +4,37 @@ Plataforma multi-club para la gestión integral del deportista.
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+## Desarrollo con Docker (OrbStack)
 
-First, run the development server:
+Requiere [OrbStack](https://orbstack.dev) y `.env.local` (copiar de `.env.example`, con claves `pk_test_` de Clerk). No hace falta Node en el host. El package manager es pnpm (`pnpm-lock.yaml`).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+make up        # https://bioteam.local y https://<slug>.bioteam.local
+make logs      # logs del dev server
+make stop      # frenar
+make restart   # reiniciar (reinstala si cambió pnpm-lock.yaml)
+make down      # borrar el contenedor (conserva volúmenes)
+make lint | make test | make build
+make smoke     # dominios, TLS y redirects
+make run CMD="pnpm seed:all"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- `bioteam.local` usa la CA de OrbStack. Si los dominios no responden, revisar en OrbStack "Allow access to container domains & IPs".
+- `compose.yaml` fija `NEXT_PUBLIC_ROOT_DOMAIN` y `NEXT_PUBLIC_APP_URL`; el resto sale de `.env.local`, que Next lee por el bind mount.
+- La base es la que apunte `.env.local`: `make run` con scripts o migraciones y `make e2e` escriben ahí.
+- La sesión de Clerk en desarrollo es por host: puede pedir login en cada subdominio.
+- Para subir fotos, el CORS del bucket de S3 tiene que incluir `https://bioteam.local` y `https://*.bioteam.local`.
+
+## Desarrollo sin Docker
+
+Requiere Node 22 y Corepack (`corepack enable`): la versión de pnpm sale de `packageManager` en `package.json`.
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Queda en [http://localhost:3000](http://localhost:3000).
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

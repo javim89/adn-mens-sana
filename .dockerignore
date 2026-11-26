@@ -1,0 +1,4 @@
+# El código entra por bind mount: la imagen solo necesita el entrypoint y, para fijar pnpm, package.json.
+*
+!docker/dev-entrypoint.sh
+!package.json

@@ -1,0 +1,34 @@
+FROM node:22-bookworm-slim AS dev
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && corepack enable pnpm
+# Los volúmenes nombrados heredan el dueño de estos directorios al crearse.
+RUN mkdir -p /app/node_modules /app/.next && chown -R node:node /app
+COPY --chmod=755 docker/dev-entrypoint.sh /usr/local/bin/dev-entrypoint
+USER node
+ENV NEXT_TELEMETRY_DISABLED=1 COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# Store de pnpm dentro del volumen de node_modules (mismo disco: hardlinks/clones). Como
+# variable, vale para el entrypoint y para cualquier `pnpm add` de `make run`.
+ENV npm_config_store_dir=/app/node_modules/.pnpm-store
+# Deja en la imagen la versión de pnpm de `packageManager`, para no bajarla en cada `run`.
+COPY package.json /tmp/pnpm-version/package.json
+RUN cd /tmp/pnpm-version && corepack install
+WORKDIR /app
+ENTRYPOINT ["dev-entrypoint"]
+CMD ["pnpm", "dev", "-H", "0.0.0.0"]
+
+# La versión tiene que coincidir con la de @playwright/test en pnpm-lock.yaml.
+FROM mcr.microsoft.com/playwright:v1.60.0-noble AS e2e
+RUN corepack enable pnpm \
+  && mkdir -p /app/node_modules /app/.next /tmp/pnpm-version /home/e2e \
+  && chown -R 1000:1000 /app /tmp/pnpm-version /home/e2e
+COPY --chmod=755 docker/dev-entrypoint.sh /usr/local/bin/dev-entrypoint
+USER 1000:1000
+ENV HOME=/home/e2e NEXT_TELEMETRY_DISABLED=1 COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+  npm_config_store_dir=/app/node_modules/.pnpm-store
+COPY package.json /tmp/pnpm-version/package.json
+RUN cd /tmp/pnpm-version && corepack install
+WORKDIR /app
+ENTRYPOINT ["dev-entrypoint"]
+CMD ["pnpm", "test:e2e"]

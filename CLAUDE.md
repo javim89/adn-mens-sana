@@ -19,13 +19,17 @@ The architect decides which agents to invoke, in what order, and whether tasks c
 
 ## Commands
 
+**Package manager: pnpm** (no npm ni yarn). La versión está fijada en `packageManager` de `package.json` y la provee Corepack. El único lockfile es `pnpm-lock.yaml`: no generar `package-lock.json`. Toda dependencia que se importe tiene que estar declarada en `package.json` (pnpm no hoistea dependencias transitivas). Para ejecutar binarios: `pnpm exec <bin>` (no `npx`).
+
 ```bash
-npm run dev        # start dev server at localhost:3000
-npm run build      # production build
-npm run lint       # ESLint
-npm run test       # Vitest (unit + component tests)
-npm run test:e2e   # Playwright (end-to-end tests)
+pnpm dev        # start dev server at localhost:3000
+pnpm build      # production build
+pnpm lint       # ESLint
+pnpm test       # Vitest (unit + component tests)
+pnpm test:e2e   # Playwright (end-to-end tests)
 ```
+
+Con Docker (OrbStack, sin Node en el host): `make up` levanta `https://bioteam.local` y `https://<slug>.bioteam.local`; `make lint`, `make test`, `make build`, `make smoke`, `make logs`, `make stop`, `make restart`, `make down`. `make e2e CONFIRMO_DB_DEV=1` corre Playwright (escribe en la DB de `.env.local`). Comandos sueltos: `make run CMD="..."`.
 
 ## Testing — mandatory
 
@@ -51,10 +55,10 @@ npm run test:e2e   # Playwright (end-to-end tests)
 ### Definition of Done
 
 A task is **done** when:
-1. `npm run lint` passes
-2. `npm run build` passes
-3. `npm run test` passes (all unit/component tests)
-4. `npm run test:e2e` passes for the affected flows
+1. `pnpm lint` passes
+2. `pnpm build` passes
+3. `pnpm test` passes (all unit/component tests)
+4. `pnpm test:e2e` passes for the affected flows
 5. The `qa-tester` agent has reviewed and signed off
 
 ## Producto
@@ -73,7 +77,7 @@ A task is **done** when:
 - **Tokens:** los colores de la app son clases de token (`primario`, `secundario`, `acento`, `primario-hover`, `primario-suave`, `muted`, `muted-foreground`, `foreground`, `subtle`, `border`). Los nombres shadcn (`primary`, `secondary`, …) solo dentro de `app/components/ui/*`. Detalle y política de contraste en `DESIGN.md` > "Paleta de Colores".
 - **Sin hex:** los hex viven solo en el bloque `tokens:start … tokens:end` de `app/globals.css` y en `lib/branding/tokens.ts`. `lib/branding/__tests__/sin-hex.test.ts` falla ante cualquier `#hex`/`rgb()`/`hsl()` nuevo en `app/` o `lib/`. Colores de estado: paleta Tailwind (`red-100`, …) o los mapas de `tokens.ts`.
 - **`TemaClub`** (`app/components/branding/TemaClub.tsx`) inyecta las `--club-*` del club en `:root` con un `<style>` normal (sin `precedence`, para que se retire al cambiar de club). Lo renderizan `(app)/layout.tsx` y el login del club. El admin edita nombre, logo y colores en `/configuracion`.
-- **Subdominios:** con `NEXT_PUBLIC_ROOT_DOMAIN`, cada club vive en `<slug>.<dominio>`. `proxy.ts` traduce el host al header interno `x-club-slug` (siempre lo pisa) y reescribe `/sign-in`/`/sign-up` al login del club (`app/c/[slug]/…`). `getContextoClub` valida el slug contra membresía o superadmin. Sin la env, el club sale de la cookie `bt_club` y el login del club es `/c/<slug>/sign-in`. Helpers en `lib/tenant/host.ts`. Pasos de infra en `docs/infra-subdominios.md` (local). Para probar en local: `NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000` y `http://<slug>.localhost:3000` en Chrome.
+- **Subdominios:** con `NEXT_PUBLIC_ROOT_DOMAIN`, cada club vive en `<slug>.<dominio>`. `proxy.ts` traduce el host al header interno `x-club-slug` (siempre lo pisa) y reescribe `/sign-in`/`/sign-up` al login del club (`app/c/[slug]/…`). `getContextoClub` valida el slug contra membresía o superadmin. Sin la env, el club sale de la cookie `bt_club` y el login del club es `/c/<slug>/sign-in`. Helpers en `lib/tenant/host.ts`. Pasos de infra en `docs/infra-subdominios.md` (local). Para probar en local: con Docker, `make up` ya los deja activos en `https://<slug>.bioteam.local`; sin Docker, `NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000` y `http://<slug>.localhost:3000` en Chrome.
 
 ## Design
 
@@ -87,27 +91,31 @@ See `DESIGN.md` for the full design system: color palette (azul marino `#121A61`
 - **TypeScript**
 - **Clerk** — authentication and user management (`@clerk/nextjs`). Middleware at `middleware.ts` protects routes. Use `auth()` from `@clerk/nextjs/server` in Server Components; `useUser` / `useAuth` hooks in Client Components.
 - **Neon** — serverless PostgreSQL database. Connection via `DATABASE_URL` env var (pooled) and `DATABASE_URL_UNPOOLED` for migrations.
-- **Prisma** — ORM. Schema at `prisma/schema.prisma`. Client singleton at `lib/db.ts`. Generate types with `npx prisma generate`.
+- **Prisma** — ORM. Schema at `prisma/schema.prisma`. Client singleton at `lib/db.ts`. Generate types with `pnpm exec prisma generate`.
 
-### Correr migraciones (IPv6 — IMPORTANTE)
+### Correr migraciones
 
-`npx prisma migrate dev` falla porque la red local usa IPv6 y la conexión TCP directa a Neon no funciona. El flujo correcto es:
+Se usa `prisma migrate deploy` (con `DATABASE_URL_UNPOOLED`, ver `prisma.config.ts`). Desde Docker la conexión TCP a Neon funciona:
 
-1. Agregar los modelos/enums al schema (`prisma/schema.prisma`)
-2. Crear el directorio y el SQL manualmente:
+1. Agregar los modelos/enums al schema (`prisma/schema.prisma`).
+2. Crear el directorio y el SQL a mano (no usamos `migrate dev`):
    ```
    prisma/migrations/<YYYYMMDDHHMMSS>_<nombre>/migration.sql
    ```
-3. Aplicar via HTTP (bypasea TCP):
-   ```bash
-   node scripts/apply-migration.mjs <nombre-directorio>
-   ```
-4. Regenerar el cliente:
-   ```bash
-   npx prisma generate
-   ```
+3. `make migrate-status` (solo lectura) y `make migrate` para aplicarla en la DB de `.env.local`. Sin Docker: `pnpm db:migrate:status` / `pnpm db:migrate`.
+4. Regenerar el cliente: `pnpm exec prisma generate` (en Docker el entrypoint lo hace solo si cambió el schema).
 
-El script `scripts/apply-migration.mjs` usa `@neondatabase/serverless` con el driver HTTP para ejecutar el SQL sin TCP.
+**Fallback (IPv6):** fuera de Docker, en la red local la conexión TCP directa a Neon puede fallar por IPv6. Ahí: `node scripts/apply-migration.mjs <nombre-directorio>`, que aplica el SQL por el driver HTTP de Neon y lo registra en `_prisma_migrations`.
+
+### Migraciones en el deploy de producción
+
+El deploy de producción de Netlify corre `pnpm db:migrate` (`prisma migrate deploy`) **antes** del build (`netlify.toml`, `[context.production]`): aplica todas las migraciones de `prisma/migrations/` que no estén en `_prisma_migrations`. Si falla, el deploy se corta y sigue en línea la versión anterior.
+
+- **Se aplican antes de que el código nuevo esté en línea.** Una migración solo puede **agregar** (tablas, columnas nullable o con default, índices). Lo que rompe al código que está corriendo —`DROP` de tablas/columnas, `NOT NULL` nuevo, quitar un default, renombrar— va en un deploy **posterior**, cuando ya no se usa (expand/contract, como M5).
+- **Una migración fallida bloquea los deploys siguientes** hasta resolverla: revertir a mano lo que haya quedado aplicado y `pnpm exec prisma migrate resolve --rolled-back <nombre>`, o completarla y `--applied <nombre>`. Escribir migraciones idempotentes (`IF NOT EXISTS`) cuando se pueda.
+- **Aplica también pendientes viejas** (no solo las nuevas): antes de mergear, `make migrate-status` contra la base que corresponda para saber qué va a correr.
+- **Nada que no pueda ir en una transacción** (`CREATE INDEX CONCURRENTLY`, `VACUUM`, …) en una migración del deploy: aplicarlo a mano.
+- Una migración destructiva o pesada: antes, snapshot/branch de respaldo de Neon.
 
 ## Multi-tenant
 

@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Solo dev (docker/OrbStack). `*` no cubre el dominio raíz.
+  allowedDevOrigins: ["bioteam.local", "*.bioteam.local"],
 };
 
 export default nextConfig;

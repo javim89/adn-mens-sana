@@ -1,0 +1,23 @@
+# Build de Netlify versionado en el repo (pisa lo configurado en la UI de Netlify).
+# El adaptador de Next.js (OpenNext) lo agrega Netlify solo: no hace falta declararlo.
+
+[build]
+  command = "pnpm build"
+  publish = ".next"
+
+[build.environment]
+  # Next 16 pide Node >= 20.9. 22 es la misma versión que usa Dockerfile.dev.
+  NODE_VERSION = "22"
+  # pnpm: la versión sale de `packageManager` en package.json (Corepack).
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Solo producción: `prisma migrate deploy` aplica las migraciones pendientes antes del
+# build (usa DATABASE_URL_UNPOOLED, ver prisma.config.ts). Si una falla, el deploy se corta
+# y sigue la versión anterior. Ver CLAUDE.md > Migraciones en el deploy de producción.
+[context.production]
+  command = "pnpm db:migrate && pnpm build"
+
+[functions]
+  # Funciones propias (p. ej. triage-weekly, programada). Es el directorio por defecto;
+  # se deja explícito para que no dependa de la UI.
+  directory = "netlify/functions"
