@@ -89,7 +89,7 @@ const makeSeguimiento = (
 });
 
 describe('DeportistaDetailTabs', () => {
-  test('renderiza las tabs incluidas Seguimiento, Trayectoria y Triage', () => {
+  test('renderiza las pestañas con nombres cortos', () => {
     render(
       <DeportistaDetailTabs
         deportista={makeDeportista()}
@@ -99,12 +99,12 @@ describe('DeportistaDetailTabs', () => {
     );
 
     for (const label of [
-      'Datos Personales',
-      'Datos Deportivos',
-      'Datos Escolares',
-      'Datos Sociales',
+      'Personal',
+      'Deportivo',
+      'Escolar',
+      'Social',
       'Salud',
-      'Seguimiento',
+      'Seguimientos',
       'Trayectoria',
       'Triage',
     ]) {
@@ -148,7 +148,7 @@ describe('DeportistaDetailTabs', () => {
       />,
     );
 
-    await user.click(screen.getByRole('tab', { name: 'Seguimiento' }));
+    await user.click(screen.getByRole('tab', { name: 'Seguimientos' }));
     expect(screen.getByText('Evaluación de rodilla')).toBeDefined();
   });
 
@@ -162,7 +162,7 @@ describe('DeportistaDetailTabs', () => {
       />,
     );
 
-    await user.click(screen.getByRole('tab', { name: 'Datos Deportivos' }));
+    await user.click(screen.getByRole('tab', { name: 'Deportivo' }));
     expect(screen.getByText('Primera')).toBeDefined();
   });
 
@@ -176,7 +176,105 @@ describe('DeportistaDetailTabs', () => {
       />,
     );
 
-    await user.click(screen.getByRole('tab', { name: 'Datos Escolares' }));
+    await user.click(screen.getByRole('tab', { name: 'Escolar' }));
     expect(screen.getByText(/Sin datos cargados/i)).toBeDefined();
+  });
+
+  test('la columna derecha muestra el nivel de triage con sus motivos principales', () => {
+    render(
+      <DeportistaDetailTabs
+        deportista={makeDeportista()}
+        seguimientos={[]}
+        {...trayectoriaProps}
+        seguimientosTotal={4}
+        triage={{
+          nivel: 'NARANJA',
+          puntajeTotal: 9,
+          calculatedAt: '2026-11-23T11:00:00.000Z',
+          desglose: [
+            { area: 'MEDICA', regla: 'Lesión activa', puntos: 2 },
+            { area: 'PSICOLOGICA', regla: 'Evaluación psicológica alta', puntos: 5 },
+            { area: 'DEPORTIVA', regla: 'Ausencias reiteradas', puntos: 3 },
+          ],
+        }}
+      />,
+    );
+
+    const lateral = screen.getByRole('complementary', { name: 'Resumen del deportista' });
+    expect(lateral).toHaveTextContent('Nivel de triage');
+    expect(lateral).toHaveTextContent('Naranja');
+    expect(lateral).toHaveTextContent('Evaluación psicológica alta · Ausencias reiteradas.');
+    expect(lateral).not.toHaveTextContent('Lesión activa');
+    expect(lateral).toHaveTextContent('4');
+    expect(lateral).toHaveTextContent('seguimientos registrados');
+  });
+
+  test('"Ver seguimientos" de la columna derecha abre esa pestaña', async () => {
+    const user = userEvent.setup();
+    render(
+      <DeportistaDetailTabs
+        deportista={makeDeportista()}
+        seguimientos={[makeSeguimiento({ titulo: 'Evaluación de rodilla' })]}
+        {...trayectoriaProps}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Ver seguimientos' }));
+    expect(screen.getByRole('tab', { name: 'Seguimientos' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Evaluación de rodilla')).toBeDefined();
+  });
+
+  test('la pestaña Salud muestra alergias y medicación habitual', async () => {
+    const user = userEvent.setup();
+    render(
+      <DeportistaDetailTabs
+        deportista={makeDeportista({
+          datosSalud: {
+            grupoSanguineo: '0+',
+            horasSuenio: null,
+            obraSocial: null,
+            enfermedadesPreexistentes: [{ id: 'e1', enfermedad: 'ALERGIAS' }],
+            antecedentesEnfermedadesFam: [],
+            antecedenteMuerteSubitaFamiliar: null,
+            antecedentesQuirurgicos: null,
+            medicacionCronica: 'Salbutamol',
+            historialLesiones: null,
+          } as unknown as DeportistaWithRelations['datosSalud'],
+        })}
+        seguimientos={[]}
+        {...trayectoriaProps}
+      />,
+    );
+
+    await user.click(screen.getByRole('tab', { name: 'Salud' }));
+    expect(screen.getByText('Alergias', { selector: 'p.uppercase' }).nextElementSibling).toHaveTextContent('Sí');
+    expect(screen.getByText('Medicación habitual').nextElementSibling).toHaveTextContent('Salbutamol');
+  });
+
+  test('sin alergias ni medicación, la pestaña Salud lo dice como no registradas', async () => {
+    const user = userEvent.setup();
+    render(
+      <DeportistaDetailTabs
+        deportista={makeDeportista({
+          datosSalud: {
+            grupoSanguineo: null,
+            horasSuenio: null,
+            obraSocial: null,
+            enfermedadesPreexistentes: [],
+            antecedentesEnfermedadesFam: [],
+            antecedenteMuerteSubitaFamiliar: null,
+            antecedentesQuirurgicos: null,
+            medicacionCronica: null,
+            historialLesiones: null,
+          } as unknown as DeportistaWithRelations['datosSalud'],
+        })}
+        seguimientos={[]}
+        {...trayectoriaProps}
+      />,
+    );
+
+    await user.click(screen.getByRole('tab', { name: 'Salud' }));
+    expect(screen.getByText('Alergias', { selector: 'p.uppercase' }).nextElementSibling).toHaveTextContent('No registradas');
+    expect(screen.getByText('Medicación habitual').nextElementSibling).toHaveTextContent('No registrada');
   });
 });

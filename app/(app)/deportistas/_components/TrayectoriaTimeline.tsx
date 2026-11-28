@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { CustomSelect } from '@/app/components/ui/custom-select';
+import { Panel } from '@/app/components/ui/panel';
 import type {
   PeriodoDivision,
   TrayectoriaEvento,
@@ -31,6 +32,8 @@ interface Props {
   eventos: TrayectoriaEvento[];
   disciplinas: Catalogo[];
   categorias: Catalogo[];
+  clubesAnteriores?: Array<{ id: string; nombre: string; periodo?: string | null }>;
+  historiaDeportiva?: Array<{ id: string; descripcion: string; fecha: Date | string }>;
 }
 
 const TIPO_OPTIONS = [
@@ -40,6 +43,11 @@ const TIPO_OPTIONS = [
     label: TRAYECTORIA_TIPO_META[tipo].label,
   })),
 ];
+
+function formatFechaHito(fecha: Date | string) {
+  const [anio, mes] = new Date(fecha).toISOString().slice(0, 7).split('-');
+  return `${mes}/${anio}`;
+}
 
 function formatDate(dateStr: string) {
   return new Intl.DateTimeFormat('es-AR', {
@@ -174,6 +182,8 @@ export default function TrayectoriaTimeline({
   eventos,
   disciplinas,
   categorias,
+  clubesAnteriores = [],
+  historiaDeportiva = [],
 }: Props) {
   const [tipoFiltro, setTipoFiltro] = useState('');
 
@@ -188,91 +198,128 @@ export default function TrayectoriaTimeline({
   const hayFiltros = tipoFiltro !== '';
   const totalVisibles = grupos.reduce((acc, g) => acc + g.eventos.length, 0);
 
+  const hitos = [...historiaDeportiva].sort(
+    (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime(),
+  );
+
   return (
-    <div>
-      {/* Cabecera */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <CustomSelect
-          id="filtro-tipo-trayectoria"
-          value={tipoFiltro}
-          onChange={setTipoFiltro}
-          options={TIPO_OPTIONS}
-          placeholder="Todos los tipos"
-          className="min-w-[180px] flex-1 sm:flex-none"
-        />
-        <GestionDivisionesModal
-          deportistaId={deportistaId}
-          periodos={periodos}
-          disciplinas={disciplinas}
-          categorias={categorias}
-        />
-      </div>
+    <div className="@container">
+      <div className="grid items-start gap-4 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
+        <Panel titulo="Divisiones">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <CustomSelect
+              id="filtro-tipo-trayectoria"
+              value={tipoFiltro}
+              onChange={setTipoFiltro}
+              options={TIPO_OPTIONS}
+              placeholder="Todos los tipos"
+              className="min-w-[180px] flex-1 sm:flex-none"
+            />
+            <GestionDivisionesModal
+              deportistaId={deportistaId}
+              periodos={periodos}
+              disciplinas={disciplinas}
+              categorias={categorias}
+            />
+          </div>
 
-      {sinEventos ? (
-        <p className="text-sm text-muted-foreground py-12 text-center">
-          Este deportista no tiene eventos en su trayectoria.
-        </p>
-      ) : totalVisibles === 0 ? (
-        <p className="text-sm text-muted-foreground py-12 text-center">
-          No hay eventos que coincidan con los filtros.
-          {hayFiltros && (
-            <button
-              type="button"
-              onClick={() => setTipoFiltro('')}
-              className="block mx-auto mt-2 text-primario underline hover:no-underline"
-            >
-              Limpiar filtros
-            </button>
-          )}
-        </p>
-      ) : (
-        <div className="space-y-8">
-          {grupos.map((grupo) => (
-            <section key={grupo.periodo.id}>
-              <div className="mb-3">
-                <h3
-                  className="text-base font-bold text-primario"
-                  style={{ fontFamily: 'Oswald, sans-serif' }}
+          {sinEventos ? (
+            <p className="text-sm text-muted-foreground py-12 text-center">
+              Este deportista no tiene eventos en su trayectoria.
+            </p>
+          ) : totalVisibles === 0 ? (
+            <p className="text-sm text-muted-foreground py-12 text-center">
+              No hay eventos que coincidan con los filtros.
+              {hayFiltros && (
+                <button
+                  type="button"
+                  onClick={() => setTipoFiltro('')}
+                  className="block mx-auto mt-2 text-primario underline hover:no-underline"
                 >
-                  {periodoTitulo(grupo.periodo)}
-                </h3>
-                <p className="text-xs text-muted-foreground">{periodoRango(grupo.periodo)}</p>
-              </div>
-
-              {grupo.eventos.length === 0 ? (
-                <p className="text-sm text-muted-foreground pl-2">
-                  Sin eventos en este período.
-                </p>
-              ) : (
-                <ol className="relative ml-2">
-                  <span
-                    aria-hidden
-                    className="absolute left-[5px] top-2 bottom-2 w-px bg-gray-200"
-                  />
-
-                  {grupo.eventos.map((evento) => {
-                    const esSeguimiento = evento.tipo === 'SEGUIMIENTO';
-                    const dot = esSeguimiento
-                      ? getTipoSeguimientoMeta(
-                          (evento.meta?.tipoSeguimiento as TipoSeguimiento | null) ?? null,
-                        ).dot
-                      : getTrayectoriaTipoMeta(evento.tipo).dot;
-                    return (
-                      <li key={evento.id} className="relative pl-8 pb-6 last:pb-0">
-                        <span
-                          aria-hidden
-                          className={`absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-white ${dot}`}
-                        />
-                        <EventoCard evento={evento} />
-                      </li>
-                    );
-                  })}
-                </ol>
+                  Limpiar filtros
+                </button>
               )}
-            </section>
-          ))}
+            </p>
+          ) : (
+            <div className="space-y-8">
+              {grupos.map((grupo) => (
+                <section key={grupo.periodo.id}>
+                  <div className="mb-3">
+                    <h3 className="font-[family-name:var(--font-oswald)] text-base font-bold text-primario">
+                      {periodoTitulo(grupo.periodo)}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">{periodoRango(grupo.periodo)}</p>
+                  </div>
+
+                  {grupo.eventos.length === 0 ? (
+                    <p className="text-sm text-muted-foreground pl-2">
+                      Sin eventos en este período.
+                    </p>
+                  ) : (
+                    <ol className="relative ml-2">
+                      <span
+                        aria-hidden
+                        className="absolute left-[5px] top-2 bottom-2 w-px bg-gray-200"
+                      />
+
+                      {grupo.eventos.map((evento) => {
+                        const esSeguimiento = evento.tipo === 'SEGUIMIENTO';
+                        const dot = esSeguimiento
+                          ? getTipoSeguimientoMeta(
+                              (evento.meta?.tipoSeguimiento as TipoSeguimiento | null) ?? null,
+                            ).dot
+                          : getTrayectoriaTipoMeta(evento.tipo).dot;
+                        return (
+                          <li key={evento.id} className="relative pl-8 pb-6 last:pb-0">
+                            <span
+                              aria-hidden
+                              className={`absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-white ${dot}`}
+                            />
+                            <EventoCard evento={evento} />
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  )}
+                </section>
+              ))}
+            </div>
+          )}
+        </Panel>
+
+        <div className="grid min-w-0 content-start gap-4">
+          <Panel titulo="Clubes anteriores">
+            {clubesAnteriores.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin clubes anteriores registrados.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {clubesAnteriores.map((c) => (
+                  <li key={c.id} className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
+                    <span className="min-w-0 text-foreground">{c.nombre}</span>
+                    {c.periodo && <span className="text-xs text-muted-foreground">{c.periodo}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+          <Panel titulo="Historia deportiva">
+            {hitos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin hitos registrados.</p>
+            ) : (
+              <ul className="space-y-2.5">
+                {hitos.map((h) => (
+                  <li key={h.id} className="flex gap-3">
+                    <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                      {formatFechaHito(h.fecha)}
+                    </span>
+                    <p className="min-w-0 text-sm text-foreground whitespace-pre-wrap">{h.descripcion}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
         </div>
-      )}
+      </div>
     </div>
   );
 }

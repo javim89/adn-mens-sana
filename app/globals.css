@@ -234,7 +234,13 @@ body {
 .fc .cal-evento .fc-event-title,
 .fc .cal-evento .fc-event-time {
   color: var(--club-primario-foreground);
-  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fc .cal-evento .fc-event-main {
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Evento suspendido: atenuado + tachado */
@@ -295,6 +301,39 @@ body {
   background-color: var(--cal-sin-actividad-bg);
 }
 
+/* Hoy: el número en un círculo del secundario (la toolbar es propia, no la de FullCalendar) */
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  min-width: 1.5rem;
+  margin: 2px;
+  padding: 0 0.35rem;
+  border-radius: 9999px;
+  background-color: var(--club-secundario);
+  color: var(--club-secundario-foreground);
+  text-align: center;
+}
+.fc .fc-daygrid-more-link {
+  color: var(--club-primario);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* Mobile: chips más chicos para que "4ta · rival" entre en la celda */
+@media (max-width: 639px) {
+  .fc .cal-evento {
+    padding: 0 2px;
+    font-size: 0.625rem;
+    border-left-width: 2px;
+  }
+  .fc .fc-col-header-cell-cushion {
+    padding: 4px 0;
+    font-size: 0.625rem;
+  }
+  .fc .fc-daygrid-day-number {
+    font-size: 0.7rem;
+    padding: 2px;
+  }
+}
+
 /* Vista Año (multiMonth): compacta y legible en desktop */
 .fc .fc-multimonth-title {
   font-family: 'Oswald', sans-serif;
@@ -303,6 +342,9 @@ body {
 }
 .fc .fc-multimonth {
   border-color: var(--border);
+}
+.fc .fc-multimonth-daygrid .cal-evento {
+  font-size: 0.625rem;
 }
 
 /* ---------------------------------------------------------------------------
@@ -441,9 +483,10 @@ body {
   }
 }
 
+/* El trazo del anillo (`app/components/ui/anillo.tsx`) usa pathLength=100. */
 @keyframes landing-anillo {
   from {
-    stroke-dashoffset: var(--anillo-total);
+    stroke-dashoffset: 100;
   }
 }
 

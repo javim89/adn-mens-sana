@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
+import { EncabezadoPagina } from '@/app/components/ui/encabezado-pagina';
 import { requireContexto } from '@/lib/tenant/contexto';
 import type { AppRole } from '@/lib/roles';
 import { getEntrenamientoById } from '@/lib/queries/presentismo';
@@ -70,12 +71,7 @@ export default async function EditarEntrenamientoPage({ params }: Props) {
           ← Presentismo
         </Link>
       </div>
-      <h1
-        className="text-3xl font-bold text-primario mb-6"
-        style={{ fontFamily: 'Oswald, sans-serif' }}
-      >
-        Editar entrenamiento
-      </h1>
+      <EncabezadoPagina className="mb-6" titulo="Editar entrenamiento" />
       <PresentismoForm
         mode="edit"
         isAdmin={isAdmin}

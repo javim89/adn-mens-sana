@@ -11,6 +11,12 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
+const { toastErrorMock, toastSuccessMock } = vi.hoisted(() => ({
+  toastErrorMock: vi.fn(),
+  toastSuccessMock: vi.fn(),
+}));
+vi.mock('sonner', () => ({ toast: { error: toastErrorMock, success: toastSuccessMock } }));
+
 const {
   createEntrenamientoMock,
   updateEntrenamientoMock,
@@ -221,7 +227,7 @@ describe('PresentismoForm — validación y submit', () => {
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/presentismo'));
   });
 
-  test('muestra el error del servidor si la action falla', async () => {
+  test('avisa con un toast el error del servidor si la action falla', async () => {
     const user = userEvent.setup();
     createEntrenamientoMock.mockResolvedValue({ success: false, error: 'Boom del server' });
     renderForm();
@@ -232,7 +238,118 @@ describe('PresentismoForm — validación y submit', () => {
 
     await user.click(screen.getByRole('button', { name: /guardar entrenamiento/i }));
 
-    expect(await screen.findByText('Boom del server')).toBeInTheDocument();
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('Boom del server'));
+    expect(toastSuccessMock).not.toHaveBeenCalled();
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  test('al guardar avisa con un toast de éxito', async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.selectOptions(screen.getByLabelText('Seleccionar tipo...'), 'TECNICO');
+    await selectDisciplinaYCategoria(user);
+    await screen.findByText('Alvarez, Juan');
+
+    await user.click(screen.getByRole('button', { name: /guardar entrenamiento/i }));
+
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('Asistencia guardada'));
+  });
+});
+
+describe('PresentismoForm — toma de asistencia', () => {
+  test('cada deportista tiene su avatar con iniciales', async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await selectDisciplinaYCategoria(user);
+    await screen.findByText('Alvarez, Juan');
+
+    const filaJuan = screen.getByText('Alvarez, Juan').closest('li')!;
+    expect(within(filaJuan).getByRole('img', { name: 'Alvarez, Juan' })).toHaveTextContent('JA');
+  });
+
+  test('el pie dice cuántos ausentes hay en la lista y se actualiza', async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await selectDisciplinaYCategoria(user);
+    await screen.findByText('Alvarez, Juan');
+
+    expect(screen.getByText(/ausentes de/)).toHaveTextContent('0 ausentes de 3 en la lista');
+
+    const filaJuan = screen.getByText('Alvarez, Juan').closest('li')!;
+    await user.click(within(filaJuan).getByRole('radio', { name: 'Ausente' }));
+
+    expect(screen.getByText(/ausente de/)).toHaveTextContent('1 ausente de 3 en la lista');
+  });
+
+  test('sin plantel el pie no muestra el conteo', () => {
+    renderForm();
+    expect(screen.queryByText(/en la lista/)).not.toBeInTheDocument();
+  });
+
+  test('la nota de un deportista se carga y viaja en el payload', async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.selectOptions(screen.getByLabelText('Seleccionar tipo...'), 'TECNICO');
+    await selectDisciplinaYCategoria(user);
+    await screen.findByText('Alvarez, Juan');
+
+    expect(screen.queryByRole('textbox', { name: 'Nota de Alvarez, Juan' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Agregar nota a Alvarez, Juan' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Nota de Alvarez, Juan' }),
+      '  Molestia en el tobillo ',
+    );
+
+    await user.click(screen.getByRole('button', { name: /guardar entrenamiento/i }));
+
+    await waitFor(() => expect(createEntrenamientoMock).toHaveBeenCalledTimes(1));
+    const { asistencias } = createEntrenamientoMock.mock.calls[0][0];
+    expect(asistencias).toContainEqual({
+      deportistaId: 'dep-1',
+      estado: 'PRESENTE',
+      notas: 'Molestia en el tobillo',
+    });
+    // Sin nota no se manda la clave: la action la guarda como null.
+    expect(asistencias.find((a: { deportistaId: string }) => a.deportistaId === 'dep-2')).toEqual({
+      deportistaId: 'dep-2',
+      estado: 'PRESENTE',
+    });
+  });
+
+  // Regresión: antes editar un entrenamiento borraba las notas guardadas, porque el
+  // payload se armaba solo con estado.
+  test('en edición muestra las notas guardadas y las conserva al actualizar', async () => {
+    const user = userEvent.setup();
+    renderForm({
+      mode: 'edit',
+      initialData: {
+        id: 'ent-9',
+        fecha: '2026-11-20',
+        tipoSesion: 'FISICO',
+        disciplinaId: 'disc-1',
+        categoriaId: 'cat-1',
+        asistencias: [
+          { deportistaId: 'dep-1', estado: 'AUSENTE', notas: 'Avisó por enfermedad' },
+          { deportistaId: 'dep-2', estado: 'PRESENTE' },
+        ],
+        roster: roster.slice(0, 2),
+      },
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Nota de Alvarez, Juan' })).toHaveValue(
+      'Avisó por enfermedad',
+    );
+
+    await user.click(screen.getByRole('button', { name: /actualizar entrenamiento/i }));
+
+    await waitFor(() => expect(updateEntrenamientoMock).toHaveBeenCalledTimes(1));
+    const [id, data] = updateEntrenamientoMock.mock.calls[0];
+    expect(id).toBe('ent-9');
+    expect(data.asistencias).toContainEqual({
+      deportistaId: 'dep-1',
+      estado: 'AUSENTE',
+      notas: 'Avisó por enfermedad',
+    });
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('Asistencia actualizada'));
   });
 });

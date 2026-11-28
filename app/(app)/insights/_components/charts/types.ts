@@ -43,8 +43,13 @@ export interface VizConfig {
   target?: number;
   /** Comparación: qué medida se toma como referencia (por defecto, la segunda). */
   baselineKey?: string;
-  /** Comparación: true si un delta negativo es lo deseable (ej. ausencias). */
+  /** Comparación/KPI: true si un delta negativo es lo deseable (ej. ausencias). */
   invertDelta?: boolean;
+  /**
+   * KPI: muestra la variación contra el período anterior. Solo aplica si el widget
+   * filtra por "este mes" o "últimos N días" (ver `specPeriodoAnterior`).
+   */
+  compararPeriodo?: boolean;
 }
 
 export interface ChartProps {

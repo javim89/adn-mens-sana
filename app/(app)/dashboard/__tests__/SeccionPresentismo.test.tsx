@@ -43,9 +43,11 @@ function conDatos(over: Partial<ResumenPresentismo> = {}): ResumenPresentismo {
       porEstado: { PRESENTE: 24, LLEGO_TARDE: 2, SE_RETIRO_ANTES: 2, AUSENTE: 12 },
     },
     ausentismoReiterado: [
-      { id: 'd1', nombre: 'Ana', apellido: 'Torres', ausencias: 3 },
-      { id: 'd2', nombre: 'Juan', apellido: 'Pérez', ausencias: 2 },
+      { id: 'd1', nombre: 'Ana', apellido: 'Torres', categoria: '4ta', ausencias: 3 },
+      { id: 'd2', nombre: 'Juan', apellido: 'Pérez', categoria: null, ausencias: 2 },
     ],
+    variacion: 10,
+    porCategoria: [],
     porDia: CLAVES.map((clave, i) => ({
       clave,
       registros: i < 5 ? 8 : 0,
@@ -60,6 +62,8 @@ const VACIO: ResumenPresentismo = {
   actual: { registros: 0, asistencias: 0, porcentaje: null, porEstado: VACIO_ESTADOS },
   previo: { registros: 0, asistencias: 0, porcentaje: null, porEstado: VACIO_ESTADOS },
   ausentismoReiterado: [],
+  variacion: null,
+  porCategoria: [],
   porDia: CLAVES.map((clave) => ({ clave, registros: 0, asistencias: 0, porcentaje: null })),
 };
 

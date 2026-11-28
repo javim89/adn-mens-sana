@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, type ReactNode } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { CustomSelect } from '@/app/components/ui/custom-select';
 import {
   CLIENT_DATASETS,
@@ -8,23 +10,33 @@ import {
 } from '@/lib/insights/catalog-client';
 import { MAX_DIMENSIONS, MAX_LIMIT } from '@/lib/insights/types';
 import type { QuerySpec, TimeGrain } from '@/lib/insights/types';
+import { cn } from '@/lib/utils';
 import FilterBuilder, { emptyGroup } from './FilterBuilder';
 
 interface Props {
   spec: QuerySpec;
   onChange: (next: QuerySpec) => void;
+  /** Se renderiza después de "Agrupar por" (el selector de gráfico del editor). */
+  grafico?: ReactNode;
 }
 
+const ROTULO = 'block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5';
+
 /**
- * Constructor visual: Dataset → Dimensiones → Medidas → Filtros → Orden/Límite.
+ * Constructor visual: Datos → Medida → Agrupar por → (gráfico) → opciones
+ * avanzadas colapsadas (filtros, orden, límite).
  *
  * Toda edición se hace sobre ids del catálogo; este componente nunca arma SQL.
  * Cuando cambia el dataset se descartan dimensiones, medidas, filtros y orden,
  * porque ninguno de esos ids existe necesariamente en el dataset nuevo y el
  * compilador los rechazaría.
  */
-export default function VisualBuilder({ spec, onChange }: Props) {
+export default function VisualBuilder({ spec, onChange, grafico }: Props) {
   const dataset = getClientDataset(spec.dataset);
+  // Abiertas de entrada si el widget ya usa alguna: que no queden escondidas.
+  const [avanzadas, setAvanzadas] = useState(
+    () => Boolean(spec.filters?.children.length || spec.sort?.length || spec.limit),
+  );
 
   const patch = (partial: Partial<QuerySpec>) => onChange({ ...spec, ...partial });
 
@@ -86,13 +98,16 @@ export default function VisualBuilder({ spec, onChange }: Props) {
   return (
     <div className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1.5">Dataset</label>
+        <label htmlFor="viz-dataset" className={ROTULO}>
+          Datos
+        </label>
         <CustomSelect
+          id="viz-dataset"
           value={spec.dataset}
           onChange={handleDatasetChange}
           searchable
           options={CLIENT_DATASETS.map((d) => ({ value: d.id, label: d.label }))}
-          placeholder="Elegir dataset…"
+          placeholder="Elegir datos…"
         />
         {dataset && (
           <p className="mt-1.5 text-xs text-muted-foreground">
@@ -103,9 +118,37 @@ export default function VisualBuilder({ spec, onChange }: Props) {
 
       {dataset && (
         <>
-          <section>
-            <div className="flex items-baseline justify-between mb-2">
-              <h3 className="text-sm font-medium text-foreground">Dimensiones</h3>
+          <fieldset>
+            <legend className={ROTULO}>Medida</legend>
+            <p className="text-xs text-muted-foreground mb-2">Qué se calcula para cada grupo.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 max-h-56 overflow-y-auto pr-1">
+              {dataset.measures.map((measure) => (
+                <label
+                  key={measure.id}
+                  className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={spec.measures.includes(measure.id)}
+                    onChange={() => toggleMeasure(measure.id)}
+                    className="rounded border-gray-300 text-primario focus:ring-secundario"
+                  />
+                  <span>{measure.label}</span>
+                  {measure.isFormula && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-muted text-[10px] text-muted-foreground">
+                      Fórmula
+                    </span>
+                  )}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div role="group" aria-labelledby="viz-agrupar">
+            <div className="flex items-baseline justify-between">
+              <p id="viz-agrupar" className={ROTULO}>
+                Agrupar por
+              </p>
               <span className="text-xs text-muted-foreground">
                 {spec.dimensions.length}/{MAX_DIMENSIONS}
               </span>
@@ -134,129 +177,126 @@ export default function VisualBuilder({ spec, onChange }: Props) {
                 );
               })}
             </div>
-          </section>
 
-          <section>
-            <h3 className="text-sm font-medium text-foreground mb-2">Medidas</h3>
-            <p className="text-xs text-muted-foreground mb-2">Qué se calcula para cada grupo.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 max-h-56 overflow-y-auto pr-1">
-              {dataset.measures.map((measure) => (
-                <label
-                  key={measure.id}
-                  className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={spec.measures.includes(measure.id)}
-                    onChange={() => toggleMeasure(measure.id)}
-                    className="rounded border-gray-300 text-primario focus:ring-secundario"
-                  />
-                  <span>{measure.label}</span>
-                  {measure.isFormula && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-muted text-[10px] text-muted-foreground">
-                      Fórmula
-                    </span>
-                  )}
+            {dateDimensions.length > 0 && (
+              <div className="mt-3 sm:max-w-60">
+                <label htmlFor="viz-grano" className="block text-xs font-medium text-foreground mb-1">
+                  Agrupar fecha por
                 </label>
-              ))}
-            </div>
-          </section>
+                <CustomSelect
+                  id="viz-grano"
+                  value={spec.timeGrain ?? ''}
+                  onChange={(grain) =>
+                    patch(
+                      grain
+                        ? {
+                            timeGrain: grain as TimeGrain,
+                            timeDimension: spec.timeDimension ?? dateDimensions[0]?.id,
+                          }
+                        : { timeGrain: undefined, timeDimension: undefined },
+                    )
+                  }
+                  options={[
+                    { value: '', label: 'Sin agrupar' },
+                    ...Object.entries(TIME_GRAIN_LABELS).map(([value, label]) => ({
+                      value,
+                      label,
+                    })),
+                  ]}
+                />
+              </div>
+            )}
+          </div>
 
-          <section>
-            <h3 className="text-sm font-medium text-foreground mb-2">Filtros</h3>
-            <FilterBuilder
-              dataset={dataset}
-              value={spec.filters ?? emptyGroup()}
-              onChange={(filters) =>
-                patch({ filters: filters.children.length > 0 ? filters : undefined })
-              }
-            />
-          </section>
+          {grafico}
 
-          <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Agrupar fecha por
-              </label>
-              <CustomSelect
-                value={spec.timeGrain ?? ''}
-                disabled={dateDimensions.length === 0}
-                onChange={(grain) =>
-                  patch(
-                    grain
-                      ? {
-                          timeGrain: grain as TimeGrain,
-                          timeDimension: spec.timeDimension ?? dateDimensions[0]?.id,
-                        }
-                      : { timeGrain: undefined, timeDimension: undefined },
-                  )
-                }
-                options={[
-                  { value: '', label: 'Sin agrupar' },
-                  ...Object.entries(TIME_GRAIN_LABELS).map(([value, label]) => ({
-                    value,
-                    label,
-                  })),
-                ]}
+          <div className="border-t border-border pt-3">
+            <button
+              type="button"
+              aria-expanded={avanzadas}
+              aria-controls="viz-avanzadas"
+              onClick={() => setAvanzadas((v) => !v)}
+              className="flex w-full items-center justify-between gap-2 rounded-md py-1 text-sm font-medium text-foreground hover:text-primario focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Opciones avanzadas
+              <ChevronDown
+                aria-hidden
+                size={16}
+                className={cn('shrink-0 transition-transform', avanzadas && 'rotate-180')}
               />
-              {dateDimensions.length === 0 && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Requiere una dimensión de fecha.
-                </p>
-              )}
-            </div>
+            </button>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Ordenar por</label>
-              <CustomSelect
-                value={currentSort?.field ?? ''}
-                disabled={sortable.length === 0}
-                onChange={(field) =>
-                  patch({
-                    sort: field
-                      ? [{ field, direction: currentSort?.direction ?? 'desc' }]
-                      : undefined,
-                  })
-                }
-                options={[{ value: '', label: 'Sin orden' }, ...sortable]}
-              />
-              {currentSort && (
-                <div className="mt-1.5 inline-flex rounded-md border border-gray-200 overflow-hidden">
-                  {(['desc', 'asc'] as const).map((dir) => (
-                    <button
-                      key={dir}
-                      type="button"
-                      aria-pressed={currentSort.direction === dir}
-                      onClick={() => patch({ sort: [{ ...currentSort, direction: dir }] })}
-                      className={`px-2 py-1 text-xs ${
-                        currentSort.direction === dir
-                          ? 'bg-primario text-white'
-                          : 'bg-white text-muted-foreground'
-                      }`}
-                    >
-                      {dir === 'desc' ? 'Mayor a menor' : 'Menor a mayor'}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {avanzadas && (
+              <div id="viz-avanzadas" className="mt-3 space-y-5">
+                <section>
+                  <h3 className="text-sm font-medium text-foreground mb-2">Filtros</h3>
+                  <FilterBuilder
+                    dataset={dataset}
+                    value={spec.filters ?? emptyGroup()}
+                    onChange={(filters) =>
+                      patch({ filters: filters.children.length > 0 ? filters : undefined })
+                    }
+                  />
+                </section>
 
-            <div>
-              <label htmlFor="viz-limit" className="block text-sm font-medium text-foreground mb-1.5">
-                Límite de filas
-              </label>
-              <input
-                id="viz-limit"
-                type="number"
-                min={1}
-                max={MAX_LIMIT}
-                value={spec.limit ?? MAX_LIMIT}
-                onChange={(e) => patch({ limit: Number(e.target.value) })}
-                className="h-9 w-full rounded-md border border-gray-200 px-2 text-sm"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">Máximo {MAX_LIMIT}.</p>
-            </div>
-          </section>
+                <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="viz-orden" className="block text-sm font-medium text-foreground mb-1.5">
+                      Ordenar por
+                    </label>
+                    <CustomSelect
+                      id="viz-orden"
+                      value={currentSort?.field ?? ''}
+                      disabled={sortable.length === 0}
+                      onChange={(field) =>
+                        patch({
+                          sort: field
+                            ? [{ field, direction: currentSort?.direction ?? 'desc' }]
+                            : undefined,
+                        })
+                      }
+                      options={[{ value: '', label: 'Sin orden' }, ...sortable]}
+                    />
+                    {currentSort && (
+                      <div className="mt-1.5 inline-flex rounded-md border border-gray-200 overflow-hidden">
+                        {(['desc', 'asc'] as const).map((dir) => (
+                          <button
+                            key={dir}
+                            type="button"
+                            aria-pressed={currentSort.direction === dir}
+                            onClick={() => patch({ sort: [{ ...currentSort, direction: dir }] })}
+                            className={`px-2 py-1 text-xs ${
+                              currentSort.direction === dir
+                                ? 'bg-primario text-white'
+                                : 'bg-white text-muted-foreground'
+                            }`}
+                          >
+                            {dir === 'desc' ? 'Mayor a menor' : 'Menor a mayor'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="viz-limit" className="block text-sm font-medium text-foreground mb-1.5">
+                      Límite de filas
+                    </label>
+                    <input
+                      id="viz-limit"
+                      type="number"
+                      min={1}
+                      max={MAX_LIMIT}
+                      value={spec.limit ?? MAX_LIMIT}
+                      onChange={(e) => patch({ limit: Number(e.target.value) })}
+                      className="h-9 w-full rounded-md border border-gray-200 px-2 text-sm"
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">Máximo {MAX_LIMIT}.</p>
+                  </div>
+                </section>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

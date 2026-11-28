@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
-import UsuariosTable from '../UsuariosTable';
+import userEvent from '@testing-library/user-event';
+import { describe, test, expect, vi, beforeEach, beforeAll } from 'vitest';
+import UsuariosTable, { formatUltimoIngreso } from '../UsuariosTable';
 import ConfirmarAccionModal from '../ConfirmarAccionModal';
 import type { Usuario } from '@/lib/types/usuarios';
 
@@ -15,13 +16,25 @@ vi.mock('sonner', () => ({
 vi.mock('@/lib/actions/usuarios', () => ({
   reenviarInvitacion: vi.fn().mockResolvedValue({ ok: true }),
   cambiarRol: vi.fn().mockResolvedValue({ ok: true }),
+  asignarLugarRetiro: vi.fn().mockResolvedValue({ ok: true }),
   deshabilitarUsuario: vi.fn().mockResolvedValue({ ok: true }),
   reactivarUsuario: vi.fn().mockResolvedValue({ ok: true }),
   eliminarUsuario: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
-import { reenviarInvitacion, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
+import { reenviarInvitacion, cambiarRol, asignarLugarRetiro, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
 import { toast } from 'sonner';
+
+beforeAll(() => {
+  // Radix (DropdownMenu de las píldoras) usa APIs que jsdom no trae.
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  Element.prototype.scrollIntoView ??= function () {};
+  Element.prototype.hasPointerCapture ??= () => false;
+});
 
 const mockActivo: Usuario = {
   id: 'user_1',
@@ -29,7 +42,7 @@ const mockActivo: Usuario = {
   lastName: 'Méndez',
   email: 'l.mendez@gimnasia.org.ar',
   rol: 'admin',
-  lastSignInAt: new Date('2026-06-08'),
+  lastSignInAt: new Date('2026-06-08T15:00:00Z'),
   createdAt: new Date('2026-01-01'),
   lugarRetiro: null,
   status: 'activo',
@@ -176,32 +189,30 @@ describe('UsuariosTable', () => {
     });
   });
 
-  test('usuario activo muestra último ingreso formateado', () => {
-    // Fijar "hoy" para que el resultado no dependa de la fecha real de ejecución
-    // (lastSignInAt = 2026-06-08 → 2 días antes).
+  test('usuario activo muestra último ingreso como d/m', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-06-10T12:00:00Z'));
     try {
       asNonAdmin();
       render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
-      const cells = screen.getAllByText(/hace 2 días/i);
-      expect(cells.length).toBeGreaterThan(0);
+      expect(screen.getAllByText('8/6').length).toBeGreaterThan(0);
+      expect(screen.queryByText(/hace \d+ d[íi]as/i)).not.toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
   });
 
-  test('último ingreso de hace 30 días o más se muestra como fecha dd/mm/aaaa', () => {
+  test('último ingreso de hoy y de ayer se muestran como "Hoy" / "Ayer"', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-10-29T12:00:00Z'));
+    vi.setSystemTime(new Date('2026-06-08T20:00:00Z'));
     try {
       asNonAdmin();
-      render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
+      const ayer: Usuario = { ...mockActivo, id: 'user_ayer', lastSignInAt: new Date('2026-06-07T13:00:00Z') };
+      render(<UsuariosTable {...sesion} usuarios={[mockActivo, ayer]} />);
 
-      const cells = screen.getAllByText(/^\d{2}\/\d{2}\/2026$/);
-      expect(cells.length).toBeGreaterThan(0);
-      expect(screen.queryByText(/hace \d+ d[íi]as|hoy/i)).not.toBeInTheDocument();
+      expect(screen.getAllByText('Hoy').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Ayer').length).toBeGreaterThan(0);
     } finally {
       vi.useRealTimers();
     }
@@ -215,38 +226,101 @@ describe('UsuariosTable', () => {
     expect(dashes.length).toBeGreaterThan(0);
   });
 
-  test('columna "Cambiar rol" no aparece para usuarios no-admin', () => {
-    asNonAdmin();
+  test('la tabla no tiene una columna aparte para cambiar el rol', () => {
+    asAdmin();
     render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     expect(screen.queryByText('Cambiar rol')).not.toBeInTheDocument();
+    const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
+    expect(headers).toEqual(['Nombre', 'Rol', 'Último ingreso', 'Estado', 'Acciones']);
   });
 
-  test('columna "Cambiar rol" aparece para admin', () => {
+  test('no-admin no ve la columna Acciones', () => {
+    asNonAdmin();
+    render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
+
+    const headers = screen.getAllByRole('columnheader').map((th) => th.textContent);
+    expect(headers).toEqual(['Nombre', 'Rol', 'Último ingreso', 'Estado']);
+  });
+
+  test('el admin cambia el rol desde la píldora', async () => {
+    const user = userEvent.setup();
     asAdmin();
     render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
-    expect(screen.getByText('Cambiar rol')).toBeInTheDocument();
+    const pildoras = screen.getAllByRole('button', { name: 'Rol de Laura Méndez: Admin' });
+    expect(pildoras.length).toBeGreaterThan(0);
+
+    await user.click(pildoras[0]);
+    await user.click(await screen.findByRole('menuitem', { name: 'Entrenador' }));
+
+    await waitFor(() => {
+      expect(cambiarRol).toHaveBeenCalledWith('user_1', 'entrenador');
+    });
+    expect(toast.success).toHaveBeenCalledWith('Rol actualizado');
   });
 
-  test('admin ve el selector de rol para usuarios activos', () => {
+  test('elegir el mismo rol no llama a cambiarRol', async () => {
+    const user = userEvent.setup();
     asAdmin();
     render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
-    // El selector de rol es un CustomSelect (botón trigger con el rol actual),
-    // no un <select> nativo: se reemplazó a propósito en 7bbc737.
-    const triggers = screen.getAllByRole('button', { name: 'Admin' });
-    expect(triggers.length).toBeGreaterThan(0);
+    await user.click(screen.getAllByRole('button', { name: /^Rol de Laura Méndez/ })[0]);
+    await user.click(await screen.findByRole('menuitem', { name: 'Admin' }));
+    expect(cambiarRol).not.toHaveBeenCalled();
+  });
 
-    fireEvent.click(triggers[0]);
-    expect(screen.getByRole('button', { name: 'Entrenador' })).toBeInTheDocument();
+  test('una invitación muestra el rol como píldora fija (sin dropdown)', () => {
+    asAdmin();
+    render(<UsuariosTable {...sesion} usuarios={[mockPendiente]} />);
+
+    expect(screen.getAllByText('Entrenador').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /^Rol de/ })).not.toBeInTheDocument();
+  });
+
+  test('responsable de viandas sin lugar: píldora ámbar y el admin lo asigna', async () => {
+    const user = userEvent.setup();
+    const viandas: Usuario = { ...mockActivo, id: 'user_v', rol: 'responsable_viandas', lugarRetiro: null };
+    asAdmin();
+    render(<UsuariosTable {...sesion} usuarios={[viandas]} />);
+
+    const pildora = screen.getAllByRole('button', { name: /Lugar de retiro de Laura Méndez: Sin lugar asignado/ })[0];
+    expect(pildora.className).toContain('bg-amber-100');
+
+    await user.click(pildora);
+    await user.click(await screen.findByRole('menuitem', { name: 'Sede' }));
+    await waitFor(() => {
+      expect(asignarLugarRetiro).toHaveBeenCalledWith('user_v', 'SEDE');
+    });
+  });
+
+  test('no-admin ve el lugar de retiro como texto', () => {
+    const viandas: Usuario = { ...mockActivo, id: 'user_v', rol: 'responsable_viandas', lugarRetiro: 'SEDE' };
+    asNonAdmin();
+    render(<UsuariosTable {...sesion} usuarios={[viandas]} />);
+
+    expect(screen.getAllByText('Sede').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /Lugar de retiro/ })).not.toBeInTheDocument();
+  });
+
+  test('la columna Nombre lleva avatar (foto de Clerk o iniciales) y el email', () => {
+    asNonAdmin();
+    const conFoto: Usuario = { ...mockActivo, imageUrl: 'https://img.clerk.com/laura.png' };
+    const { container } = render(<UsuariosTable {...sesion} usuarios={[conFoto, mockPendiente]} />);
+
+    const fotos = [...container.querySelectorAll('img')].map((i) => i.getAttribute('src'));
+    expect(fotos).toContain('https://img.clerk.com/laura.png');
+    // La invitación no tiene foto: iniciales.
+    expect(screen.getAllByRole('img', { name: 'Sergio Blanco' })[0]).toHaveTextContent('SB');
+    expect(screen.getAllByText('s.blanco@gimnasia.org.ar').length).toBeGreaterThan(0);
   });
 
   test('no-admin no ve el selector de rol', () => {
     asNonAdmin();
     render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
-    expect(screen.queryByRole('button', { name: 'Admin' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('Admin').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /^Rol de/ })).not.toBeInTheDocument();
   });
 
   test('muestra mensaje vacío cuando no hay usuarios', () => {
@@ -257,7 +331,7 @@ describe('UsuariosTable', () => {
     expect(messages.length).toBeGreaterThan(0);
   });
 
-  test('RolBadge renderiza con color propio para kinesiologo (no usa fallback bg-gray-100)', () => {
+  test('la píldora de rol lleva el color propio del kinesiólogo (no el fallback gris)', () => {
     const mockKinesiologo: Usuario = {
       id: 'user_kine',
       firstName: 'Ana',
@@ -272,13 +346,10 @@ describe('UsuariosTable', () => {
     asNonAdmin();
     render(<UsuariosTable {...sesion} usuarios={[mockKinesiologo]} />);
 
-    // Badge should display the label (not raw rol value)
-    const badge = screen.getAllByText('Kinesiólogo')[0];
-    expect(badge).toBeInTheDocument();
-    // Badge must NOT have the fallback gray class
-    expect(badge.className).not.toContain('bg-gray-100');
-    // Badge must have the teal color class
-    expect(badge.className).toContain('bg-teal-700');
+    const label = screen.getAllByText('Kinesiólogo')[0];
+    const punto = label.parentElement!.querySelector('[data-punto-rol]') as HTMLElement;
+    expect(punto.className).toContain('bg-teal-700');
+    expect(punto.className).not.toContain('bg-gray-300');
   });
 });
 
@@ -464,11 +535,14 @@ describe('UsuariosTable — acciones admin', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  test('membresía desactivada muestra badge "Inactivo"', () => {
+  test('membresía desactivada muestra badge "Deshabilitado" en gris', () => {
     asNonAdmin();
     render(<UsuariosTable {...sesion} usuarios={[mockDeshabilitado]} />);
 
-    expect(screen.getAllByText('Inactivo')[0]).toBeInTheDocument();
+    const badge = screen.getAllByText('Deshabilitado')[0];
+    expect(badge.className).toContain('bg-gray-100');
+    expect(badge.className).not.toContain('bg-red-100');
+    expect(screen.queryByText('Inactivo')).not.toBeInTheDocument();
   });
 
   test('un miembro inactivo se puede eliminar del club con su estado', async () => {
@@ -507,7 +581,7 @@ describe('UsuariosTable — acciones admin', () => {
     render(<UsuariosTable {...sesion} usuarios={[mockActivo]} />);
 
     expect(screen.getAllByText('Activo')[0]).toBeInTheDocument();
-    expect(screen.queryByText('Inactivo')).not.toBeInTheDocument();
+    expect(screen.queryByText('Deshabilitado')).not.toBeInTheDocument();
   });
 
   test('el trigger "Acciones" abre el dropdown al hacer click', () => {
@@ -581,6 +655,31 @@ describe('UsuariosTable — acciones admin', () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Error de prueba');
     });
+  });
+});
+
+describe('formatUltimoIngreso', () => {
+  const ahora = new Date('2026-06-10T15:00:00Z'); // 12:00 en Argentina
+
+  test('sin ingreso: "—"', () => {
+    expect(formatUltimoIngreso(null, ahora)).toBe('—');
+  });
+
+  test('mismo día en Argentina: "Hoy"', () => {
+    expect(formatUltimoIngreso(new Date('2026-06-10T03:30:00Z'), ahora)).toBe('Hoy');
+  });
+
+  test('día calendario anterior en Argentina: "Ayer", aunque en UTC sea el mismo día', () => {
+    // 2026-06-10T01:00Z = 9/6 22:00 ART.
+    expect(formatUltimoIngreso(new Date('2026-06-10T01:00:00Z'), ahora)).toBe('Ayer');
+  });
+
+  test('antes de ayer: d/m sin ceros', () => {
+    expect(formatUltimoIngreso(new Date('2026-06-02T15:00:00Z'), ahora)).toBe('2/6');
+  });
+
+  test('de otro año: d/m/aaaa', () => {
+    expect(formatUltimoIngreso(new Date('2025-11-08T15:00:00Z'), ahora)).toBe('8/11/2025');
   });
 });
 

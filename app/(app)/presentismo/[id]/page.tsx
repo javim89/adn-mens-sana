@@ -1,5 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { MessageSquare } from 'lucide-react';
+import { Avatar } from '@/app/components/ui/avatar';
+import { EncabezadoPagina } from '@/app/components/ui/encabezado-pagina';
+import { Panel } from '@/app/components/ui/panel';
 import { requireContexto } from '@/lib/tenant/contexto';
 import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
 import type { AppRole } from '@/lib/roles';
@@ -25,12 +29,9 @@ function formatDate(date: Date) {
 
 function DetailCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
-      <h2 className="text-xs font-semibold uppercase text-muted-foreground mb-2 tracking-wide">
-        {title}
-      </h2>
+    <Panel titulo={title} className="p-5">
       {children}
-    </div>
+    </Panel>
   );
 }
 
@@ -69,42 +70,34 @@ export default async function EntrenamientoDetallePage({ params }: Props) {
         </Link>
       </div>
 
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-3 mb-1">
-            <h1
-              className="text-3xl font-bold text-primario"
-              style={{ fontFamily: 'Oswald, sans-serif' }}
-            >
-              {fechaLabel}
-            </h1>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-              {TIPO_SESION_LABELS[entrenamiento.tipoSesion]}
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {entrenamiento.disciplina.nombre} · {entrenamiento.categoria.nombre}
-          </p>
-          <p className="text-sm text-muted-foreground">Entrenador: {entrenadorNombre}</p>
-        </div>
-
-        {canModify && (
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href={`/presentismo/${id}/editar`}
-              className="text-sm font-medium px-4 py-2 border border-gray-200 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
-            >
-              Editar
-            </Link>
-            <DeleteEntrenamientoModal
-              entrenamientoId={id}
-              entrenamientoLabel={`${fechaLabel} — ${entrenamiento.disciplina.nombre}`}
-              redirectAfterDelete="/presentismo"
-            />
-          </div>
-        )}
-      </div>
+      <EncabezadoPagina
+        className="mb-6"
+        titulo={fechaLabel}
+        subtitulo={
+          <>
+            {TIPO_SESION_LABELS[entrenamiento.tipoSesion]} · {entrenamiento.disciplina.nombre} ·{' '}
+            {entrenamiento.categoria.nombre}
+            <span className="block">Entrenador: {entrenadorNombre}</span>
+          </>
+        }
+        accion={
+          canModify && (
+            <>
+              <Link
+                href={`/presentismo/${id}/editar`}
+                className="text-sm font-medium px-4 py-2 border border-gray-200 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+              >
+                Editar
+              </Link>
+              <DeleteEntrenamientoModal
+                entrenamientoId={id}
+                entrenamientoLabel={`${fechaLabel} — ${entrenamiento.disciplina.nombre}`}
+                redirectAfterDelete="/presentismo"
+              />
+            </>
+          )
+        }
+      />
 
       <div className="space-y-4">
         {entrenamiento.objetivos && (
@@ -156,12 +149,27 @@ export default async function EntrenamientoDetallePage({ params }: Props) {
               {entrenamiento.asistencias.map((a) => (
                 <li
                   key={a.id}
-                  className="py-3 flex items-center justify-between gap-2 first:pt-0 last:pb-0"
+                  className="py-3 flex items-center justify-between gap-3 first:pt-0 last:pb-0"
                 >
-                  <span className="text-sm font-medium text-foreground">
-                    {a.deportista.apellido}, {a.deportista.nombre}
-                  </span>
-                  <EstadoAsistenciaBadge estado={a.estado as EstadoAsistencia} />
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar
+                      alt={`${a.deportista.apellido}, ${a.deportista.nombre}`}
+                      iniciales={`${a.deportista.nombre.charAt(0)}${a.deportista.apellido.charAt(0)}`}
+                      className="size-8 text-xs"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {a.deportista.apellido}, {a.deportista.nombre}
+                      </p>
+                      {a.notas && (
+                        <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                          <MessageSquare size={12} className="mt-0.5 shrink-0" aria-hidden />
+                          <span className="break-words">{a.notas}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <EstadoAsistenciaBadge estado={a.estado as EstadoAsistencia} className="shrink-0" />
                 </li>
               ))}
             </ul>

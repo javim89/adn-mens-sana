@@ -1,10 +1,14 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState, useTransition, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { History, Search, TriangleAlert, UtensilsCrossed } from 'lucide-react';
+import { History, MapPin, Search, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
-import { CustomSelect } from '@/app/components/ui/custom-select';
+import { Avatar } from '@/app/components/ui/avatar';
+import { EncabezadoPagina } from '@/app/components/ui/encabezado-pagina';
+import { FiltroChip } from '@/app/components/ui/filtro-chip';
+import { LayoutConLateral } from '@/app/components/ui/layout-con-lateral';
+import { Panel } from '@/app/components/ui/panel';
 import { marcarRetiro, desmarcarRetiro } from '@/lib/actions/viandas';
 import {
   COMIDAS,
@@ -12,7 +16,6 @@ import {
   coincideFiltroComida,
   comidasPrevistas,
   esFiltroComida,
-  tagElegibilidad,
   type FiltroComida,
 } from '@/lib/utils/viandas';
 import { LUGAR_RETIRO_LABELS, TIPO_COMIDA_LABELS, ESTADO_LABELS } from '@/lib/utils/enum-labels';
@@ -29,8 +32,6 @@ const ESTADO_DEPORTISTA_BADGE: Record<string, string> = {
   LESIONADO: 'bg-amber-100 text-amber-700',
   SUSPENDIDO: 'bg-red-100 text-red-700',
 };
-
-const TODAS = '__all__';
 
 const FILTRO_COMIDA_OPCIONES: { value: FiltroComida; label: string }[] = [
   { value: 'ALMUERZO', label: 'Almuerzo' },
@@ -58,6 +59,32 @@ interface Props {
   filtroComida: FiltroComida | null;
   plantel: DeportistaVianda[];
   entregadores: Record<string, string>;
+  /** Columna derecha (resumen de la semana), armada por la página en el servidor. */
+  lateral?: ReactNode;
+}
+
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+/** `'sábado 14/03'` de una clave `YYYY-MM-DD`, leída en UTC como toda columna de fecha. */
+function diaYFecha(clave: string): string {
+  const d = new Date(`${clave}T00:00:00.000Z`);
+  return `${DIAS[d.getUTCDay()]} ${clave.slice(8, 10)}/${clave.slice(5, 7)}`;
+}
+
+/** Qué comidas muestra la grilla: con un filtro de comida, solo esa columna. */
+function comidasDeLaGrilla(filtro: FiltroComida | null): TipoComida[] {
+  switch (filtro) {
+    case 'ALMUERZO':
+      return ['ALMUERZO'];
+    case 'CENA':
+      return ['CENA'];
+    case 'AMBAS':
+      return ['ALMUERZO', 'CENA'];
+    case null:
+      // Todas, merienda incluida aunque nadie la tenga en la ficha: la ficha no
+      // restringe entregas, así que siempre se tiene que poder marcar.
+      return COMIDAS;
+  }
 }
 
 /** Clave de una celda, para el set de operaciones en vuelo. */
@@ -77,6 +104,7 @@ export default function ViandasPanel({
   filtroComida,
   plantel,
   entregadores,
+  lateral,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -293,82 +321,22 @@ export default function ViandasPanel({
 
   const ambosFiltros = !!disciplinaId && !!categoriaId;
 
-  return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      {/* Cabecera */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-        <div>
-          <h1
-            className="text-2xl font-semibold text-primario flex items-center gap-2"
-            style={{ fontFamily: 'Oswald, sans-serif' }}
-          >
-            <UtensilsCrossed size={22} aria-hidden="true" />
-            Viandas
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {esHistorico ? 'Histórico del ' : 'Registro del '}
-            <strong className="text-foreground">{formatearClaveFecha(fechaActiva)}</strong>
-            {esHistorico ? '. Solo lectura.' : '. Solo se puede registrar el día de hoy.'}
-          </p>
-        </div>
+  const comidasGrilla = comidasDeLaGrilla(filtroComida);
+  const contadoresVisibles = contadores.filter((c) => c.esperadas > 0 || c.retiradas > 0);
 
-        {isAdmin ? (
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-            {/* `input type="date"` nativo con la clase canónica de PresentismoForm:
-                no hay DatePicker reutilizable en app/components/ui/. */}
-            <div className="flex flex-col gap-1 sm:w-52">
-              <label
-                htmlFor="viandas-fecha"
-                className="text-xs font-medium text-muted-foreground uppercase tracking-wide"
-              >
-                Fecha
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="viandas-fecha"
-                  type="date"
-                  value={fechaInput}
-                  max={fechaHoy}
-                  onChange={(e) => onCambioFecha(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
-                />
-                {esHistorico && (
-                  <button
-                    type="button"
-                    onClick={volverAHoy}
-                    className="shrink-0 px-3 py-2 text-sm font-medium text-secundario border border-gray-200 rounded-lg hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-secundario/30"
-                  >
-                    Hoy
-                  </button>
-                )}
-              </div>
-            </div>
+  const disciplinaNombre = disciplinas.find((d) => d.id === disciplinaId)?.nombre;
+  const categoriaNombre = categorias.find((c) => c.id === categoriaId)?.nombre;
+  const fechaTexto = diaYFecha(fechaActiva);
+  const subtitulo = [
+    esHistorico ? `${fechaTexto.charAt(0).toUpperCase()}${fechaTexto.slice(1)} (solo lectura)` : `Hoy, ${fechaTexto}`,
+    disciplinaNombre,
+    categoriaNombre,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
-            <div className="flex flex-col gap-1 sm:w-64">
-              <label htmlFor="lugar" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Lugar de retiro
-              </label>
-              <CustomSelect
-                id="lugar"
-                value={lugarActivo ?? ''}
-                onChange={(v) => navigate(buildUrl({ lugar: v || null }))}
-                placeholder="Elegí el lugar..."
-                options={LUGARES_RETIRO.map((l) => ({ value: l, label: LUGAR_RETIRO_LABELS[l] }))}
-              />
-            </div>
-          </div>
-        ) : (
-          lugarActivo && (
-            <div className="text-sm">
-              <span className="text-muted-foreground">Lugar: </span>
-              <span className="font-medium text-foreground">
-                {LUGAR_RETIRO_LABELS[lugarActivo]}
-              </span>
-            </div>
-          )
-        )}
-      </div>
-
+  const cuerpo = (
+    <>
       {/* Solo lectura del histórico. `role="status"` y no `role="alert"`: no es un
           error, y los tests existentes buscan el `alert` en singular. Gris y no
           ámbar porque acá el ámbar ya significa "algo está mal / fuera de ficha". */}
@@ -376,7 +344,7 @@ export default function ViandasPanel({
         <div
           role="status"
           aria-live="polite"
-          className="mb-5 flex items-start gap-2 px-4 py-3 bg-muted border border-gray-200 rounded-lg text-sm text-foreground"
+          className="flex items-start gap-2 px-4 py-3 bg-muted border border-gray-200 rounded-lg text-sm text-foreground"
         >
           <History size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
           <span>
@@ -387,8 +355,8 @@ export default function ViandasPanel({
                 pasó de SUB-16 a 5ta deja de "esperar" merienda también hacia atrás).
                 Lo decimos acá porque un "3 esperadas" de hace un
                 mes puede ser literalmente falso y el admin no tiene cómo saberlo. */}
-            Tené en cuenta que las esperadas, las sin retirar y los tags de
-            elegibilidad se calculan con la ficha actual de cada deportista, no con
+            Tené en cuenta que las esperadas, las sin retirar y la ficha de cada
+            fila se calculan con la ficha actual de cada deportista, no con
             la que tenía ese día: de un día pasado, lo fiable es lo retirado.
           </span>
         </div>
@@ -398,7 +366,7 @@ export default function ViandasPanel({
       {sinLugarAsignado && (
         <div
           role="alert"
-          className="mb-5 flex items-start gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800"
+          className="flex items-start gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800"
         >
           <TriangleAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
           <span>
@@ -412,74 +380,12 @@ export default function ViandasPanel({
       {isAdmin && !esHistorico && !lugarActivo && (
         <div
           role="alert"
-          className="mb-5 flex items-start gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800"
+          className="flex items-start gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800"
         >
           <TriangleAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
           <span>Elegí el lugar de retiro para poder registrar entregas.</span>
         </div>
       )}
-
-      {/* Filtros */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
-            <label
-              htmlFor="viandas-disciplina"
-              className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"
-            >
-              Disciplina
-            </label>
-            <CustomSelect
-              id="viandas-disciplina"
-              value={disciplinaId || TODAS}
-              onChange={(v) =>
-                navigate(
-                  buildUrl({ disciplina: v === TODAS ? null : v, categoria: null }),
-                )
-              }
-              searchable
-              options={[
-                { value: TODAS, label: 'Seleccioná una disciplina' },
-                ...disciplinas.map((d) => ({ value: d.id, label: d.nombre })),
-              ]}
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="viandas-categoria"
-              className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"
-            >
-              Categoría
-            </label>
-            <CustomSelect
-              id="viandas-categoria"
-              value={categoriaId || TODAS}
-              onChange={(v) => navigate(buildUrl({ categoria: v === TODAS ? null : v }))}
-              searchable
-              disabled={!disciplinaId}
-              options={[
-                { value: TODAS, label: 'Seleccioná una categoría' },
-                ...categorias.map((c) => ({ value: c.id, label: c.nombre })),
-              ]}
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="viandas-comida"
-              className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"
-            >
-              Comida
-            </label>
-            {/* No toca disciplina/categoría ni ellas lo resetean: no depende del plantel. */}
-            <CustomSelect
-              id="viandas-comida"
-              value={filtroComida ?? TODAS}
-              onChange={(v) => navigate(buildUrl({ comida: esFiltroComida(v) ? v : null }))}
-              options={[{ value: TODAS, label: 'Todas las comidas' }, ...FILTRO_COMIDA_OPCIONES]}
-            />
-          </div>
-        </div>
-      </div>
 
       {!ambosFiltros ? (
         <div className="px-4 py-12 text-center text-sm text-muted-foreground bg-subtle border border-dashed border-gray-200 rounded-lg">
@@ -491,36 +397,39 @@ export default function ViandasPanel({
         </div>
       ) : (
         <div className={isPending ? 'opacity-60' : ''}>
-          {/* Contadores */}
+          {/* Contadores: se esconden las comidas que nadie espera ni retiró. */}
           <div
             role="group"
             aria-label="Resumen por comida"
-            className="flex flex-wrap gap-2 mb-4"
+            className="grid grid-cols-2 gap-2 sm:grid-cols-4 mb-2"
           >
-            {contadores.map(({ comida, esperadas, retiradas, pendientes, fueraDeFicha }) => (
+            {contadoresVisibles.map(({ comida, esperadas, retiradas, pendientes, fueraDeFicha }) => (
               <div
                 key={comida}
-                className="flex items-center gap-2 text-xs bg-white border border-gray-100 rounded-lg px-3 py-2 shadow-sm"
+                data-comida={comida}
+                className="min-w-0 rounded-lg border border-border bg-background px-3 py-2 shadow-sm"
               >
-                <span className="font-medium text-foreground">
-                  {TIPO_COMIDA_LABELS[comida]}
-                </span>
-                <span className="text-emerald-700">{retiradas} retiradas</span>
-                <span className="text-muted-foreground">/ {esperadas} esperadas</span>
+                <p className="text-xs font-medium text-foreground">{TIPO_COMIDA_LABELS[comida]}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  <span className="font-mono text-base font-semibold tabular-nums text-emerald-700">
+                    {retiradas}
+                  </span>{' '}
+                  retiradas / {esperadas} esperadas
+                </p>
                 {/* En un día cerrado "pendientes" miente: ya no van a retirarse.
                     Cambia la etiqueta, no el cálculo. */}
                 {pendientes > 0 && (
-                  <span className="font-medium text-amber-700">
+                  <p className="text-xs font-medium text-amber-700">
                     {pendientes} {esHistorico ? 'sin retirar' : 'pendientes'}
-                  </span>
+                  </p>
                 )}
                 {fueraDeFicha > 0 && (
-                  <span
-                    className="font-medium text-amber-700"
+                  <p
+                    className="text-xs font-medium text-amber-700"
                     title={`${fueraDeFicha} entregadas a deportistas que no tienen ${TIPO_COMIDA_LABELS[comida].toLowerCase()} en su ficha`}
                   >
                     {fueraDeFicha} fuera de ficha
-                  </span>
+                  </p>
                 )}
               </div>
             ))}
@@ -562,8 +471,10 @@ export default function ViandasPanel({
                     className="bg-white rounded-xl shadow-sm border border-gray-100 p-4"
                   >
                     <FilaEncabezado d={d} />
-                    <div className="grid grid-cols-2 gap-2 mt-3">
-                      {COMIDAS.map((comida) => (
+                    <div
+                      className={`grid gap-2 mt-3 ${comidasGrilla.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}
+                    >
+                      {comidasGrilla.map((comida) => (
                         <ComidaToggle
                           key={comida}
                           comida={comida}
@@ -584,14 +495,14 @@ export default function ViandasPanel({
               </ul>
 
               {/* Desktop — tabla */}
-              <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <Panel relleno={false} className="hidden lg:block overflow-hidden">
                 <table className="w-full">
                   <thead>
                     <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-gray-100">
                       <th scope="col" className="text-left px-4 py-3 font-medium">
                         Deportista
                       </th>
-                      {COMIDAS.map((comida) => (
+                      {comidasGrilla.map((comida) => (
                         <th
                           key={comida}
                           scope="col"
@@ -608,7 +519,7 @@ export default function ViandasPanel({
                         <td className="px-4 py-3">
                           <FilaEncabezado d={d} />
                         </td>
-                        {COMIDAS.map((comida) => (
+                        {comidasGrilla.map((comida) => (
                           <td key={comida} className="px-3 py-3 align-middle">
                             <ComidaToggle
                               comida={comida}
@@ -628,10 +539,98 @@ export default function ViandasPanel({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </Panel>
             </>
           )}
         </div>
+      )}
+    </>
+  );
+
+  return (
+    <div className="flex flex-col gap-5 p-4 md:p-8">
+      <EncabezadoPagina
+        titulo="Viandas"
+        subtitulo={subtitulo}
+        accion={
+          isAdmin && (
+            <div className="flex items-center gap-2">
+              {/* `input type="date"` nativo: no hay DatePicker reutilizable en app/components/ui/. */}
+              <label htmlFor="viandas-fecha" className="sr-only">
+                Fecha
+              </label>
+              <input
+                id="viandas-fecha"
+                type="date"
+                value={fechaInput}
+                max={fechaHoy}
+                onChange={(e) => onCambioFecha(e.target.value)}
+                className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30"
+              />
+              {esHistorico && (
+                <button
+                  type="button"
+                  onClick={volverAHoy}
+                  className="shrink-0 h-9 px-3 text-sm font-medium text-secundario border border-gray-200 rounded-lg hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-secundario/30"
+                >
+                  Hoy
+                </button>
+              )}
+            </div>
+          )
+        }
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          {isAdmin ? (
+            <FiltroChip
+              label="Lugar de retiro"
+              todosLabel="Sin elegir"
+              opciones={LUGARES_RETIRO.map((l) => ({ value: l, label: LUGAR_RETIRO_LABELS[l] }))}
+              valor={lugarActivo}
+              onChange={(v) => navigate(buildUrl({ lugar: v }))}
+            />
+          ) : (
+            lugarActivo && (
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primario-suave px-3.5 text-sm font-medium text-primario">
+                <MapPin className="size-3.5" aria-hidden />
+                Lugar de retiro: {LUGAR_RETIRO_LABELS[lugarActivo]}
+              </span>
+            )
+          )}
+          <FiltroChip
+            label="Disciplina"
+            todosLabel="Sin elegir"
+            buscar
+            opciones={disciplinas.map((d) => ({ value: d.id, label: d.nombre }))}
+            valor={disciplinaId || null}
+            onChange={(v) => navigate(buildUrl({ disciplina: v, categoria: null }))}
+          />
+          <FiltroChip
+            label="Categoría"
+            todosLabel="Sin elegir"
+            buscar
+            disabled={!disciplinaId}
+            opciones={categorias.map((c) => ({ value: c.id, label: c.nombre }))}
+            valor={categoriaId || null}
+            onChange={(v) => navigate(buildUrl({ categoria: v }))}
+          />
+          {/* No toca disciplina/categoría ni ellas lo resetean: no depende del plantel. */}
+          <FiltroChip
+            label="Comida"
+            todosLabel="Todas las comidas"
+            opciones={FILTRO_COMIDA_OPCIONES}
+            valor={filtroComida}
+            onChange={(v) => navigate(buildUrl({ comida: esFiltroComida(v) ? v : null }))}
+          />
+        </div>
+      </EncabezadoPagina>
+
+      {lateral ? (
+        <LayoutConLateral lateral={lateral} lateralLabel="Resumen de la semana">
+          {cuerpo}
+        </LayoutConLateral>
+      ) : (
+        cuerpo
       )}
     </div>
   );
@@ -647,29 +646,47 @@ function nombreEntregador(
   return entregadores[id];
 }
 
+const FICHA: Record<'ambas' | 'almuerzo' | 'cena' | 'ninguna', string> = {
+  ambas: 'almuerzo y cena',
+  almuerzo: 'solo almuerzo',
+  cena: 'solo cena',
+  ninguna: 'sin almuerzo ni cena',
+};
+
+/** Qué almuerzo/cena prevé la ficha. Informativo: no restringe qué se puede entregar. */
+function textoFicha(d: DeportistaVianda): string {
+  if (d.recibeAlmuerzo && d.recibeCena) return FICHA.ambas;
+  if (d.recibeAlmuerzo) return FICHA.almuerzo;
+  if (d.recibeCena) return FICHA.cena;
+  return FICHA.ninguna;
+}
+
 function FilaEncabezado({ d }: { d: DeportistaVianda }) {
-  const tag = tagElegibilidad(d);
+  const nombre = `${d.apellido}, ${d.nombre}`;
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm font-medium text-foreground">
-        {d.apellido}, {d.nombre}
-      </span>
-      {/* El badge solo aparece si el estado NO es ACTIVO: mismo criterio que
-          convocatorias, para que la fila normal no tenga ruido. */}
-      {d.estado !== 'ACTIVO' && (
-        <span
-          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-            ESTADO_DEPORTISTA_BADGE[d.estado] ?? 'bg-gray-100 text-muted-foreground'
-          }`}
-        >
-          {ESTADO_LABELS[d.estado]}
-        </span>
-      )}
-      {tag && (
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${tag.className}`}>
-          {tag.label}
-        </span>
-      )}
+    <div className="flex min-w-0 items-center gap-3">
+      <Avatar
+        alt={nombre}
+        iniciales={`${d.nombre.charAt(0)}${d.apellido.charAt(0)}`}
+        className="size-8 text-xs"
+      />
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-foreground">{nombre}</span>
+          {/* El badge solo aparece si el estado NO es ACTIVO: mismo criterio que
+              convocatorias, para que la fila normal no tenga ruido. */}
+          {d.estado !== 'ACTIVO' && (
+            <span
+              className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                ESTADO_DEPORTISTA_BADGE[d.estado] ?? 'bg-gray-100 text-muted-foreground'
+              }`}
+            >
+              {ESTADO_LABELS[d.estado]}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">Ficha: {textoFicha(d)}</p>
+      </div>
     </div>
   );
 }

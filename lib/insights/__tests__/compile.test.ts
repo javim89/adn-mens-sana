@@ -304,6 +304,24 @@ describe('SQL generado', () => {
     ]);
   });
 
+  it('filtro de varias categorías (campo de texto) con el operador in', () => {
+    const compiled = compile(
+      spec({
+        dataset: 'seguimientos',
+        dimensions: ['categoria'],
+        measures: ['seguimientos'],
+        filters: {
+          op: 'all',
+          children: [{ field: 'categoria', operator: 'in', value: ['4ta', '5ta'] }],
+        },
+      }),
+      NOW,
+    );
+
+    expect(compiled.sql).toContain('categorias.nombre = ANY($1)');
+    expect(compiled.params[0]).toEqual(['4ta', '5ta']);
+  });
+
   it('seguimientos por mes con timeGrain y filtro de enum', () => {
     const compiled = compile(
       spec({

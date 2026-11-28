@@ -124,28 +124,24 @@ describe('DashboardGrid', () => {
 });
 
 describe('WidgetCard — menú de acciones', () => {
-  it('en modo vista solo ofrece exportar', async () => {
-    const user = userEvent.setup();
+  it('en modo vista el CSV está visible en el header y no hay menú de acciones', async () => {
     renderGrid({ editable: false });
 
-    await user.click(await screen.findByLabelText(/Acciones de/));
-
-    expect(await screen.findByText('Exportar CSV')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Exportar CSV de Deportistas por disciplina' })).toHaveTextContent('CSV');
+    expect(screen.queryByLabelText(/Acciones de/)).toBeNull();
     expect(screen.queryByText('Editar')).toBeNull();
-    expect(screen.queryByText('Eliminar')).toBeNull();
-    expect(screen.queryByText('Duplicar')).toBeNull();
   });
 
-  it('en modo edición ofrece todas las acciones', async () => {
+  it('en modo edición el menú ofrece editar, duplicar y eliminar (el CSV sigue visible)', async () => {
     const user = userEvent.setup();
     renderGrid({ editable: true });
 
+    expect(screen.getByRole('button', { name: /Exportar CSV de/ })).toBeInTheDocument();
     await user.click(await screen.findByLabelText(/Acciones de/));
 
     expect(await screen.findByText('Editar')).toBeInTheDocument();
     expect(screen.getByText('Duplicar')).toBeInTheDocument();
     expect(screen.getByText('Eliminar')).toBeInTheDocument();
-    expect(screen.getByText('Exportar CSV')).toBeInTheDocument();
   });
 
   it('avisa al padre cuando se elige Eliminar', async () => {
@@ -168,5 +164,77 @@ describe('WidgetCard — menú de acciones', () => {
     await user.click(await screen.findByText('Editar'));
 
     expect(onEditWidget).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }));
+  });
+});
+
+describe('WidgetCard — resúmenes', () => {
+  it('un widget de línea muestra Promedio / Mejor semana / Variación', async () => {
+    mockFetch.mockResolvedValue({
+      data: [
+        { fecha: '2026-09-07', porcentaje_presentismo: 80 },
+        { fecha: '2026-09-14', porcentaje_presentismo: 90 },
+        { fecha: '2026-09-21', porcentaje_presentismo: 85 },
+      ],
+      columns: [
+        { id: 'fecha', label: 'Fecha', type: 'date', role: 'dimension' },
+        { id: 'porcentaje_presentismo', label: '% presentismo', type: 'number', role: 'measure', format: 'percent' },
+      ],
+      meta: { rowCount: 3, truncated: false, elapsedMs: 4 },
+    });
+    renderGrid({
+      widgets: [
+        widget({
+          titulo: 'Presentismo — últimas 12 semanas',
+          tipo: 'line',
+          querySpec: {
+            mode: 'builder',
+            dataset: 'presentismo',
+            dimensions: ['fecha'],
+            measures: ['porcentaje_presentismo'],
+            timeGrain: 'week',
+            timeDimension: 'fecha',
+          },
+          vizConfig: { type: 'line' },
+        }),
+      ],
+    });
+    expect(await screen.findByText('Promedio')).toBeInTheDocument();
+    expect(screen.getByText('85,0%')).toBeInTheDocument();
+    expect(screen.getByText('Mejor semana')).toBeInTheDocument();
+    expect(screen.getByText('90,0%')).toBeInTheDocument();
+    expect(screen.getByText('Variación')).toBeInTheDocument();
+    expect(screen.getByText('+5,0 pts')).toBeInTheDocument();
+  });
+
+  it('un KPI con compararPeriodo consulta el período anterior y muestra la variación', async () => {
+    mockFetch.mockImplementation(async (spec: { filters?: { children: { operator: string }[] } }) => {
+      const anterior = spec.filters?.children.some((c) => c.operator === 'last_month');
+      return {
+        data: [{ seguimientos: anterior ? 10 : 14 }],
+        columns: [{ id: 'seguimientos', label: 'Seguimientos', type: 'number', role: 'measure', format: 'integer' }],
+        meta: { rowCount: 1, truncated: false, elapsedMs: 1 },
+      };
+    });
+    renderGrid({
+      widgets: [
+        widget({
+          titulo: 'Seguimientos del mes',
+          tipo: 'kpi',
+          querySpec: {
+            mode: 'builder',
+            dataset: 'seguimientos',
+            dimensions: [],
+            measures: ['seguimientos'],
+            filters: { op: 'all', children: [{ field: 'fecha', operator: 'this_month' }] },
+          },
+          vizConfig: { type: 'kpi', compararPeriodo: true },
+        }),
+      ],
+    });
+    expect(await screen.findByText('+4')).toBeInTheDocument();
+    expect(screen.getByText('vs. período anterior')).toBeInTheDocument();
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.objectContaining({ filters: { op: 'all', children: [{ field: 'fecha', operator: 'last_month' }] } }),
+    );
   });
 });

@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CalendarioView from '../_components/CalendarioView';
@@ -14,6 +14,24 @@ import type {
  * (events, dayCellClassNames) de forma inspeccionable, y así testear la lógica de
  * mapeo/filtrado/coloreo que vive en CalendarioView.
  */
+const { mockReplace } = vi.hoisted(() => ({ mockReplace: vi.fn() }));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: mockReplace }),
+  usePathname: () => '/calendario',
+}));
+
+beforeAll(() => {
+  // cmdk y Radix (FiltroChip) usan APIs que jsdom no trae.
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  Element.prototype.scrollIntoView ??= function () {};
+  Element.prototype.hasPointerCapture ??= () => false;
+});
+
 vi.mock('next/dynamic', () => ({
   default: () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -23,7 +41,7 @@ vi.mock('next/dynamic', () => ({
       // Días especiales conocidos que queremos verificar coloreados.
       const probeDates = ['2026-03-07', '2026-07-18', '2026-10-17', '2026-11-21'];
       return (
-        <div data-testid="fullcalendar-mock">
+        <div data-testid="fullcalendar-mock" data-vista={props.vista} data-fecha={props.fecha}>
           <ul data-testid="fc-events">
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {events.map((e: any) => (
@@ -74,6 +92,7 @@ const eventos: CalendarioEvento[] = [
     grupo: 'CUARTA_QUINTA_SEXTA',
     local: 'GIMNASIA (LP)',
     visitante: 'GIMNASIA',
+    rival: 'GIMNASIA',
     estado: 'PROGRAMADO',
   },
   {
@@ -84,6 +103,7 @@ const eventos: CalendarioEvento[] = [
     grupo: 'CUARTA_QUINTA_SEXTA',
     local: 'GIMNASIA (LP)',
     visitante: 'GIMNASIA',
+    rival: 'GIMNASIA',
     estado: 'PROGRAMADO',
   },
   {
@@ -92,22 +112,32 @@ const eventos: CalendarioEvento[] = [
     categoriaId: 'cat-7',
     categoriaNombre: '7ma',
     grupo: 'SEPTIMA_OCTAVA_NOVENA',
-    local: 'GIMNASIA',
+    local: 'ESTUDIANTES',
     visitante: 'GIMNASIA (LP)',
+    rival: 'ESTUDIANTES',
     estado: 'SUSPENDIDO',
   },
 ];
 
-function renderView() {
-  return render(<CalendarioView categorias={categorias} dias={dias} eventos={eventos} />);
+function renderView(props: { categoriaId?: string | null; hoy?: string } = {}) {
+  return render(
+    <CalendarioView
+      categorias={categorias}
+      dias={dias}
+      eventos={eventos}
+      hoy={props.hoy ?? '2026-03-15'}
+      categoriaId={props.categoriaId}
+      lateral={<p>Panel lateral</p>}
+    />,
+  );
 }
 
 describe('CalendarioView', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  test('renderiza el título del módulo y la leyenda de colores', () => {
+  test('encabezado "Temporada {año}" y leyenda de colores', () => {
     renderView();
-    expect(screen.getByRole('heading', { name: 'Calendario' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Temporada 2026' })).toBeInTheDocument();
     const leyenda = screen.getByLabelText('Referencia de colores');
     expect(within(leyenda).getByText('Torneo')).toBeInTheDocument();
     expect(within(leyenda).getByText('Receso')).toBeInTheDocument();
@@ -115,12 +145,60 @@ describe('CalendarioView', () => {
     expect(within(leyenda).getByText('Sin actividad')).toBeInTheDocument();
   });
 
-  test('renderiza el mes con al menos un evento de GIMNASIA (LP)', () => {
+  test('abre en el mes de hoy (sin fecha fija) y muestra la columna lateral', () => {
+    renderView({ hoy: '2026-11-27' });
+    expect(screen.getByText('Noviembre 2026')).toBeInTheDocument();
+    const cal = screen.getByTestId('fullcalendar-mock');
+    expect(cal).toHaveAttribute('data-vista', 'dayGridMonth');
+    expect(cal).toHaveAttribute('data-fecha', '2026-11-01');
+    expect(screen.getByRole('complementary', { name: 'Próximos partidos' })).toHaveTextContent(
+      'Panel lateral',
+    );
+  });
+
+  test('anterior/siguiente mueven el mes y cruzan de año', async () => {
+    const user = userEvent.setup();
+    renderView({ hoy: '2026-12-10' });
+    await user.click(screen.getByRole('button', { name: 'Mes siguiente' }));
+    expect(screen.getByText('Enero 2027')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Temporada 2027' })).toBeInTheDocument();
+    expect(screen.getByTestId('fullcalendar-mock')).toHaveAttribute('data-fecha', '2027-01-01');
+    await user.click(screen.getByRole('button', { name: 'Mes anterior' }));
+    await user.click(screen.getByRole('button', { name: 'Mes anterior' }));
+    expect(screen.getByText('Noviembre 2026')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Hoy' }));
+    expect(screen.getByText('Diciembre 2026')).toBeInTheDocument();
+  });
+
+  test('el toggle Año cambia la vista y la navegación pasa a ser por año', async () => {
+    const user = userEvent.setup();
+    renderView();
+    await user.click(screen.getByRole('button', { name: 'Año' }));
+    expect(screen.getByRole('button', { name: 'Año' })).toHaveAttribute('aria-pressed', 'true');
+    const cal = screen.getByTestId('fullcalendar-mock');
+    expect(cal).toHaveAttribute('data-vista', 'multiMonthYear');
+    expect(cal).toHaveAttribute('data-fecha', '2026-01-01');
+    await user.click(screen.getByRole('button', { name: 'Año siguiente' }));
+    expect(screen.getByTestId('fullcalendar-mock')).toHaveAttribute('data-fecha', '2027-01-01');
+  });
+
+  test('los chips de evento dicen "categoría · rival"', () => {
     renderView();
     const events = screen.getByTestId('fc-events');
-    expect(within(events).getByText('4ta · GIMNASIA (LP) vs GIMNASIA')).toBeInTheDocument();
-    // 3 eventos sin filtro
+    expect(within(events).getByText('4ta · GIMNASIA')).toBeInTheDocument();
     expect(within(events).getAllByTestId('fc-event')).toHaveLength(3);
+  });
+
+  test('sin equipo propio el chip muestra "local vs visitante"', () => {
+    render(
+      <CalendarioView
+        categorias={categorias}
+        dias={dias}
+        eventos={[{ ...eventos[0], rival: null }]}
+        hoy="2026-03-15"
+      />,
+    );
+    expect(screen.getByText('4ta · GIMNASIA (LP) vs GIMNASIA')).toBeInTheDocument();
   });
 
   test('los días especiales reciben la clase de color correcta', () => {
@@ -139,7 +217,7 @@ describe('CalendarioView', () => {
     );
   });
 
-  test('un evento SUSPENDIDO recibe la clase de estilo diferenciado', () => {
+  test('un evento SUSPENDIDO recibe la clase de estilo diferenciado (tachado)', () => {
     renderView();
     const suspendido = screen
       .getAllByTestId('fc-event')
@@ -147,16 +225,26 @@ describe('CalendarioView', () => {
     expect(suspendido?.getAttribute('data-classname')).toContain('cal-evento-suspendido');
   });
 
-  test('filtrar por categoría 5ta muestra solo los eventos de esa categoría', async () => {
+  test('el chip de categoría filtra los eventos y sincroniza la URL', async () => {
     const user = userEvent.setup();
     renderView();
-    // abre el CustomSelect y elige "5ta"
     await user.click(screen.getByRole('button', { name: 'Categoría' }));
-    await user.click(screen.getByRole('button', { name: '5ta' }));
+    await user.click(screen.getByRole('option', { name: '5ta' }));
 
-    const events = screen.getByTestId('fc-events');
-    const items = within(events).getAllByTestId('fc-event');
+    const items = within(screen.getByTestId('fc-events')).getAllByTestId('fc-event');
     expect(items).toHaveLength(1);
-    expect(items[0]).toHaveTextContent('5ta · GIMNASIA (LP) vs GIMNASIA');
+    expect(items[0]).toHaveTextContent('5ta · GIMNASIA');
+    expect(mockReplace).toHaveBeenCalledWith('/calendario?categoria=cat-5', { scroll: false });
+    expect(screen.getByRole('button', { name: 'Categoría: 5ta' })).toBeInTheDocument();
+  });
+
+  test('arranca con la categoría de la URL y "Todas las categorías" la limpia', async () => {
+    const user = userEvent.setup();
+    renderView({ categoriaId: 'cat-7' });
+    expect(within(screen.getByTestId('fc-events')).getAllByTestId('fc-event')).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Categoría: 7ma' }));
+    await user.click(screen.getByRole('option', { name: 'Todas las categorías' }));
+    expect(within(screen.getByTestId('fc-events')).getAllByTestId('fc-event')).toHaveLength(3);
+    expect(mockReplace).toHaveBeenCalledWith('/calendario', { scroll: false });
   });
 });

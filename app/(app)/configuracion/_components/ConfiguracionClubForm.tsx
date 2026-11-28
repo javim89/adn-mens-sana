@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { Copy, Loader2, RotateCcw } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
+import { LayoutConLateral } from '@/app/components/ui/layout-con-lateral';
+import { Panel, Rotulo } from '@/app/components/ui/panel';
 import {
   Dialog,
   DialogClose,
@@ -245,158 +247,161 @@ export default function ConfiguracionClubForm({ club, urlLogin }: ConfiguracionC
   const sugeridos = sugerencia?.paleta?.candidatos ?? [];
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <div className="flex min-w-0 flex-col gap-6">
-        <section aria-labelledby="config-identidad" className="rounded-xl border border-border bg-white p-5 shadow-sm md:p-6">
-          <h2 id="config-identidad" className="mb-4 font-[family-name:var(--font-oswald)] text-xl font-semibold text-primario">
-            Identidad
-          </h2>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor={nombreId} className="text-sm font-semibold text-foreground">
-                Nombre del club
-              </label>
-              <Input
-                id={nombreId}
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                maxLength={NOMBRE_CLUB_MAX}
-                required
-                aria-invalid={errorNombre !== null}
-                aria-describedby={errorNombre ? nombreErrorId : undefined}
-                className="max-w-md"
-              />
-              {errorNombre && (
-                <p id={nombreErrorId} className="text-xs text-destructive">
-                  {errorNombre}
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor={urlId} className="text-sm font-semibold text-foreground">
-                Link de ingreso del club
-              </label>
-              <div className="flex max-w-md items-center gap-2">
-                <Input id={urlId} value={urlLogin} readOnly className="bg-subtle font-mono text-xs" onFocus={(e) => e.target.select()} />
-                <Button type="button" variant="outline" size="icon" onClick={copiarUrl} aria-label="Copiar link de ingreso">
-                  <Copy aria-hidden />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">Compartilo con tu equipo: el login sale con el logo y los colores del club.</p>
-            </div>
-          </div>
-        </section>
-
-        <section aria-labelledby="config-logo" className="rounded-xl border border-border bg-white p-5 shadow-sm md:p-6">
-          <h2 id="config-logo" className="mb-4 font-[family-name:var(--font-oswald)] text-xl font-semibold text-primario">
-            Logo
-          </h2>
-          <LogoInput
-            nombreClub={nombre}
-            estado={logo}
-            src={logoSrc}
-            tieneLogoGuardado={club.logoSrc !== null}
-            procesando={procesandoLogo}
-            error={errorLogo}
-            disabled={guardando}
-            onElegir={handleElegirLogo}
-            onQuitar={() => setLogo({ tipo: 'quitar' })}
-            onRestaurar={() => {
-              setLogo({ tipo: 'actual' });
-              setErrorLogo(null);
-            }}
-          />
-        </section>
-
-        <section aria-labelledby="config-colores" className="rounded-xl border border-border bg-white p-5 shadow-sm md:p-6">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h2 id="config-colores" className="font-[family-name:var(--font-oswald)] text-xl font-semibold text-primario">
-              Colores
-            </h2>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button type="button" variant="ghost" size="sm" disabled={guardando}>
-                  <RotateCcw aria-hidden />
-                  Restablecer colores predeterminados
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle className="font-[family-name:var(--font-oswald)] text-primario">
-                    ¿Restablecer los colores?
-                  </DialogTitle>
-                  <DialogDescription>
-                    Primario, secundario y acento vuelven a los predeterminados. El cambio se aplica cuando guardes.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter className="gap-2">
-                  <DialogClose asChild>
-                    <Button type="button" variant="outline">
-                      Cancelar
-                    </Button>
-                  </DialogClose>
-                  <DialogClose asChild>
-                    <Button type="button" onClick={restablecerColores}>
-                      Restablecer
-                    </Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {sugerencia && (
-            <div className="mb-2">
-              <BannerSugerencia paleta={sugerencia.paleta} onDeshacer={deshacerSugerencia} onCerrar={() => setSugerencia(null)} />
-            </div>
-          )}
-
-          {COLORES.map(({ rol, etiqueta, uso, exigeContraste }) => (
-            <SelectorColor
-              key={rol}
-              etiqueta={etiqueta}
-              uso={uso}
-              texto={textos[rol]}
-              efectivo={tema[rol]}
-              onTexto={(t) => setColor(rol, t)}
-              exigeContraste={exigeContraste}
-              sugeridos={sugeridos}
-            />
-          ))}
-        </section>
-      </div>
-
-      <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
-        <section aria-labelledby="config-preview" className="rounded-xl border border-border bg-white p-5 shadow-sm">
-          <h2 id="config-preview" className="mb-1 font-[family-name:var(--font-oswald)] text-xl font-semibold text-primario">
-            Vista previa
-          </h2>
-          <p className="mb-4 text-xs text-muted-foreground">
-            Mientras no guardes, toda la app muestra los colores nuevos solo para vos.
-          </p>
-          <VistaPreviaTema nombre={nombreTrim} logoSrc={logoSrc} />
-        </section>
-
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-white p-5 shadow-sm">
-          <p role="status" className="text-xs text-muted-foreground">
-            {dirty ? 'Tenés cambios sin guardar.' : 'No hay cambios.'}
-          </p>
-          {error && (
-            <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-              {error}
+    <form onSubmit={handleSubmit} noValidate>
+      <LayoutConLateral
+        lateralLabel="Vista previa"
+        lateralClassName="lg:sticky lg:top-6 lg:self-start"
+        lateral={
+          <div>
+            <Rotulo como="h2" id="config-preview" className="mb-2">
+              Vista previa
+            </Rotulo>
+            <VistaPreviaTema nombre={nombreTrim} logoSrc={logoSrc} />
+            <p className="mt-2 text-xs text-muted-foreground">
+              Mientras no guardes, toda la app muestra los colores nuevos solo para vos.
             </p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={!puedeGuardar} className="flex-1">
-              {guardando && <Loader2 aria-hidden className="animate-spin" />}
-              {guardando ? 'Guardando…' : 'Guardar'}
-            </Button>
-            <Button type="button" variant="outline" onClick={descartar} disabled={!dirty || guardando}>
-              Descartar
-            </Button>
           </div>
-        </div>
-      </aside>
+        }
+      >
+        <Panel relleno={false} className="flex flex-col divide-y divide-border">
+          <section aria-labelledby="config-identidad" className="flex flex-col gap-4 p-4 md:p-5">
+            <Rotulo como="h2" id="config-identidad">
+              Identidad
+            </Rotulo>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <label htmlFor={nombreId} className="text-sm font-medium text-foreground">
+                  Nombre del club
+                </label>
+                <Input
+                  id={nombreId}
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  maxLength={NOMBRE_CLUB_MAX}
+                  required
+                  aria-invalid={errorNombre !== null}
+                  aria-describedby={errorNombre ? nombreErrorId : undefined}
+                />
+                {errorNombre && (
+                  <p id={nombreErrorId} className="text-xs text-destructive">
+                    {errorNombre}
+                  </p>
+                )}
+              </div>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <label htmlFor={urlId} className="text-sm font-medium text-foreground">
+                  Link de ingreso del club
+                </label>
+                <div className="flex items-center gap-2">
+                  <Input id={urlId} value={urlLogin} readOnly className="min-w-0 bg-subtle font-mono text-xs" onFocus={(e) => e.target.select()} />
+                  <Button type="button" variant="outline" size="icon" onClick={copiarUrl} aria-label="Copiar link de ingreso" className="shrink-0">
+                    <Copy aria-hidden />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Compartilo con tu equipo: el login sale con el logo y los colores del club.</p>
+              </div>
+            </div>
+          </section>
+
+          <section aria-labelledby="config-logo" className="flex flex-col gap-3 p-4 md:p-5">
+            <Rotulo como="h2" id="config-logo">
+              Logo
+            </Rotulo>
+            <LogoInput
+              nombreClub={nombre}
+              estado={logo}
+              src={logoSrc}
+              tieneLogoGuardado={club.logoSrc !== null}
+              procesando={procesandoLogo}
+              error={errorLogo}
+              disabled={guardando}
+              onElegir={handleElegirLogo}
+              onQuitar={() => setLogo({ tipo: 'quitar' })}
+              onRestaurar={() => {
+                setLogo({ tipo: 'actual' });
+                setErrorLogo(null);
+              }}
+            />
+          </section>
+
+          <section aria-labelledby="config-colores" className="@container flex flex-col gap-3 p-4 md:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Rotulo como="h2" id="config-colores">
+                Colores
+              </Rotulo>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm" disabled={guardando}>
+                    <RotateCcw aria-hidden />
+                    Restablecer colores predeterminados
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="font-[family-name:var(--font-oswald)] text-primario">
+                      ¿Restablecer los colores?
+                    </DialogTitle>
+                    <DialogDescription>
+                      Primario, secundario y acento vuelven a los predeterminados. El cambio se aplica cuando guardes.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="gap-2">
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline">
+                        Cancelar
+                      </Button>
+                    </DialogClose>
+                    <DialogClose asChild>
+                      <Button type="button" onClick={restablecerColores}>
+                        Restablecer
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {sugerencia && (
+              <BannerSugerencia paleta={sugerencia.paleta} onDeshacer={deshacerSugerencia} onCerrar={() => setSugerencia(null)} />
+            )}
+
+            <div className="grid gap-4 @xl:grid-cols-3 @xl:gap-3">
+              {COLORES.map(({ rol, etiqueta, uso, exigeContraste }) => (
+                <SelectorColor
+                  key={rol}
+                  etiqueta={etiqueta}
+                  uso={uso}
+                  texto={textos[rol]}
+                  efectivo={tema[rol]}
+                  onTexto={(t) => setColor(rol, t)}
+                  exigeContraste={exigeContraste}
+                  sugeridos={sugeridos}
+                />
+              ))}
+            </div>
+          </section>
+
+          <div className="flex flex-col gap-3 p-4 md:p-5 sm:flex-row sm:flex-wrap sm:items-center">
+            <p role="status" className="min-w-0 flex-1 text-xs text-muted-foreground">
+              {dirty ? 'Tenés cambios sin guardar.' : 'No hay cambios.'}
+            </p>
+            {error && (
+              <p role="alert" className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 sm:order-first">
+                {error}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={descartar} disabled={!dirty || guardando} className="flex-1 sm:flex-none">
+                Descartar
+              </Button>
+              <Button type="submit" disabled={!puedeGuardar} className="flex-1 sm:flex-none">
+                {guardando && <Loader2 aria-hidden className="animate-spin" />}
+                {guardando ? 'Guardando…' : 'Guardar'}
+              </Button>
+            </div>
+          </div>
+        </Panel>
+      </LayoutConLateral>
     </form>
   );
 }

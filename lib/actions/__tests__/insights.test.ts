@@ -573,8 +573,19 @@ describe('guard de admin — actions restantes', () => {
 // ---------------------------------------------------------------------------
 
 describe('seed "Panorama general"', () => {
-  it('define 12 widgets', () => {
-    expect(widgetsPanoramaGeneral).toHaveLength(12);
+  it('define 13 widgets', () => {
+    expect(widgetsPanoramaGeneral).toHaveLength(13);
+  });
+
+  it('incluye "Presentismo — últimas 12 semanas" por semana y con 84 días', () => {
+    const w = widgetsPanoramaGeneral.find((x) => x.titulo === 'Presentismo — últimas 12 semanas');
+    expect(w?.tipo).toBe('line');
+    expect(w?.querySpec).toMatchObject({
+      dataset: 'presentismo',
+      timeGrain: 'week',
+      timeDimension: 'fecha',
+      filters: { children: [{ field: 'fecha', operator: 'last_n_days', value: 84 }] },
+    });
   });
 
   it('cada querySpec es válido contra el catálogo y compila a SQL', () => {

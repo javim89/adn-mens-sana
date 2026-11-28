@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { ChartColumn } from 'lucide-react';
+import { EncabezadoPagina } from '@/app/components/ui/encabezado-pagina';
 import { getDashboards } from '@/lib/actions/insights';
 import NuevoDashboardButton from './_components/NuevoDashboardButton';
 import DashboardCardActions from './_components/DashboardCardActions';
@@ -63,10 +64,7 @@ async function DashboardsContent() {
             className="absolute inset-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secundario"
           />
           <div className="flex items-start justify-between gap-2 mb-2">
-            <h2
-              className="text-lg font-semibold text-primario group-hover:text-primario-hover"
-              style={{ fontFamily: 'Oswald, sans-serif' }}
-            >
+            <h2 className="font-[family-name:var(--font-oswald)] text-lg font-semibold text-primario group-hover:text-primario-hover">
               {d.nombre}
             </h2>
             <div className="relative z-10 flex shrink-0 items-center gap-1.5">
@@ -109,19 +107,13 @@ function DashboardsSkeleton() {
 
 export default function InsightsPage() {
   return (
-    <div className="p-8">
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-1">
-        <h1
-          className="text-3xl font-bold text-primario"
-          style={{ fontFamily: 'Oswald, sans-serif' }}
-        >
-          Insights
-        </h1>
-        <NuevoDashboardButton />
-      </div>
-      <p className="text-muted-foreground mb-6">
-        Dashboards y gráficos personalizados sobre los datos del club.
-      </p>
+    <div className="p-4 md:p-8 min-w-0">
+      <EncabezadoPagina
+        className="mb-6"
+        titulo="Insights"
+        subtitulo="Dashboards y gráficos personalizados sobre los datos del club."
+        accion={<NuevoDashboardButton />}
+      />
 
       <Suspense fallback={<DashboardsSkeleton />}>
         <DashboardsContent />

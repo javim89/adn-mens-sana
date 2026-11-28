@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Search, CheckCheck } from 'lucide-react';
+import { toast } from 'sonner';
+import { Loader2, Search, CheckCheck, MessageSquare } from 'lucide-react';
+import { Avatar } from '@/app/components/ui/avatar';
+import { Input } from '@/app/components/ui/input';
 import { CustomSelect } from '@/app/components/ui/custom-select';
 import {
   createEntrenamiento,
@@ -75,6 +78,10 @@ const TIPO_SESION_OPTIONS = Object.entries(TIPO_SESION_LABELS).map(([value, labe
   label,
 }));
 
+function iniciales(d: RosterItem): string {
+  return `${d.nombre.charAt(0)}${d.apellido.charAt(0)}`;
+}
+
 function today() {
   return new Date().toISOString().split('T')[0];
 }
@@ -90,7 +97,6 @@ export default function PresentismoForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isLoadingRoster, startRosterTransition] = useTransition();
-  const [serverError, setServerError] = useState<string | null>(null);
   const [rosterError, setRosterError] = useState<string | null>(null);
 
   const [roster, setRoster] = useState<RosterItem[]>(initialData?.roster ?? []);
@@ -100,6 +106,12 @@ export default function PresentismoForm({
       initialData.asistencias.map((a) => [a.deportistaId, a.estado]),
     );
   });
+  const [notas, setNotas] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (initialData?.asistencias ?? []).flatMap((a) => (a.notas ? [[a.deportistaId, a.notas]] : [])),
+    ),
+  );
+  const [notasAbiertas, setNotasAbiertas] = useState<Set<string>>(new Set());
   const [rosterSearch, setRosterSearch] = useState('');
 
   const schema = useMemo(() => buildSchema(isAdmin), [isAdmin]);
@@ -173,6 +185,14 @@ export default function PresentismoForm({
     setEstados((prev) => ({ ...prev, [deportistaId]: estado }));
   }
 
+  function setNota(deportistaId: string, nota: string) {
+    setNotas((prev) => ({ ...prev, [deportistaId]: nota }));
+  }
+
+  function abrirNota(deportistaId: string) {
+    setNotasAbiertas((prev) => new Set(prev).add(deportistaId));
+  }
+
   function marcarTodosPresentes() {
     setEstados((prev) => {
       const next = { ...prev };
@@ -199,7 +219,6 @@ export default function PresentismoForm({
   }, [roster, rosterSearch]);
 
   function onSubmit(values: FormValues) {
-    setServerError(null);
     setRosterError(null);
 
     if (roster.length === 0) {
@@ -214,10 +233,14 @@ export default function PresentismoForm({
       objetivos: values.objetivos?.trim() || undefined,
       disciplinaId: values.disciplinaId,
       categoriaId: values.categoriaId,
-      asistencias: roster.map((d) => ({
-        deportistaId: d.id,
-        estado: estados[d.id] ?? 'PRESENTE',
-      })),
+      asistencias: roster.map((d) => {
+        const nota = notas[d.id]?.trim();
+        return {
+          deportistaId: d.id,
+          estado: estados[d.id] ?? 'PRESENTE',
+          ...(nota ? { notas: nota } : {}),
+        };
+      }),
     };
 
     startTransition(async () => {
@@ -227,9 +250,10 @@ export default function PresentismoForm({
           : await updateEntrenamiento(initialData!.id, data);
 
       if (!result.success) {
-        setServerError(result.error);
+        toast.error(result.error);
         return;
       }
+      toast.success(mode === 'create' ? 'Asistencia guardada' : 'Asistencia actualizada');
       router.push('/presentismo');
     });
   }
@@ -238,12 +262,6 @@ export default function PresentismoForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="max-w-3xl mx-auto pb-24">
-      {serverError && (
-        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          {serverError}
-        </div>
-      )}
-
       {/* Card 1 — Datos del entrenamiento */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-5">
         <h2
@@ -460,20 +478,55 @@ export default function PresentismoForm({
                   Sin resultados para la búsqueda.
                 </li>
               ) : (
-                filteredRoster.map((d) => (
-                  <li
-                    key={d.id}
-                    className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-                  >
-                    <span className="text-sm font-medium text-foreground">
-                      {d.apellido}, {d.nombre}
-                    </span>
-                    <AsistenciaEstadoControl
-                      value={estados[d.id] ?? 'PRESENTE'}
-                      onChange={(estado) => setEstado(d.id, estado)}
-                    />
-                  </li>
-                ))
+                filteredRoster.map((d) => {
+                  const nombre = `${d.apellido}, ${d.nombre}`;
+                  const notaVisible = notasAbiertas.has(d.id) || !!notas[d.id];
+                  return (
+                    <li key={d.id} className="px-3 py-3 sm:px-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <Avatar alt={nombre} iniciales={iniciales(d)} className="size-8 text-xs" />
+                          <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                            {nombre}
+                          </span>
+                          {!notaVisible && (
+                            <button
+                              type="button"
+                              onClick={() => abrirNota(d.id)}
+                              aria-label={`Agregar nota a ${nombre}`}
+                              title="Agregar nota"
+                              className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-primario focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secundario/30"
+                            >
+                              <MessageSquare size={15} aria-hidden />
+                            </button>
+                          )}
+                        </div>
+                        <AsistenciaEstadoControl
+                          value={estados[d.id] ?? 'PRESENTE'}
+                          onChange={(estado) => setEstado(d.id, estado)}
+                        />
+                      </div>
+                      {notaVisible && (
+                        <div className="mt-2 flex items-center gap-2 sm:pl-11">
+                          <MessageSquare
+                            size={14}
+                            className="shrink-0 text-muted-foreground"
+                            aria-hidden
+                          />
+                          <Input
+                            value={notas[d.id] ?? ''}
+                            onChange={(e) => setNota(d.id, e.target.value)}
+                            maxLength={200}
+                            autoFocus={notasAbiertas.has(d.id) && !notas[d.id]}
+                            placeholder="Nota (opcional)"
+                            aria-label={`Nota de ${nombre}`}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })
               )}
             </ul>
           </>
@@ -482,7 +535,19 @@ export default function PresentismoForm({
 
       {/* Sticky bottom bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-4 py-3">
-        <div className="max-w-3xl mx-auto flex items-center justify-end gap-3">
+        <div className="max-w-3xl mx-auto flex flex-wrap items-center justify-end gap-3">
+          {roster.length > 0 && (
+            <p className="mr-auto text-xs text-muted-foreground" aria-live="polite">
+              <span className="font-mono font-semibold tabular-nums text-foreground">
+                {counts.AUSENTE}
+              </span>{' '}
+              {counts.AUSENTE === 1 ? 'ausente' : 'ausentes'} de{' '}
+              <span className="font-mono font-semibold tabular-nums text-foreground">
+                {roster.length}
+              </span>{' '}
+              en la lista
+            </p>
+          )}
           <button
             type="button"
             onClick={() => router.push('/presentismo')}

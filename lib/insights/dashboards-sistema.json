@@ -91,7 +91,8 @@
           }
         },
         "vizConfig": {
-          "type": "kpi"
+          "type": "kpi",
+          "compararPeriodo": true
         },
         "x": 6,
         "y": 0,
@@ -120,12 +121,53 @@
           }
         },
         "vizConfig": {
-          "type": "kpi"
+          "type": "kpi",
+          "compararPeriodo": true
         },
         "x": 9,
         "y": 0,
         "w": 3,
         "h": 4
+      },
+      {
+        "titulo": "Presentismo — últimas 12 semanas",
+        "descripcion": "Porcentaje de asistencia a entrenamientos, semana a semana.",
+        "tipo": "line",
+        "querySpec": {
+          "mode": "builder",
+          "dataset": "presentismo",
+          "dimensions": [
+            "fecha"
+          ],
+          "measures": [
+            "porcentaje_presentismo"
+          ],
+          "timeGrain": "week",
+          "timeDimension": "fecha",
+          "filters": {
+            "op": "all",
+            "children": [
+              {
+                "field": "fecha",
+                "operator": "last_n_days",
+                "value": 84
+              }
+            ]
+          },
+          "sort": [
+            {
+              "field": "fecha",
+              "direction": "asc"
+            }
+          ]
+        },
+        "vizConfig": {
+          "type": "line"
+        },
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 10
       },
       {
         "titulo": "Distribución de triage",
@@ -146,7 +188,7 @@
           "colorScale": "triage"
         },
         "x": 0,
-        "y": 4,
+        "y": 14,
         "w": 4,
         "h": 8
       },
@@ -174,7 +216,7 @@
           "type": "bar"
         },
         "x": 4,
-        "y": 4,
+        "y": 14,
         "w": 8,
         "h": 8
       },
@@ -204,7 +246,7 @@
           "colorScale": "estado_deportista"
         },
         "x": 0,
-        "y": 12,
+        "y": 22,
         "w": 6,
         "h": 8
       },
@@ -244,7 +286,7 @@
           "type": "line"
         },
         "x": 6,
-        "y": 12,
+        "y": 22,
         "w": 6,
         "h": 8
       },
@@ -272,7 +314,7 @@
           "type": "pie"
         },
         "x": 0,
-        "y": 20,
+        "y": 30,
         "w": 4,
         "h": 8
       },
@@ -300,7 +342,7 @@
           "type": "bar"
         },
         "x": 4,
-        "y": 20,
+        "y": 30,
         "w": 4,
         "h": 8
       },
@@ -328,7 +370,7 @@
           "type": "bar"
         },
         "x": 8,
-        "y": 20,
+        "y": 30,
         "w": 4,
         "h": 8
       },
@@ -371,7 +413,7 @@
           "type": "table"
         },
         "x": 0,
-        "y": 28,
+        "y": 38,
         "w": 12,
         "h": 10
       }

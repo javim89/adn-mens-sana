@@ -84,6 +84,7 @@ export async function getUsuarios(): Promise<Usuario[]> {
     email: m.email,
     rol: m.rol,
     lugarRetiro: m.lugarRetiro,
+    imageUrl: m.imageUrl,
     lastSignInAt: m.lastSignInAt,
     createdAt: m.createdAt,
     status: m.activo ? ('activo' as const) : ('inactivo' as const),

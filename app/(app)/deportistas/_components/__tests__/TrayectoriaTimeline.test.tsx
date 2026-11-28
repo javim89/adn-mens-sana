@@ -129,3 +129,31 @@ describe('TrayectoriaTimeline', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('TrayectoriaTimeline — paneles', () => {
+  test('muestra los paneles Divisiones, Clubes anteriores e Historia deportiva', () => {
+    renderTimeline({
+      clubesAnteriores: [{ id: 'c1', nombre: 'Club Atlético Norte', periodo: '2019-2021' }],
+      historiaDeportiva: [
+        { id: 'h1', descripcion: 'Debut en reserva', fecha: new Date('2024-05-10T00:00:00.000Z') },
+        { id: 'h2', descripcion: 'Campeón regional', fecha: new Date('2025-08-01T00:00:00.000Z') },
+      ],
+    });
+
+    expect(screen.getByRole('heading', { name: 'Divisiones' })).toBeInTheDocument();
+
+    const clubes = screen.getByRole('heading', { name: 'Clubes anteriores' }).closest('section')!;
+    expect(within(clubes).getByText('Club Atlético Norte')).toBeInTheDocument();
+    expect(within(clubes).getByText('2019-2021')).toBeInTheDocument();
+
+    const historia = screen.getByRole('heading', { name: 'Historia deportiva' }).closest('section')!;
+    const hitos = within(historia).getAllByRole('listitem').map((li) => li.textContent);
+    expect(hitos).toEqual(['08/2025Campeón regional', '05/2024Debut en reserva']);
+  });
+
+  test('sin clubes ni hitos muestra los estados vacíos', () => {
+    renderTimeline();
+    expect(screen.getByText('Sin clubes anteriores registrados.')).toBeInTheDocument();
+    expect(screen.getByText('Sin hitos registrados.')).toBeInTheDocument();
+  });
+});

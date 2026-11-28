@@ -203,6 +203,37 @@ describe('KpiChart', () => {
     expect(screen.getByText('Deportistas activos')).toBeInTheDocument();
     expect(screen.queryByText('Cantidad')).toBeNull();
   });
+
+  it('sin período anterior no muestra variación', () => {
+    renderWidget('kpi');
+    expect(screen.queryByText('vs. período anterior')).toBeNull();
+  });
+
+  it('con período anterior muestra la variación con signo y tono', () => {
+    render(
+      <WidgetRenderer
+        data={[{ cantidad: 248 }]}
+        columns={[columnsCategoria[1]]}
+        config={{ type: 'kpi', compararPeriodo: true }}
+        kpiAnterior={250}
+      />,
+    );
+    const delta = screen.getByText('−2');
+    expect(delta.parentElement).toHaveClass('text-red-700');
+    expect(screen.getByText('vs. período anterior')).toBeInTheDocument();
+  });
+
+  it('invertDelta: bajar se pinta como bueno', () => {
+    render(
+      <WidgetRenderer
+        data={[{ cantidad: 248 }]}
+        columns={[columnsCategoria[1]]}
+        config={{ type: 'kpi', compararPeriodo: true, invertDelta: true }}
+        kpiAnterior={250}
+      />,
+    );
+    expect(screen.getByText('−2').parentElement).toHaveClass('text-green-700');
+  });
 });
 
 /**

@@ -64,19 +64,17 @@ export default function SelectorColor({
   const descripcion = [usoId, badgeId, invalido && errorId, bajo && avisoId].filter(Boolean).join(' ');
 
   return (
-    <div className="flex flex-col gap-2 border-b border-border py-4 last:border-b-0" data-selector-color={etiqueta}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <label htmlFor={hexId} className="text-sm font-semibold text-foreground">
-            {etiqueta}
-          </label>
-          <p id={usoId} className="text-xs text-muted-foreground">
-            {uso}
-          </p>
-        </div>
+    <div
+      className="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-subtle/40 p-3"
+      data-selector-color={etiqueta}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <label htmlFor={hexId} className="text-sm font-medium text-foreground">
+          {etiqueta}
+        </label>
         <span
           id={badgeId}
-          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
             ok ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'
           }`}
         >
@@ -86,37 +84,43 @@ export default function SelectorColor({
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <input
           type="color"
           value={muestra}
           onChange={(e) => onTexto(e.target.value)}
           aria-label={`${etiqueta}: selector de color`}
           aria-describedby={usoId}
-          className="h-9 w-12 shrink-0 cursor-pointer rounded-md border border-input bg-white p-0.5"
+          className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-input bg-white p-0.5"
         />
         <Input
           id={hexId}
           value={texto}
           onChange={(e) => onTexto(e.target.value)}
           placeholder={`Predeterminado (${efectivo})`}
+          title={texto === '' ? `Predeterminado (${efectivo})` : undefined}
           spellCheck={false}
           autoComplete="off"
           maxLength={7}
           aria-invalid={invalido || bajo}
           aria-describedby={descripcion}
-          className={`max-w-56 font-mono uppercase placeholder:normal-case ${invalido ? 'border-destructive' : ''}`}
+          className={`min-w-0 bg-white font-mono uppercase placeholder:normal-case ${invalido ? 'border-destructive' : ''}`}
         />
-        {texto !== '' && (
-          <button
-            type="button"
-            onClick={() => onTexto('')}
-            className="text-xs font-medium text-secundario underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secundario/40 rounded"
-          >
-            Usar predeterminado
-          </button>
-        )}
       </div>
+
+      <p id={usoId} className="text-xs text-muted-foreground">
+        {uso}
+      </p>
+
+      {texto !== '' && (
+        <button
+          type="button"
+          onClick={() => onTexto('')}
+          className="self-start rounded text-xs font-medium text-secundario underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secundario/40"
+        >
+          Usar predeterminado
+        </button>
+      )}
 
       {invalido && (
         <p id={errorId} className="text-xs text-destructive">
@@ -127,12 +131,14 @@ export default function SelectorColor({
       {bajo && ingresado && (
         <div
           id={avisoId}
-          className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+          className="flex flex-col items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
         >
-          <AlertTriangle aria-hidden className="h-4 w-4 shrink-0" />
-          <span className="min-w-0 flex-1">
-            Poco contraste con el texto blanco ({ratio.toFixed(1)}:1). Para guardarlo tiene que llegar a{' '}
-            {CONTRASTE_MIN_TEXTO}:1.
+          <span className="flex min-w-0 gap-2">
+            <AlertTriangle aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span className="min-w-0">
+              Poco contraste con el texto blanco ({ratio.toFixed(1)}:1). Para guardarlo tiene que llegar a{' '}
+              {CONTRASTE_MIN_TEXTO}:1.
+            </span>
           </span>
           <button
             type="button"

@@ -2,6 +2,9 @@ import { getDb } from '@/lib/tenant/db';
 import { Prisma } from '@/lib/generated/prisma/client';
 import type { NivelTriage } from '@/lib/generated/prisma/enums';
 import { NIVEL_TRIAGE_LABELS } from '@/lib/utils/enum-labels';
+import { getFotoUrl } from '@/lib/s3';
+import { motivosPrincipales, parseDesglose } from '@/lib/triage/motivos';
+import type { TriageContribucion } from '@/lib/types/triage';
 
 /**
  * `DISTINCT ON` + este `ORDER BY` son un par indivisible: el `DISTINCT ON` se
@@ -199,5 +202,119 @@ export async function getDistribucionTriage(
     totalConTriage,
     sinCalcular: Math.max(0, totalActivos - totalConTriage),
     totalActivos,
+  };
+}
+
+export interface DeportistaAtencion {
+  deportistaId: string;
+  nombre: string;
+  apellido: string;
+  /** URL firmada de la foto, o `null` sin foto o sin S3. */
+  fotoUrl: string | null;
+  categoria: string | null;
+  nivel: NivelTriage;
+  puntaje: number;
+  /** Las 2 reglas con más puntos del snapshot vigente. */
+  motivos: string[];
+}
+
+type FilaAtencion = {
+  deportista_id: string;
+  nombre: string;
+  apellido: string;
+  foto_key: string | null;
+  categoria: string | null;
+  nivel: NivelTriage;
+  puntaje_total: number;
+  desglose: unknown;
+};
+
+/**
+ * "A quién atender primero": snapshot vigente de cada deportista ACTIVO, de
+ * ROJO a AMARILLO y, dentro del nivel, por puntaje. Los VERDE quedan afuera: no
+ * suman ningún punto, así que no hay nada que atender ni motivo que mostrar.
+ *
+ * El nivel se filtra DESPUÉS del `DISTINCT ON`: filtrarlo adentro devolvería el
+ * último snapshot rojo de alguien que hoy ya está en verde.
+ */
+export async function getAtencionPrioritaria(limit = 5): Promise<DeportistaAtencion[]> {
+  const db = await getDb();
+  const clubId = db.$clubId();
+  const filas = await db.$queryRaw<FilaAtencion[]>(Prisma.sql`
+    WITH vigente AS (
+      SELECT ${SQL_SNAPSHOT_VIGENTE}
+        triage.deportista_id,
+        triage.nivel,
+        triage.puntaje_total,
+        triage.desglose
+      FROM triage
+      WHERE triage.club_id = ${clubId}
+      ${SQL_ORDEN_SNAPSHOT_VIGENTE}
+    )
+    SELECT v.deportista_id,
+           d.nombre,
+           d.apellido,
+           d.foto_key,
+           c.nombre AS categoria,
+           v.nivel::text AS nivel,
+           v.puntaje_total::int AS puntaje_total,
+           v.desglose
+    FROM vigente v
+    JOIN deportistas d ON d.id = v.deportista_id
+    LEFT JOIN categorias c ON c.id = d.categoria_id
+    WHERE d.club_id = ${clubId}
+      AND d.estado = 'ACTIVO'
+      AND v.nivel::text <> 'VERDE'
+    ORDER BY CASE v.nivel::text
+               WHEN 'ROJO' THEN 0
+               WHEN 'NARANJA' THEN 1
+               WHEN 'AMARILLO' THEN 2
+               ELSE 3
+             END,
+             v.puntaje_total DESC,
+             d.apellido ASC,
+             d.nombre ASC
+    LIMIT ${Math.max(0, Math.trunc(limit))}
+  `);
+
+  return Promise.all(
+    filas.map(async (f) => ({
+      deportistaId: f.deportista_id,
+      nombre: f.nombre,
+      apellido: f.apellido,
+      fotoUrl: await getFotoUrl(f.foto_key),
+      categoria: f.categoria,
+      nivel: f.nivel,
+      puntaje: f.puntaje_total,
+      motivos: motivosPrincipales(f.desglose),
+    })),
+  );
+}
+
+export interface TriageDeportista {
+  nivel: NivelTriage;
+  puntaje: number;
+  /** Las 2 reglas con más puntos. */
+  motivos: string[];
+  desglose: TriageContribucion[];
+  /** ISO 8601. */
+  calculatedAt: string;
+}
+
+/** Snapshot vigente de un deportista para la ficha, o `null` si nunca se calculó. */
+export async function getTriageDeportista(deportistaId: string): Promise<TriageDeportista | null> {
+  const db = await getDb();
+  const fila = await db.triage.findFirst({
+    where: { deportistaId },
+    orderBy: { calculatedAt: 'desc' },
+    select: { nivel: true, puntajeTotal: true, desglose: true, calculatedAt: true },
+  });
+  if (!fila) return null;
+  return {
+    nivel: fila.nivel,
+    puntaje: fila.puntajeTotal,
+    motivos: motivosPrincipales(fila.desglose),
+    desglose: parseDesglose(fila.desglose),
+    calculatedAt: fila.calculatedAt.toISOString(),
   };
 }

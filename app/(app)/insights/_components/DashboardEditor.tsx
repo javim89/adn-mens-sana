@@ -16,7 +16,7 @@ import {
 import DashboardGrid from './DashboardGrid';
 import WidgetEditorDialog, { type WidgetDraft } from './WidgetEditorDialog';
 import DashboardFilterDialog, { type FilterDraft } from './DashboardFilterDialog';
-import DashboardFilterBar from './DashboardFilterBar';
+import DashboardFilterBar, { type CategoriaFiltro } from './DashboardFilterBar';
 import { useDraftHistory } from './useDraftHistory';
 
 /** Id temporal de un widget aún no persistido. */
@@ -37,10 +37,12 @@ function nextPosition(widgets: DashboardWidget[]) {
 export default function DashboardEditor({
   dashboard,
   permiteSql = false,
+  categorias,
 }: {
   dashboard: DashboardDetail;
   /** Habilita el modo SQL en el editor de widgets (staff de BioTeam). */
   permiteSql?: boolean;
+  categorias?: CategoriaFiltro[];
 }) {
   const router = useRouter();
   const [isSaving, startSaving] = useTransition();
@@ -255,6 +257,7 @@ export default function DashboardEditor({
         filtros={dashboard.filtros}
         valores={{}}
         onChange={() => {}}
+        categorias={categorias}
         editable
         onEdit={(f) => {
           setFiltroEditando(f);

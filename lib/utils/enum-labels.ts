@@ -185,6 +185,17 @@ export const ESTADO_EVENTO_LABELS: Record<EstadoEvento, string> = {
   REPROGRAMADO: 'Reprogramado',
 };
 
+/**
+ * Colores del estado de un partido (convocatorias, calendario, landing). El
+ * programado va con el color secundario del club; los otros dos con la paleta de
+ * estado de Tailwind, igual que `ESTADO_BADGE`.
+ */
+export const ESTADO_EVENTO_BADGE: Record<EstadoEvento, string> = {
+  PROGRAMADO: 'bg-secundario text-secundario-foreground',
+  SUSPENDIDO: 'bg-red-100 text-red-700',
+  REPROGRAMADO: 'bg-amber-100 text-amber-800',
+};
+
 export const TIPO_DIA_LABELS: Record<TipoDia, string> = {
   TORNEO: 'Torneo',
   RECESO: 'Receso',

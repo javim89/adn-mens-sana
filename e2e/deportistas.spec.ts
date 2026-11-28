@@ -56,10 +56,10 @@ test.describe('Deportistas — List page', () => {
     await page.goto('/deportistas');
     await page.waitForSelector('table');
 
-    // El filtro de disciplina es un CustomSelect (button, no <select> nativo).
-    // Se abre con click y se elige la opción por su label visible.
-    await page.getByRole('button', { name: /todas las disciplinas/i }).click();
-    await page.getByRole('button', { name: 'Fútbol', exact: true }).click();
+    // El filtro de disciplina es un FiltroChip (popover + lista cmdk con role=option).
+    await page.getByRole('button', { name: 'Disciplina', exact: true }).click();
+    await page.getByRole('option', { name: 'Fútbol', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Disciplina: Fútbol' })).toBeVisible();
 
     // La URL contiene el filtro JSON:API con un disciplinaId (cuid), NO el enum "FUTBOL".
     await expect(page).toHaveURL(/filter%5Bdisciplina%5D=[a-z0-9-]+/i);
@@ -71,18 +71,18 @@ test.describe('Deportistas — List page', () => {
     await page.waitForSelector('table');
 
     // Sin disciplina el filtro de categoría está deshabilitado.
-    const categoriaFilter = page.getByRole('button', { name: /todas las categorías/i });
+    const categoriaFilter = page.getByRole('button', { name: /^Categoría/ });
     await expect(categoriaFilter).toBeDisabled();
 
     // Al elegir una disciplina, el filtro de categoría se habilita (anidamiento).
-    await page.getByRole('button', { name: /todas las disciplinas/i }).click();
-    await page.getByRole('button', { name: 'Fútbol', exact: true }).click();
+    await page.getByRole('button', { name: 'Disciplina', exact: true }).click();
+    await page.getByRole('option', { name: 'Fútbol', exact: true }).click();
 
     await expect(categoriaFilter).toBeEnabled();
 
     // Y al abrirlo ofrece SOLO las categorías de la disciplina elegida.
     await categoriaFilter.click();
-    await expect(page.getByRole('button', { name: 'Primera', exact: true })).toBeVisible();
+    await expect(page.getByRole('option', { name: 'Primera', exact: true })).toBeVisible();
   });
 
   test('the table shows a Triage column', async ({ page }) => {
@@ -96,11 +96,12 @@ test.describe('Deportistas — List page', () => {
     await page.goto('/deportistas');
     await page.waitForSelector('table');
 
-    // El filtro de triage es un CustomSelect (button, no <select> nativo).
-    await page.getByRole('button', { name: /todos los triage/i }).click();
-    await page.getByRole('button', { name: 'Rojo', exact: true }).click();
+    // El filtro de triage es un FiltroChip: el chip muestra el valor elegido.
+    await page.getByRole('button', { name: 'Triage', exact: true }).click();
+    await page.getByRole('option', { name: 'Rojo', exact: true }).click();
 
     await expect(page).toHaveURL(/filter%5BnivelTriage%5D=ROJO/);
+    await expect(page.getByRole('button', { name: 'Triage: Rojo' })).toBeVisible();
   });
 });
 

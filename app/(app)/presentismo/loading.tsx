@@ -1,15 +1,28 @@
 export default function PresentismoLoading() {
   return (
-    <div className="p-4 md:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
-        <div className="h-9 w-48 bg-gray-200 rounded animate-pulse" />
-        <div className="h-9 w-48 bg-gray-200 rounded animate-pulse" />
+    <div className="flex flex-col gap-6 p-4 md:p-8">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+            <div className="h-4 w-56 bg-gray-100 rounded animate-pulse mt-2" />
+          </div>
+          <div className="h-9 w-48 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <div className="h-9 w-28 bg-gray-100 rounded-full animate-pulse" />
+          <div className="h-9 w-28 bg-gray-100 rounded-full animate-pulse" />
+          <div className="h-9 w-36 bg-gray-100 rounded-full animate-pulse" />
+        </div>
       </div>
-      <div className="h-4 w-72 bg-gray-100 rounded animate-pulse mb-6" />
 
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="h-9 w-44 bg-gray-100 rounded animate-pulse" />
-        <div className="h-9 w-40 bg-gray-100 rounded animate-pulse" />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-56 bg-white rounded-2xl shadow-sm border border-gray-100 animate-pulse md:last:col-span-2 xl:last:col-span-1"
+          />
+        ))}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">

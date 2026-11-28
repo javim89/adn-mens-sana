@@ -41,6 +41,8 @@ export interface WidgetRendererProps {
   config: VizConfig;
   isLoading?: boolean;
   error?: string | null;
+  /** KPI: valor del período anterior para la variación (ver `KpiChart`). */
+  kpiAnterior?: number | null;
 }
 
 function WidgetSkeleton() {
@@ -84,6 +86,7 @@ export default function WidgetRenderer({
   config,
   isLoading,
   error,
+  kpiAnterior,
 }: WidgetRendererProps) {
   if (error) return <WidgetError message={error} />;
   if (isLoading) return <WidgetSkeleton />;
@@ -98,7 +101,11 @@ export default function WidgetRenderer({
 
   return (
     <ChartErrorBoundary resetKey={`${config.type}:${columns.map((c) => c.id).join(',')}`}>
-      <Chart data={data} config={config} columns={columns} />
+      {config.type === 'kpi' ? (
+        <KpiChart data={data} config={config} columns={columns} anterior={kpiAnterior} />
+      ) : (
+        <Chart data={data} config={config} columns={columns} />
+      )}
     </ChartErrorBoundary>
   );
 }

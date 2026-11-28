@@ -7,6 +7,11 @@ import type { ProximoPartido, DeportistaConvocable } from '@/lib/types/convocato
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
+const { toastMock } = vi.hoisted(() => ({
+  toastMock: { success: vi.fn(), error: vi.fn() },
+}));
+vi.mock('sonner', () => ({ toast: toastMock }));
+
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
@@ -225,9 +230,24 @@ describe('ConvocatoriaForm — submit', () => {
     expect(payload.convocados).toEqual(['dep-1', 'dep-3']);
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/convocatorias'));
+    expect(toastMock.success).toHaveBeenCalledWith('Convocatoria guardada · 2 convocados');
   });
 
-  test('muestra el error del servidor si la action falla', async () => {
+  test('con un solo citado el toast dice "1 convocado"', async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await selectDisciplinaYCategoria(user);
+    await screen.findByText('Alvarez, Juan');
+    await user.click(within(screen.getByText('Alvarez, Juan').closest('li')!).getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: /guardar convocatoria/i }));
+
+    await waitFor(() =>
+      expect(toastMock.success).toHaveBeenCalledWith('Convocatoria guardada · 1 convocado'),
+    );
+  });
+
+  test('muestra el error del servidor en un toast si la action falla', async () => {
     const user = userEvent.setup();
     createConvocatoriaMock.mockResolvedValue({ success: false, error: 'Boom del server' });
     renderForm();
@@ -240,7 +260,8 @@ describe('ConvocatoriaForm — submit', () => {
 
     await user.click(screen.getByRole('button', { name: /guardar convocatoria/i }));
 
-    expect(await screen.findByText('Boom del server')).toBeInTheDocument();
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Boom del server'));
+    expect(toastMock.success).not.toHaveBeenCalled();
     expect(pushMock).not.toHaveBeenCalled();
   });
 });

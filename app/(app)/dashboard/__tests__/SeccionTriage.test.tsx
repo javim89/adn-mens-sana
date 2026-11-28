@@ -1,11 +1,38 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { SEMANA } from './_semana';
 
-const { getDistribucionTriage } = vi.hoisted(() => ({ getDistribucionTriage: vi.fn() }));
-vi.mock('@/lib/queries/triage', () => ({ getDistribucionTriage }));
+const { getDistribucionTriage, getAtencionPrioritaria } = vi.hoisted(() => ({
+  getDistribucionTriage: vi.fn(),
+  getAtencionPrioritaria: vi.fn(),
+}));
+vi.mock('@/lib/queries/triage', () => ({ getDistribucionTriage, getAtencionPrioritaria }));
 
 import SeccionTriage from '../_components/SeccionTriage';
+import { linkTriage } from '../_lib/links';
+
+const ATENCION = [
+  {
+    deportistaId: 'dep-1',
+    nombre: 'Tomás',
+    apellido: 'Ferreyra',
+    fotoUrl: null,
+    categoria: 'Primera',
+    nivel: 'ROJO' as const,
+    puntaje: 9,
+    motivos: ['Seguimiento urgente abierto', 'Ausentismo reiterado'],
+  },
+  {
+    deportistaId: 'dep-2',
+    nombre: 'Lucía',
+    apellido: 'Benítez',
+    fotoUrl: null,
+    categoria: null,
+    nivel: 'NARANJA' as const,
+    puntaje: 5,
+    motivos: ['Lesión activa'],
+  },
+];
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -17,6 +44,7 @@ beforeEach(() => {
     sinCalcular: 0,
     totalActivos: 100,
   });
+  getAtencionPrioritaria.mockResolvedValue(ATENCION);
 });
 
 describe('SeccionTriage', () => {
@@ -42,5 +70,53 @@ describe('SeccionTriage', () => {
     render(await SeccionTriage({ semana: SEMANA }));
 
     expect(screen.getByText('80% en rojo')).toBeInTheDocument();
+  });
+
+  describe('A quién atender primero', () => {
+    test('pide la lista con límite 5', async () => {
+      render(await SeccionTriage({ semana: SEMANA }));
+
+      expect(getAtencionPrioritaria).toHaveBeenCalledWith(5);
+      expect(screen.getByRole('heading', { name: 'A quién atender primero' })).toBeInTheDocument();
+    });
+
+    test('cada fila linkea a la ficha, con nivel, categoría y los motivos', async () => {
+      render(await SeccionTriage({ semana: SEMANA }));
+
+      const fila = screen.getByRole('link', { name: /Tomás Ferreyra/ });
+      expect(fila).toHaveAttribute('href', '/deportistas/dep-1');
+      expect(within(fila).getByText('Rojo')).toBeInTheDocument();
+      expect(
+        within(fila).getByText('Primera · Seguimiento urgente abierto · Ausentismo reiterado'),
+      ).toBeInTheDocument();
+      // Sin foto: avatar con iniciales.
+      expect(within(fila).getByText('TF')).toBeInTheDocument();
+    });
+
+    test('sin categoría muestra solo los motivos', async () => {
+      render(await SeccionTriage({ semana: SEMANA }));
+
+      const fila = screen.getByRole('link', { name: /Lucía Benítez/ });
+      expect(within(fila).getByText('Naranja')).toBeInTheDocument();
+      expect(within(fila).getByText('Lesión activa')).toBeInTheDocument();
+    });
+
+    test('"Ver todos" lleva a los activos en rojo', async () => {
+      render(await SeccionTriage({ semana: SEMANA }));
+
+      const verTodos = screen.getByRole('link', { name: 'Ver todos los deportistas activos en rojo' });
+      expect(verTodos).toHaveAttribute('href', linkTriage('ROJO'));
+      expect(verTodos).toHaveTextContent('Ver todos');
+    });
+
+    test('sin nadie fuera de verde, estado vacío y sin "Ver todos"', async () => {
+      getAtencionPrioritaria.mockResolvedValue([]);
+      render(await SeccionTriage({ semana: SEMANA }));
+
+      expect(screen.getByText('No hay nadie para atender primero')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: 'Ver todos los deportistas activos en rojo' }),
+      ).toBeNull();
+    });
   });
 });

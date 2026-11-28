@@ -209,7 +209,7 @@ export interface QueryResult {
  * para que el cliente no tenga que importar el compilador.
  */
 export const OPERATORS_BY_TYPE: Record<FieldType, Operator[]> = {
-  string: ['eq', 'ne', 'contains', 'starts_with', 'is_null', 'is_not_null'],
+  string: ['eq', 'ne', 'in', 'not_in', 'contains', 'starts_with', 'is_null', 'is_not_null'],
   enum: ['eq', 'ne', 'in', 'not_in', 'is_null', 'is_not_null'],
   number: ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'between', 'is_null', 'is_not_null'],
   date: [

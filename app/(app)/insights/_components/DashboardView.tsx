@@ -6,9 +6,15 @@ import { ChartColumn, RefreshCw } from 'lucide-react';
 import type { DashboardDetail } from '@/lib/actions/insights';
 import type { ActiveDashboardFilter } from '@/lib/insights/apply-filters';
 import DashboardGrid from './DashboardGrid';
-import DashboardFilterBar from './DashboardFilterBar';
+import DashboardFilterBar, { type CategoriaFiltro } from './DashboardFilterBar';
 
-export default function DashboardView({ dashboard }: { dashboard: DashboardDetail }) {
+export default function DashboardView({
+  dashboard,
+  categorias,
+}: {
+  dashboard: DashboardDetail;
+  categorias?: CategoriaFiltro[];
+}) {
   const queryClient = useQueryClient();
   const [lastRefresh, setLastRefresh] = useState<Date>(() => new Date());
   const [refreshing, setRefreshing] = useState(false);
@@ -51,7 +57,7 @@ export default function DashboardView({ dashboard }: { dashboard: DashboardDetai
 
   return (
     <>
-      <div className="flex items-center justify-end gap-3 mb-4">
+      <div className="flex flex-wrap items-center justify-end gap-3 mb-4">
         <span className="text-xs text-muted-foreground">
           Actualizado a las{' '}
           {new Intl.DateTimeFormat('es-AR', {
@@ -73,6 +79,7 @@ export default function DashboardView({ dashboard }: { dashboard: DashboardDetai
       <DashboardFilterBar
         filtros={dashboard.filtros}
         valores={valores}
+        categorias={categorias}
         onChange={(id, value) => setValores((v) => ({ ...v, [id]: value }))}
       />
 

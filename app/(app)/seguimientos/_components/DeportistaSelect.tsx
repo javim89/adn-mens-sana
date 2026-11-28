@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, X, ChevronDown, Check } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { Avatar } from '@/app/components/ui/avatar';
+import { inicialesDe } from '../_lib/formato';
 
 interface DeportistaOption {
   id: string;
@@ -78,8 +80,13 @@ export default function DeportistaSelect({ value, onChange, disciplinaId, catego
           {value.map((dep) => (
             <span
               key={dep.id}
-              className="inline-flex items-center gap-1 text-xs font-medium bg-primario text-white px-2.5 py-1 rounded-full"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primario-suave py-1 pl-1 pr-2.5 text-xs font-medium text-primario"
             >
+              <Avatar
+                alt={`${dep.apellido}, ${dep.nombre}`}
+                iniciales={inicialesDe(dep)}
+                className="size-6 text-[10px]"
+              />
               {dep.apellido}, {dep.nombre}
               <button
                 type="button"

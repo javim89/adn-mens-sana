@@ -15,8 +15,10 @@ describe('/configuracion', () => {
   it('admin: ve el form con los datos del club y su link de ingreso', async () => {
     setContexto(mockContexto('admin'));
     render(await ConfiguracionPage());
-    expect(screen.getByRole('heading', { level: 1, name: 'Configuración' })).toBeInTheDocument();
-    expect(screen.getByText(`Identidad y colores de ${CLUB_TEST.nombre}`)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Configuración del club' })).toBeInTheDocument();
+    expect(screen.getByText(`Nombre, logo y colores de ${CLUB_TEST.nombre} en la app.`)).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Vista previa' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Vista previa' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Nombre del club' })).toHaveValue(CLUB_TEST.nombre);
     expect((screen.getByRole('textbox', { name: 'Link de ingreso del club' }) as HTMLInputElement).value).toMatch(
       new RegExp(`/c/${CLUB_TEST.slug}/sign-in$`),

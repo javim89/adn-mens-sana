@@ -7,6 +7,7 @@ import TileFecha from '../(app)/dashboard/_components/TileFecha';
 import { CardSeccion } from '../(app)/dashboard/_components/EstadoVacio';
 import { NIVEL_ESTILO, NIVELES } from '../(app)/dashboard/_components/TriageDistribucion';
 import { ACENTOS } from '../(app)/dashboard/_lib/acentos';
+import { Anillo } from '@/app/components/ui/anillo';
 import {
   PLANTEL_DEMO,
   PRESENTISMO_DEMO,
@@ -87,33 +88,6 @@ export function TriageDemo({ columnas = 5 }: { columnas?: 2 | 5 }) {
   );
 }
 
-/** El anillo de progreso de la card de presentismo (la "stat card con ring" de la referencia). */
-function Anillo({ porcentaje }: { porcentaje: number }) {
-  const radio = 26;
-  const circunferencia = 2 * Math.PI * radio;
-  return (
-    <svg viewBox="0 0 64 64" className="size-16 -rotate-90" aria-hidden>
-      <circle cx="32" cy="32" r={radio} fill="none" strokeWidth="7" className="stroke-teal-100" />
-      <circle
-        cx="32"
-        cy="32"
-        r={radio}
-        fill="none"
-        strokeWidth="7"
-        strokeLinecap="round"
-        className="landing-anillo stroke-teal-600"
-        style={
-          {
-            strokeDasharray: circunferencia,
-            strokeDashoffset: circunferencia * (1 - porcentaje / 100),
-            '--anillo-total': `${circunferencia}`,
-          } as React.CSSProperties
-        }
-      />
-    </svg>
-  );
-}
-
 export function PresentismoKpiDemo() {
   return (
     <KpiCard
@@ -125,7 +99,11 @@ export function PresentismoKpiDemo() {
       detalle={PRESENTISMO_DEMO.detalle}
     >
       <div className="flex items-center gap-3">
-        <Anillo porcentaje={PRESENTISMO_DEMO.porcentaje} />
+        <Anillo
+          valor={PRESENTISMO_DEMO.porcentaje}
+          claseFondo="stroke-teal-100"
+          claseTrazo="landing-anillo stroke-teal-600"
+        />
         <p className="text-xs text-[#5B6478]">
           <span className="font-semibold text-[#1C1C1C]">Objetivo 85%</span>
           <br />

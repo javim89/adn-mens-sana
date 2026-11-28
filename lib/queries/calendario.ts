@@ -1,4 +1,5 @@
 import { getDb } from '@/lib/tenant/db';
+import { rivalPartido } from '@/lib/utils/partido';
 
 export type GrupoCategoria = 'CUARTA_QUINTA_SEXTA' | 'SEPTIMA_OCTAVA_NOVENA';
 export type TipoDia = 'TORNEO' | 'RECESO' | 'RECUPERO' | 'SIN_ACTIVIDAD';
@@ -24,6 +25,8 @@ export interface CalendarioEvento {
   grupo: GrupoCategoria;
   local: string; // local.nombre
   visitante: string; // visitante.nombre
+  /** El equipo que no es el propio (`Equipo.esPropio`); `null` si ninguno lo es. */
+  rival: string | null;
   estado: EstadoEvento;
 }
 
@@ -87,6 +90,7 @@ export async function getCalendarioData(): Promise<CalendarioData> {
     grupo: grupoDeCategoria(e.categoria.nombre),
     local: e.local.nombre,
     visitante: e.visitante.nombre,
+    rival: rivalPartido(e),
     estado: e.estado as EstadoEvento,
   }));
 

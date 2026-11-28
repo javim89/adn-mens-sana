@@ -127,6 +127,23 @@ function ValueInput({
     );
   }
 
+  // Texto con varios valores: separados por coma (ej. "4ta, 5ta").
+  if (operator === 'in' || operator === 'not_in') {
+    const lista = Array.isArray(condition.value) ? (condition.value as string[]) : [];
+    return (
+      <input
+        type="text"
+        value={lista.join(',')}
+        onChange={(e) =>
+          onChange(e.target.value === '' ? [] : e.target.value.split(',').map((v) => v.trimStart()))
+        }
+        aria-label="Valores separados por coma"
+        placeholder="Valor 1, valor 2…"
+        className="h-9 w-full rounded-md border border-gray-200 px-2 text-sm"
+      />
+    );
+  }
+
   return (
     <input
       type={dimension.type === 'number' ? 'number' : dimension.type === 'date' ? 'date' : 'text'}

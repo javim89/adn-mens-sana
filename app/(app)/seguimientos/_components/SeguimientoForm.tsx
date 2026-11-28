@@ -6,6 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { createSeguimiento, updateSeguimiento } from '@/lib/actions/seguimientos';
 import type {
   SeguimientoListItem,
@@ -17,6 +18,8 @@ import type {
 import DeportistaSelect from './DeportistaSelect';
 import ProfesionalCombobox from '@/app/(app)/turnos/_components/ProfesionalCombobox';
 import { CustomSelect } from '@/app/components/ui/custom-select';
+import { Rotulo } from '@/app/components/ui/panel';
+import { TIPO_SEGUIMIENTO_META } from '@/lib/utils/seguimiento-tipo';
 import type { DisciplinaConCategorias } from '@/lib/queries/disciplinas';
 import type { Profesional as TurnoProfesional } from '@/lib/types/turnos';
 import { TraumatologiaSection } from './sections/TraumatologiaSection';
@@ -47,15 +50,6 @@ const PRIORIDAD_OPTIONS = [
   { value: 'URGENTE', label: 'Urgente' },
 ];
 
-const TIPO_OPTIONS_ALL = [
-  { value: 'GENERICO', label: 'Genérico' },
-  { value: 'TRAUMATOLOGIA', label: 'Traumatología' },
-  { value: 'HISTORIA_CLINICA', label: 'Historia Clínica' },
-  { value: 'EVALUACION_PSICOLOGICA', label: 'Evaluación Psicológica' },
-  { value: 'EVALUACION_CARDIOLOGICA', label: 'Evaluación Cardiológica' },
-  { value: 'ANTROPOMETRIA', label: 'Antropometría' },
-];
-
 const TIPOS_POR_ROL: Record<string, TipoSeguimiento[]> = {
   medico: ['GENERICO', 'TRAUMATOLOGIA', 'HISTORIA_CLINICA'],
   psicologo: ['GENERICO', 'EVALUACION_PSICOLOGICA'],
@@ -65,9 +59,41 @@ const TIPOS_POR_ROL: Record<string, TipoSeguimiento[]> = {
   admin: ['GENERICO', 'TRAUMATOLOGIA', 'HISTORIA_CLINICA', 'EVALUACION_PSICOLOGICA', 'EVALUACION_CARDIOLOGICA', 'ANTROPOMETRIA'],
 };
 
-function getTiposDisponibles(role: string) {
-  const tipos = TIPOS_POR_ROL[role] ?? ['GENERICO'];
-  return TIPO_OPTIONS_ALL.filter((opt) => tipos.includes(opt.value as TipoSeguimiento));
+function getTiposDisponibles(role: string): TipoSeguimiento[] {
+  return TIPOS_POR_ROL[role] ?? ['GENERICO'];
+}
+
+/** Selector de tipo en píldoras con el punto de color del tipo (radio group accesible). */
+function TipoPills({
+  tipos,
+  value,
+  onChange,
+}: {
+  tipos: TipoSeguimiento[];
+  value: TipoSeguimiento;
+  onChange: (tipo: TipoSeguimiento) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-labelledby="tipo-seguimiento-label" className="flex flex-wrap gap-1.5">
+      {tipos.map((t) => {
+        const meta = TIPO_SEGUIMIENTO_META[t];
+        const activo = t === value;
+        return (
+          <button
+            key={t}
+            type="button"
+            role="radio"
+            aria-checked={activo}
+            onClick={() => onChange(t)}
+            className={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secundario/40 ${activo ? 'border-primario bg-primario text-white' : 'border-border bg-background text-foreground hover:bg-muted'}`}
+          >
+            <span className={`size-2 rounded-full ${meta.dot}`} aria-hidden />
+            {meta.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 const cprdField = z.number().int().min(0, 'Mínimo 0').max(36, 'Máximo 36').optional().or(z.nan().transform(() => undefined));
@@ -164,7 +190,6 @@ function toDatetimeLocal(iso: string | Date | null | undefined): string {
 export default function SeguimientoForm({ mode, isAdmin, role, profesionales, disciplinas = [], initialData }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [serverError, setServerError] = useState<string | null>(null);
 
   const [deportistaOptions, setDeportistaOptions] = useState<DeportistaOption[]>(
     initialData?.deportistas ?? [],
@@ -365,8 +390,6 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
   }
 
   function onSubmit(values: SeguimientoExtendedFormValues) {
-    setServerError(null);
-
     const tipo = (values.tipoSeguimiento ?? 'GENERICO') as TipoSeguimiento;
 
     const data: SeguimientoFormData = {
@@ -391,18 +414,32 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
           : await updateSeguimiento(initialData!.id, data);
 
       if (!result.success) {
-        setServerError(result.error);
+        toast.error(result.error ?? 'No se pudo guardar el seguimiento');
         return;
       }
+      toast.success(mode === 'create' ? 'Seguimiento guardado' : 'Seguimiento actualizado');
       router.push('/seguimientos');
     });
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="max-w-2xl mx-auto space-y-5">
-      {serverError && (
-        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          {serverError}
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="max-w-3xl space-y-5">
+      {tiposDisponibles.length > 1 && (
+        <div>
+          <Rotulo id="tipo-seguimiento-label" className="mb-2">
+            Tipo de seguimiento
+          </Rotulo>
+          <Controller
+            name="tipoSeguimiento"
+            control={control}
+            render={({ field }) => (
+              <TipoPills
+                tipos={tiposDisponibles}
+                value={(field.value as TipoSeguimiento | undefined) ?? 'GENERICO'}
+                onChange={field.onChange}
+              />
+            )}
+          />
         </div>
       )}
 
@@ -515,26 +552,6 @@ export default function SeguimientoForm({ mode, isAdmin, role, profesionales, di
           />
         </div>
       </div>
-
-      {tiposDisponibles.length > 1 && (
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-1.5">
-            Tipo de seguimiento
-          </label>
-          <Controller
-            name="tipoSeguimiento"
-            control={control}
-            render={({ field }) => (
-              <CustomSelect
-                value={field.value ?? 'GENERICO'}
-                onChange={field.onChange}
-                options={tiposDisponibles}
-                placeholder="Seleccionar tipo..."
-              />
-            )}
-          />
-        </div>
-      )}
 
       <div>
         <label className="block text-sm font-medium text-foreground mb-1.5">

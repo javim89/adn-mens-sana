@@ -6,6 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, Search, CheckCheck, CalendarX } from 'lucide-react';
+import { toast } from 'sonner';
 import { CustomSelect } from '@/app/components/ui/custom-select';
 import {
   createConvocatoria,
@@ -20,6 +21,7 @@ import type {
 } from '@/lib/types/convocatorias';
 import type { DisciplinaConCategorias } from '@/lib/queries/disciplinas';
 import { ESTADO_LABELS as ESTADO_DEPORTISTA_LABELS } from '@/lib/utils/enum-labels';
+import { textoConvocados } from '../_lib/formato';
 
 const ESTADO_LABELS: Record<string, string> = {
   PROGRAMADO: 'Programado',
@@ -232,9 +234,10 @@ export default function ConvocatoriaForm({ mode, disciplinas, initialData }: Pro
           : await updateConvocatoria(initialData!.id, data);
 
       if (!result.success) {
-        setServerError(result.error);
+        toast.error(result.error);
         return;
       }
+      toast.success(`Convocatoria guardada · ${textoConvocados(convocados.length)}`);
       router.push('/convocatorias');
     });
   }

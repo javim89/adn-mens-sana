@@ -29,6 +29,7 @@ import type {
   TipoComida,
 } from '@/lib/generated/prisma/enums';
 import { CATEGORIAS_SIN_MERIENDA, COMIDAS } from '@/lib/utils/viandas';
+import { condicionPartido, rivalPartido, type CondicionPartido } from '@/lib/utils/partido';
 
 /** Los dos bordes de una ventana de días, ya resueltos por `lib/utils/fecha.ts`. */
 export interface RangoFechas {
@@ -260,12 +261,30 @@ export interface DeportistaAusencias {
   id: string;
   nombre: string;
   apellido: string;
+  /** Nombre de la categoría del deportista, o `null` si no tiene. */
+  categoria: string | null;
   ausencias: number;
+}
+
+/** Presentismo de la semana actual para una categoría (la del entrenamiento). */
+export interface PresentismoCategoria {
+  categoriaId: string;
+  categoria: string;
+  registros: number;
+  asistencias: number;
+  porcentaje: number | null;
 }
 
 export interface ResumenPresentismo {
   actual: PresentismoSemana;
   previo: PresentismoSemana;
+  /**
+   * Puntos porcentuales contra la semana anterior (`actual - previo`). `null` si
+   * alguna de las dos no tiene registros: sin base no hay variación.
+   */
+  variacion: number | null;
+  /** % por categoría en la semana actual, en el orden del catálogo de categorías. */
+  porCategoria: PresentismoCategoria[];
   /** 2+ ausencias en la semana: es un factor del scoring de triage, así que conecta las dos métricas. */
   ausentismoReiterado: DeportistaAusencias[];
   /** Semana actual día por día: SIEMPRE 7 elementos, lunes a domingo de `rango`. */
@@ -273,6 +292,12 @@ export interface ResumenPresentismo {
 }
 
 type FilaPresentismoDia = { clave: string; registros: number; asistencias: number };
+type FilaPresentismoCategoria = {
+  categoria_id: string;
+  categoria: string;
+  registros: number;
+  asistencias: number;
+};
 
 function porcentaje(asistencias: number, registros: number): number | null {
   return registros === 0 ? null : Math.round((asistencias / registros) * 100);
@@ -328,10 +353,17 @@ export async function getResumenPresentismo(params: {
   rangoPrevio: RangoFechas;
   /** `undefined` = admin (todos los entrenadores). */
   entrenadorId?: string;
+  /** Filtros de la pantalla de presentismo; van sobre el entrenamiento. */
+  disciplinaId?: string;
+  categoriaId?: string;
 }): Promise<ResumenPresentismo> {
   const db = await getDb();
-  const { rango, rangoPrevio, entrenadorId } = params;
-  const scope = entrenadorId ? { entrenadorId } : {};
+  const { rango, rangoPrevio, entrenadorId, disciplinaId, categoriaId } = params;
+  const scope = {
+    ...(entrenadorId ? { entrenadorId } : {}),
+    ...(disciplinaId ? { disciplinaId } : {}),
+    ...(categoriaId ? { categoriaId } : {}),
+  };
 
   const whereSemana = {
     entrenamiento: {
@@ -340,11 +372,15 @@ export async function getResumenPresentismo(params: {
     },
   };
 
-  const filtroEntrenador = entrenadorId
-    ? Prisma.sql`AND en.entrenador_id = ${entrenadorId}`
-    : Prisma.empty;
+  // Disciplina y categoría antes del entrenador: los tests fijan que el entrenador
+  // es el último parámetro.
+  const filtroEntrenamiento = Prisma.sql`${
+    disciplinaId ? Prisma.sql`AND en.disciplina_id = ${disciplinaId}` : Prisma.empty
+  } ${categoriaId ? Prisma.sql`AND en.categoria_id = ${categoriaId}` : Prisma.empty} ${
+    entrenadorId ? Prisma.sql`AND en.entrenador_id = ${entrenadorId}` : Prisma.empty
+  }`;
 
-  const [gruposActual, gruposPrevio, ausentes, filasPorDia] = await Promise.all([
+  const [gruposActual, gruposPrevio, ausentes, filasPorDia, filasPorCategoria] = await Promise.all([
     db.asistencia.groupBy({
       by: ['estado'],
       where: whereSemana,
@@ -379,8 +415,24 @@ export async function getResumenPresentismo(params: {
       JOIN entrenamientos en ON en.id = a.entrenamiento_id
       WHERE en.club_id = ${db.$clubId()}
         AND en.fecha >= ${rango.desdeDb} AND en.fecha < ${rango.finExclusivoDb}
-      ${filtroEntrenador}
+      ${filtroEntrenamiento}
       GROUP BY en.fecha
+    `),
+    db.$queryRaw<FilaPresentismoCategoria[]>(Prisma.sql`
+      SELECT c.id AS categoria_id,
+             c.nombre AS categoria,
+             COUNT(*)::int AS registros,
+             COUNT(*) FILTER (
+               WHERE a.estado::text IN (${Prisma.join([...ESTADOS_PRESENTES])})
+             )::int AS asistencias
+      FROM asistencias a
+      JOIN entrenamientos en ON en.id = a.entrenamiento_id
+      JOIN categorias c ON c.id = en.categoria_id
+      WHERE en.club_id = ${db.$clubId()}
+        AND en.fecha >= ${rango.desdeDb} AND en.fecha < ${rango.finExclusivoDb}
+      ${filtroEntrenamiento}
+      GROUP BY c.id, c.nombre, c.orden
+      ORDER BY c.orden ASC, c.nombre ASC
     `),
   ]);
 
@@ -388,18 +440,48 @@ export async function getResumenPresentismo(params: {
   if (ausentes.length > 0) {
     const nombres = await db.deportista.findMany({
       where: { id: { in: ausentes.map((a) => a.deportistaId) } },
-      select: { id: true, nombre: true, apellido: true },
+      select: { id: true, nombre: true, apellido: true, categoria: { select: { nombre: true } } },
     });
     const porId = new Map(nombres.map((d) => [d.id, d]));
     ausentismoReiterado = ausentes.flatMap((a) => {
       const d = porId.get(a.deportistaId);
-      return d ? [{ ...d, ausencias: a._count.deportistaId }] : [];
+      return d
+        ? [
+            {
+              id: d.id,
+              nombre: d.nombre,
+              apellido: d.apellido,
+              categoria: d.categoria?.nombre ?? null,
+              ausencias: a._count.deportistaId,
+            },
+          ]
+        : [];
     });
   }
 
+  const actual = porcentajeAsistencia(gruposActual);
+  const previo = porcentajeAsistencia(gruposPrevio);
+
   return {
-    actual: porcentajeAsistencia(gruposActual),
-    previo: porcentajeAsistencia(gruposPrevio),
+    actual,
+    previo,
+    variacion:
+      actual.porcentaje === null || previo.porcentaje === null
+        ? null
+        : actual.porcentaje - previo.porcentaje,
+    porCategoria: filasPorCategoria.flatMap((f) =>
+      f.categoria_id
+        ? [
+            {
+              categoriaId: f.categoria_id,
+              categoria: f.categoria,
+              registros: f.registros,
+              asistencias: f.asistencias,
+              porcentaje: porcentaje(f.asistencias, f.registros),
+            },
+          ]
+        : [],
+    ),
     ausentismoReiterado,
     porDia: presentismoPorDia(rango.desdeDb, filasPorDia),
   };
@@ -559,6 +641,10 @@ export interface EventoProximo {
   estado: string;
   /** Si ya tiene convocatoria armada. Es la parte accionable de la fila. */
   tieneConvocatoria: boolean;
+  /** Según `Equipo.esPropio`; `null` si ninguno de los dos es el equipo del club. */
+  condicion: CondicionPartido | null;
+  /** El equipo que no es el propio; `null` si ninguno lo es. */
+  rival: string | null;
 }
 
 /**
@@ -570,19 +656,21 @@ export interface EventoProximo {
 export async function getProximosEventos(params: {
   desdeHoyDb: Date;
   limite?: number;
+  /** Chip de categoría del calendario. */
+  categoriaId?: string;
 }): Promise<EventoProximo[]> {
   const db = await getDb();
-  const { desdeHoyDb, limite = 5 } = params;
+  const { desdeHoyDb, limite = 5, categoriaId } = params;
 
   const eventos = await db.eventoTorneo.findMany({
-    where: { dia: { fecha: { gte: desdeHoyDb } } },
+    where: { dia: { fecha: { gte: desdeHoyDb } }, ...(categoriaId ? { categoriaId } : {}) },
     select: {
       id: true,
       estado: true,
       dia: { select: { fecha: true } },
       categoria: { select: { nombre: true } },
-      local: { select: { nombre: true } },
-      visitante: { select: { nombre: true } },
+      local: { select: { nombre: true, esPropio: true } },
+      visitante: { select: { nombre: true, esPropio: true } },
       convocatoria: { select: { id: true } },
     },
     orderBy: { dia: { fecha: 'asc' } },
@@ -597,5 +685,7 @@ export async function getProximosEventos(params: {
     visitante: e.visitante.nombre,
     estado: e.estado,
     tieneConvocatoria: e.convocatoria !== null,
+    condicion: condicionPartido(e),
+    rival: rivalPartido(e),
   }));
 }

@@ -27,7 +27,7 @@ const { mockQueries, mockTriage } = vi.hoisted(() => ({
     getResumenPlantel: vi.fn(),
     getProximosEventos: vi.fn(),
   },
-  mockTriage: { getDistribucionTriage: vi.fn() },
+  mockTriage: { getDistribucionTriage: vi.fn(), getAtencionPrioritaria: vi.fn() },
 }));
 
 vi.mock('@/lib/queries/dashboard', () => mockQueries);
@@ -134,6 +134,7 @@ beforeEach(() => {
     sinCalcular: 0,
     totalActivos: 0,
   });
+  mockTriage.getAtencionPrioritaria.mockResolvedValue([]);
   mockQueries.getResumenViandas.mockResolvedValue({
     porComida: {
       DESAYUNO: { entregas: 0, fueraDeFicha: 0 },
@@ -241,6 +242,15 @@ describe('DashboardPage — las queries de las cards ocultas NO se ejecutan', ()
     social: ['SeccionTriage', 'SeccionSeguimientos', 'SeccionPlantel', 'SeccionEventos'],
     responsable_viandas: ['SeccionViandas'],
   };
+
+  test('"A quién atender primero" consulta solo si se monta triage', async () => {
+    await ejecutarSecciones('responsable_viandas', { lugarRetiro: 'SEDE' });
+    expect(mockTriage.getAtencionPrioritaria).not.toHaveBeenCalled();
+
+    vi.clearAllMocks();
+    await ejecutarSecciones('social');
+    expect(mockTriage.getAtencionPrioritaria).toHaveBeenCalledTimes(1);
+  });
 
   test.each(Object.keys(ESPERADAS))('rol %s', async (rol) => {
     // El lugar es necesario para que la sección de viandas llegue a consultar: un

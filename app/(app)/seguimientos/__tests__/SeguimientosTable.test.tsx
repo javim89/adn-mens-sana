@@ -1,5 +1,5 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, test, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SeguimientosTable from '../_components/SeguimientosTable';
 import type { SeguimientoListItem } from '@/lib/types/seguimientos';
@@ -62,11 +62,13 @@ function renderTable(props: Partial<React.ComponentProps<typeof SeguimientosTabl
       currentUserId={props.currentUserId ?? 'user-x'}
       profesionales={props.profesionales ?? []}
       disciplinas={props.disciplinas ?? []}
-      currentPrioridad={props.currentPrioridad ?? ''}
+      currentPrioridades={props.currentPrioridades ?? []}
+      currentTipo={props.currentTipo ?? null}
       currentArea={props.currentArea ?? ''}
       currentDisciplina={props.currentDisciplina ?? ''}
       currentCategoria={props.currentCategoria ?? ''}
       currentSearch={props.currentSearch ?? ''}
+      lateral={props.lateral}
     />,
   );
 }
@@ -86,6 +88,17 @@ const mockDisciplinas = [
     categorias: [],
   },
 ];
+
+beforeAll(() => {
+  // cmdk y Radix (FiltroChip) usan APIs que jsdom no trae.
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  Element.prototype.scrollIntoView ??= function () {};
+  Element.prototype.hasPointerCapture ??= () => false;
+});
 
 beforeEach(() => {
   mockPush.mockClear();
@@ -154,7 +167,60 @@ describe('SeguimientosTable', () => {
   test('el contador del header muestra el total del server, no el largo de la página', () => {
     const data = [makeSeguimiento({ id: 'seg-1' })];
     renderTable({ initialSeguimientos: data, total: 4911 });
-    expect(screen.getByText(/4911 seguimientos/)).toBeDefined();
+    const h1 = screen.getByRole('heading', { level: 1, name: 'Seguimientos' });
+    const contador = h1.parentElement!.querySelector('[data-slot="contador"]')!;
+    expect(contador).toHaveTextContent('4911');
+    expect(within(contador as HTMLElement).getByText('4911 seguimientos')).toHaveClass('sr-only');
+  });
+
+  test('el banner navy rotula el total como "registrados" (no "abiertos") y sin filtros', () => {
+    renderTable({ initialSeguimientos: [makeSeguimiento()], total: 42 });
+    const label = screen.getByText(/Seguimientos registrados/);
+    const banner = label.closest('div.rounded-2xl') as HTMLElement;
+    expect(banner.className).toContain('bg-primario');
+    expect(within(banner).getAllByText(/^42/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/abiertos/i)).toBeNull();
+  });
+
+  test('con filtros, el banner dice "con los filtros aplicados"', () => {
+    renderTable({ initialSeguimientos: [makeSeguimiento()], total: 3, currentPrioridades: ['ALTA'] });
+    expect(screen.getByText(/Seguimientos con los filtros aplicados/)).toBeInTheDocument();
+  });
+
+  test('cada fila tiene avatar con iniciales del primer deportista', () => {
+    const data = [
+      makeSeguimiento({ deportistas: [{ id: 'dep-1', nombre: 'Juan', apellido: 'Pérez' }] }),
+    ];
+    renderTable({ initialSeguimientos: data, total: 1 });
+    // Mobile + desktop.
+    expect(screen.getAllByText('JP').length).toBe(2);
+    expect(screen.getAllByRole('img', { name: 'Pérez, Juan' }).length).toBe(2);
+  });
+
+  test('la píldora de tipo va debajo del título en la tabla de desktop', () => {
+    const data = [makeSeguimiento({ titulo: 'Control de tobillo', tipoSeguimiento: 'TRAUMATOLOGIA' })];
+    const { container } = renderTable({ initialSeguimientos: data, total: 1 });
+    const tabla = container.querySelector('table')!;
+    const celda = within(tabla).getByText('Control de tobillo').closest('td')!;
+    expect(within(celda).getByText('Traumatología').className).toContain('bg-amber-50');
+  });
+
+  test('la fecha es corta (d/m) con la fecha completa en el title', () => {
+    const anio = new Date().getFullYear();
+    const data = [makeSeguimiento({ fecha: `${anio}-07-01` })];
+    const { container } = renderTable({ initialSeguimientos: data, total: 1 });
+    const celda = within(container.querySelector('table')!).getByText('1/7');
+    expect(celda).toHaveAttribute('title', `01/07/${anio}`);
+  });
+
+  test('renderiza la columna lateral cuando se pasa', () => {
+    renderTable({
+      initialSeguimientos: [],
+      total: 0,
+      lateral: <section>Panel lateral</section>,
+    });
+    const aside = screen.getByRole('complementary', { name: 'Resumen de seguimientos' });
+    expect(within(aside).getByText('Panel lateral')).toBeInTheDocument();
   });
 
   test('el botón "Nuevo seguimiento" se muestra cuando canWrite=true', () => {
@@ -172,13 +238,50 @@ describe('SeguimientosTable', () => {
     const data = [makeSeguimiento({ id: 'seg-1', prioridad: 'URGENTE' })];
     renderTable({ initialSeguimientos: data, total: 1, canWrite: true });
 
-    await user.click(screen.getByRole('button', { name: 'Todas las prioridades' }));
-    await user.click(screen.getByRole('button', { name: 'Urgente' }));
+    await user.click(screen.getByRole('button', { name: 'Prioridad' }));
+    await user.click(screen.getByRole('option', { name: 'Urgente' }));
 
     expect(mockPush).toHaveBeenCalledTimes(1);
     const url = mockPush.mock.calls[0][0] as string;
     expect(url).toContain('prioridad=URGENTE');
     expect(url).not.toContain('page=');
+  });
+
+  test('la prioridad es multivalor: suma la nueva a las actuales separadas por coma', async () => {
+    const user = userEvent.setup();
+    renderTable({ initialSeguimientos: [], total: 0, currentPrioridades: ['ALTA'] });
+
+    // Un solo valor (como los links del dashboard) se ve en el chip.
+    await user.click(screen.getByRole('button', { name: 'Prioridad: Alta' }));
+    await user.click(screen.getByRole('option', { name: 'Urgente' }));
+
+    const url = decodeURIComponent(mockPush.mock.calls[0][0] as string);
+    expect(url).toContain('prioridad=ALTA,URGENTE');
+  });
+
+  test('con dos prioridades el chip muestra la cantidad y "Todas" limpia el filtro', async () => {
+    const user = userEvent.setup();
+    renderTable({ initialSeguimientos: [], total: 0, currentPrioridades: ['ALTA', 'URGENTE'] });
+
+    await user.click(screen.getByRole('button', { name: 'Prioridad: 2' }));
+    await user.click(screen.getByRole('option', { name: 'Todas' }));
+
+    expect(mockPush.mock.calls[0][0]).toBe('/seguimientos');
+  });
+
+  test('el filtro de tipo escribe ?tipo= en la URL', async () => {
+    const user = userEvent.setup();
+    renderTable({ initialSeguimientos: [], total: 0 });
+
+    await user.click(screen.getByRole('button', { name: 'Tipo' }));
+    await user.click(screen.getByRole('option', { name: 'Antropometría' }));
+
+    expect(mockPush.mock.calls[0][0]).toContain('tipo=ANTROPOMETRIA');
+  });
+
+  test('el tipo activo se ve en el chip', () => {
+    renderTable({ initialSeguimientos: [], total: 0, currentTipo: 'TRAUMATOLOGIA' });
+    expect(screen.getByRole('button', { name: 'Tipo: Traumatología' })).toHaveAttribute('data-activo');
   });
 
   test('escribir en la búsqueda actualiza la URL con debounce (router.replace)', async () => {
@@ -199,11 +302,11 @@ describe('SeguimientosTable', () => {
     expect(url).toContain('q=rodilla');
   });
 
-  test('la columna "Área responsable" aparece solo cuando isAdmin=true', () => {
+  test('la columna "Profesional" aparece solo cuando isAdmin=true', () => {
     const data = [makeSeguimiento()];
 
     const { rerender } = renderTable({ initialSeguimientos: data, total: 1 });
-    expect(screen.queryByText('Área responsable')).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Profesional' })).toBeNull();
 
     rerender(
       <SeguimientosTable
@@ -216,17 +319,18 @@ describe('SeguimientosTable', () => {
         currentUserId="user-x"
         profesionales={[]}
         disciplinas={[]}
-        currentPrioridad=""
+        currentPrioridades={[]}
+        currentTipo={null}
         currentArea=""
         currentDisciplina=""
         currentCategoria=""
         currentSearch=""
       />,
     );
-    expect(screen.getByText('Área responsable')).toBeDefined();
+    expect(screen.getByRole('columnheader', { name: 'Profesional' })).toBeDefined();
   });
 
-  test('el select de área usa la lista completa de profesionales (no derivada de la página)', async () => {
+  test('el filtro "Profesional" usa la lista completa de profesionales (no derivada de la página)', async () => {
     const user = userEvent.setup();
     const data = [makeSeguimiento({ profesionalId: 'prof-A', profesionalNombre: 'Dr. A' })];
     renderTable({
@@ -240,9 +344,19 @@ describe('SeguimientosTable', () => {
       ],
     });
 
-    await user.click(screen.getByRole('button', { name: 'Todas las áreas' }));
+    await user.click(screen.getByRole('button', { name: 'Profesional' }));
     // Ambos profesionales aparecen aunque solo prof-A esté en la página actual
-    expect(screen.getByRole('button', { name: 'Dr. B' })).toBeDefined();
+    await user.click(screen.getByRole('option', { name: 'Dr. B' }));
+    expect(mockPush.mock.calls[0][0]).toContain('area=prof-B');
+  });
+
+  test('el filtro "Profesional" no se muestra si no es admin', () => {
+    renderTable({
+      initialSeguimientos: [],
+      total: 0,
+      profesionales: [{ id: 'prof-A', nombre: 'Dr. A' }],
+    });
+    expect(screen.queryByRole('button', { name: 'Profesional' })).toBeNull();
   });
 
   test('el filtro de categoría arranca deshabilitado cuando no hay disciplina seleccionada', () => {
@@ -254,7 +368,7 @@ describe('SeguimientosTable', () => {
       currentDisciplina: '',
     });
 
-    const categoriaTrigger = screen.getByRole('button', { name: /todas las categorías/i });
+    const categoriaTrigger = screen.getByRole('button', { name: 'Categoría' });
     expect(categoriaTrigger).toBeDisabled();
   });
 
@@ -268,13 +382,28 @@ describe('SeguimientosTable', () => {
       currentDisciplina: 'disc-futbol',
     });
 
-    const categoriaTrigger = screen.getByRole('button', { name: /todas las categorías/i });
+    expect(screen.getByRole('button', { name: 'Disciplina: Fútbol' })).toBeInTheDocument();
+    const categoriaTrigger = screen.getByRole('button', { name: 'Categoría' });
     expect(categoriaTrigger).not.toBeDisabled();
 
     await user.click(categoriaTrigger);
     // Muestra SOLO las categorías de la disciplina elegida (Fútbol).
-    expect(await screen.findByText('Primera')).toBeInTheDocument();
-    expect(screen.getByText('Reserva')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Primera' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Reserva' })).toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: 'Reserva' }));
+    expect(mockPush.mock.calls[0][0]).toContain('categoria=cat-reserva');
+  });
+
+  test('cambiar de disciplina limpia la categoría', async () => {
+    const user = userEvent.setup();
+    renderTable({ initialSeguimientos: [], total: 0, disciplinas: mockDisciplinas });
+
+    await user.click(screen.getByRole('button', { name: 'Disciplina' }));
+    await user.click(screen.getByRole('option', { name: 'Básquet' }));
+
+    const url = mockPush.mock.calls[0][0] as string;
+    expect(url).toContain('disciplina=disc-basquet');
+    expect(url).not.toContain('categoria=');
   });
 
   test('botones Editar/Eliminar visibles si isAdmin=true (independientemente del profesionalId)', () => {

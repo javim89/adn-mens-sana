@@ -53,4 +53,16 @@ describe('DeportistaSelect', () => {
     expect(url).toContain('filter%5Bdisciplina%5D=disc-1');
     expect(url).toContain('filter%5BcategoriaId%5D=cat-1');
   });
+
+  test('cada deportista elegido se muestra con su avatar de iniciales', () => {
+    render(
+      <DeportistaSelect
+        value={[{ id: 'dep-1', nombre: 'Juan', apellido: 'Pérez' }]}
+        onChange={() => {}}
+      />,
+      { wrapper },
+    );
+    expect(screen.getByRole('img', { name: 'Pérez, Juan' })).toHaveTextContent('JP');
+    expect(screen.getByRole('button', { name: 'Quitar Pérez' })).toBeInTheDocument();
+  });
 });

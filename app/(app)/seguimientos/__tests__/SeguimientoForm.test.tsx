@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SeguimientoForm from '../_components/SeguimientoForm';
 import { createSeguimiento } from '@/lib/actions/seguimientos';
@@ -9,6 +9,12 @@ import type { SeguimientoListItem } from '@/lib/types/seguimientos';
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
+
+const { toastSuccess, toastError } = vi.hoisted(() => ({
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+}));
+vi.mock('sonner', () => ({ toast: { success: toastSuccess, error: toastError } }));
 
 // Mock server actions
 vi.mock('@/lib/actions/seguimientos', () => ({
@@ -71,6 +77,8 @@ const sampleInitialData: SeguimientoListItem = {
 };
 
 beforeEach(() => {
+  toastSuccess.mockReset();
+  toastError.mockReset();
   mockedCreateSeguimiento.mockReset();
   mockedCreateSeguimiento.mockResolvedValue({ success: true, id: 'seg-new' });
 });
@@ -153,8 +161,7 @@ describe('SeguimientoForm', () => {
 
   // ---- New tests for tipo selector and role-based options ----
 
-  test('con role="medico" se muestra selector con opciones Genérico, Traumatología, Historia Clínica', async () => {
-    const user = userEvent.setup();
+  test('con role="medico" se muestra selector con opciones Genérico, Traumatología, Historia Clínica', () => {
     render(
       <SeguimientoForm
         mode="create"
@@ -163,17 +170,15 @@ describe('SeguimientoForm', () => {
         profesionales={[]}
       />,
     );
-    // The selector button is labeled with the current selection (defaults to GENERICO)
-    const tipoButton = screen.getByRole('button', { name: /Genérico/i });
-    await user.click(tipoButton);
-    expect(screen.getByRole('button', { name: /^Traumatología$/i })).toBeDefined();
-    expect(screen.getByRole('button', { name: /^Historia Clínica$/i })).toBeDefined();
-    expect(screen.queryByRole('button', { name: /Evaluación Psicológica/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Evaluación Cardiológica/i })).toBeNull();
+    // Píldoras (radio group) con GENERICO elegido por defecto.
+    const grupo = screen.getByRole('radiogroup', { name: 'Tipo de seguimiento' });
+    const radios = within(grupo).getAllByRole('radio');
+    expect(radios.map((r) => r.textContent)).toEqual(['Genérico', 'Traumatología', 'Historia Clínica']);
+    expect(within(grupo).getByRole('radio', { name: 'Genérico' })).toHaveAttribute('aria-checked', 'true');
+    expect(within(grupo).getByRole('radio', { name: 'Traumatología' })).toHaveAttribute('aria-checked', 'false');
   });
 
-  test('con role="psicologo" se muestra selector con opciones Genérico, Evaluación Psicológica', async () => {
-    const user = userEvent.setup();
+  test('con role="psicologo" se muestra selector con opciones Genérico, Evaluación Psicológica', () => {
     render(
       <SeguimientoForm
         mode="create"
@@ -182,12 +187,10 @@ describe('SeguimientoForm', () => {
         profesionales={[]}
       />,
     );
-    const tipoButton = screen.getByRole('button', { name: /Genérico/i });
-    await user.click(tipoButton);
-    expect(screen.getByRole('button', { name: /^Evaluación Psicológica$/i })).toBeDefined();
-    expect(screen.queryByRole('button', { name: /Traumatología/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Historia Clínica/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Evaluación Cardiológica/i })).toBeNull();
+    expect(screen.getByRole('radio', { name: 'Evaluación Psicológica' })).toBeDefined();
+    expect(screen.queryByRole('radio', { name: /Traumatología/i })).toBeNull();
+    expect(screen.queryByRole('radio', { name: /Historia Clínica/i })).toBeNull();
+    expect(screen.queryByRole('radio', { name: /Evaluación Cardiológica/i })).toBeNull();
   });
 
   test('con role="kinesiologo" NO se muestra el selector de tipo', () => {
@@ -212,9 +215,8 @@ describe('SeguimientoForm', () => {
         profesionales={[]}
       />,
     );
-    // Open tipo selector and pick Traumatología
-    await user.click(screen.getByRole('button', { name: /Genérico/i }));
-    await user.click(screen.getByRole('button', { name: /^Traumatología$/i }));
+    await user.click(screen.getByRole('radio', { name: 'Traumatología' }));
+    expect(screen.getByRole('radio', { name: 'Traumatología' })).toHaveAttribute('aria-checked', 'true');
     // The Estabilidad section title should now be visible
     expect(screen.getByText('Estabilidad')).toBeDefined();
   });
@@ -229,8 +231,7 @@ describe('SeguimientoForm', () => {
         profesionales={[]}
       />,
     );
-    await user.click(screen.getByRole('button', { name: /Genérico/i }));
-    await user.click(screen.getByRole('button', { name: /^Evaluación Psicológica$/i }));
+    await user.click(screen.getByRole('radio', { name: 'Evaluación Psicológica' }));
     expect(screen.getByText('CPRD – Características Psicológicas')).toBeDefined();
     expect(screen.getByText(/Control de Estrés/i)).toBeDefined();
   });
@@ -245,13 +246,11 @@ describe('SeguimientoForm', () => {
         profesionales={[]}
       />,
     );
-    await user.click(screen.getByRole('button', { name: /Genérico/i }));
-    const opcionAntropometria = screen.getByRole('button', { name: /^Antropometría$/i });
-    expect(opcionAntropometria).toBeDefined();
+    const opcionAntropometria = screen.getByRole('radio', { name: 'Antropometría' });
     await user.click(opcionAntropometria);
     expect(screen.getByText('Básicos')).toBeDefined();
-    expect(screen.getByText('Pliegues')).toBeDefined();
-    expect(screen.getByText('Sumatorias (auto-calculadas)')).toBeDefined();
+    expect(screen.getByText('Pliegues (mm)')).toBeDefined();
+    expect(screen.getByRole('group', { name: 'Cálculos automáticos' })).toBeDefined();
   });
 
   test('los campos genéricos (descripción, recomendaciones) siempre se muestran independientemente del tipo', async () => {
@@ -270,8 +269,7 @@ describe('SeguimientoForm', () => {
     expect(screen.getByPlaceholderText(/Indicaciones, plan de acción/i)).toBeDefined();
 
     // Change tipo to Traumatología
-    await user.click(screen.getByRole('button', { name: /Genérico/i }));
-    await user.click(screen.getByRole('button', { name: /^Traumatología$/i }));
+    await user.click(screen.getByRole('radio', { name: 'Traumatología' }));
 
     // Still present
     expect(screen.getByPlaceholderText(/Detalles del seguimiento/i)).toBeDefined();
@@ -468,5 +466,64 @@ describe('SeguimientoForm', () => {
     expect(screen.getByRole('button', { name: /^Sub-17$/i })).toBeDefined();
     // No debe ofrecer categorías de otra disciplina
     expect(screen.queryByRole('button', { name: /^Mini$/i })).toBeNull();
+  });
+
+  // ---- Tipo en píldoras y feedback con toasts ----
+
+  async function completarYGuardar(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByTestId('add-dep-1'));
+    const fechaInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+    fireEvent.change(fechaInput, { target: { value: '2026-08-05' } });
+    await user.type(screen.getByPlaceholderText(/Evaluación de rodilla/i), 'Control');
+    await user.click(screen.getByText('Guardar seguimiento'));
+  }
+
+  test('el selector de tipo va arriba de todo y cada píldora tiene el punto de color del tipo', () => {
+    const { container } = render(
+      <SeguimientoForm mode="create" isAdmin={false} role="nutricionista" profesionales={[]} />,
+    );
+    const form = container.querySelector('form')!;
+    expect(form.firstElementChild).toContainElement(screen.getByRole('radiogroup'));
+    const antropometria = screen.getByRole('radio', { name: 'Antropometría' });
+    expect(antropometria.querySelector('span.bg-green-500')).not.toBeNull();
+  });
+
+  test('la píldora elegida se resalta con el primario del club', async () => {
+    const user = userEvent.setup();
+    render(<SeguimientoForm mode="create" isAdmin={false} role="medico" profesionales={[]} />);
+    const pill = screen.getByRole('radio', { name: 'Historia Clínica' });
+    expect(pill.className).not.toContain('bg-primario');
+    await user.click(pill);
+    expect(pill.className).toContain('bg-primario');
+  });
+
+  test('en modo edit arranca con el tipo del seguimiento', () => {
+    render(
+      <SeguimientoForm
+        mode="edit"
+        isAdmin={false}
+        role="medico"
+        profesionales={[]}
+        initialData={{ ...sampleInitialData, tipoSeguimiento: 'TRAUMATOLOGIA' }}
+      />,
+    );
+    expect(screen.getByRole('radio', { name: 'Traumatología' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  test('al guardar con éxito muestra el toast "Seguimiento guardado"', async () => {
+    const user = userEvent.setup();
+    render(<SeguimientoForm mode="create" isAdmin={false} role="social" profesionales={[]} />);
+    await completarYGuardar(user);
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Seguimiento guardado'));
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  test('si el servidor falla muestra el error en un toast', async () => {
+    mockedCreateSeguimiento.mockResolvedValue({ success: false, error: 'Sin permiso' });
+    const user = userEvent.setup();
+    render(<SeguimientoForm mode="create" isAdmin={false} role="social" profesionales={[]} />);
+    await completarYGuardar(user);
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Sin permiso'));
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 });

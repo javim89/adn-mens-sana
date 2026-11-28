@@ -4,6 +4,7 @@ import type { AppRole } from '@/lib/roles';
 import { getConvocatorias } from '@/lib/queries/convocatorias';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { toDateString } from '@/lib/queries/calendario';
+import { condicionPartido, rivalPartido } from '@/lib/utils/partido';
 import ConvocatoriasTable, {
   type ConvocatoriaListItem,
 } from './_components/ConvocatoriasTable';
@@ -36,25 +37,31 @@ export default async function ConvocatoriasPage({
   const disciplinaId = firstParam(sp.disciplina) || undefined;
   const categoriaId = firstParam(sp.categoria) || undefined;
 
-  const { items, total } = await getConvocatorias({
-    page,
-    pageSize: PAGE_SIZE,
-    disciplinaId,
-    categoriaId,
-    callerId: userId,
-    isAdmin,
-  });
+  const [{ items, total }, disciplinasRaw] = await Promise.all([
+    getConvocatorias({
+      page,
+      pageSize: PAGE_SIZE,
+      disciplinaId,
+      categoriaId,
+      callerId: userId,
+      isAdmin,
+    }),
+    getDisciplinasConCategorias(),
+  ]);
 
   const serialized: ConvocatoriaListItem[] = items.map((c) => ({
     id: c.id,
     fecha: toDateString(c.evento.dia.fecha),
     disciplinaNombre: c.disciplina.nombre,
     categoriaNombre: c.categoria.nombre,
-    rival: `${c.evento.local.nombre} vs ${c.evento.visitante.nombre}`,
+    local: c.evento.local.nombre,
+    visitante: c.evento.visitante.nombre,
+    rival: rivalPartido(c.evento),
+    condicion: condicionPartido(c.evento),
+    estado: c.evento.estado,
+    horaCitacion: c.horaCitacion,
     totalConvocados: c._count.convocados,
   }));
-
-  const disciplinasRaw = await getDisciplinasConCategorias();
 
   return (
     <div className="p-4 md:p-8">
