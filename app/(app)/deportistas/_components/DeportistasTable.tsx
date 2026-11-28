@@ -181,6 +181,7 @@ export default function DeportistasTable({
       disciplina: a.disciplina?.nombre ?? null,
       categoria: a.categoria?.nombre ?? null,
       nivelTriage: a.nivelTriage,
+      fotoUrl: a.fotoUrl,
     });
   }
 
@@ -312,6 +313,7 @@ export default function DeportistasTable({
                         className="flex items-center gap-3 px-4 py-3 hover:bg-muted"
                       >
                         <Avatar
+                          src={a.fotoUrl}
                           alt={`${a.apellido}, ${a.nombre}`}
                           iniciales={iniciales(a)}
                           className="size-9 text-xs"
@@ -375,7 +377,12 @@ export default function DeportistasTable({
                         >
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-2.5">
-                              <Avatar alt={nombre} iniciales={iniciales(a)} className="size-8 text-xs" />
+                              <Avatar
+                                src={a.fotoUrl}
+                                alt={nombre}
+                                iniciales={iniciales(a)}
+                                className="size-8 text-xs"
+                              />
                               <Link
                                 href={`/deportistas/${item.id}`}
                                 className="text-sm font-medium text-foreground hover:text-primario hover:underline"

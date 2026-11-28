@@ -174,3 +174,14 @@ describe('Sidebar: link a Configuración', () => {
     expect(getNavItemsForRole('admin').some((i) => i.href === '/configuracion')).toBe(false);
   });
 });
+
+describe('Sidebar: scroll del menú', () => {
+  it('la navegación scrollea por dentro y el footer de la cuenta queda fuera de ella', () => {
+    render(<Sidebar navItems={getNavItemsForRole('admin')} isOpen={false} onClose={noop} />);
+
+    const nav = screen.getByRole('navigation');
+    expect(nav).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto');
+    expect(nav).not.toContainElement(screen.getByText('Mi cuenta'));
+    expect(screen.getByRole('complementary')).toHaveClass('flex', 'flex-col', 'inset-y-0', 'md:self-stretch');
+  });
+});

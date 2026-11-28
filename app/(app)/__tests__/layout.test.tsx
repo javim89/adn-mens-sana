@@ -181,6 +181,26 @@ describe('AppLayout: marca del club', () => {
   })
 })
 
+describe('AppLayout: alto acotado al viewport', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetMisClubes.mockResolvedValue([])
+  })
+
+  // Con min-h-screen el wrapper crece con el contenido, scrollea el documento y
+  // el sidebar se va con él: el que scrollea tiene que ser el <main>.
+  it('el wrapper del shell mide h-dvh y recorta, para que scrollee el <main>', async () => {
+    comoRol('admin')
+    render(await AppLayout({ children: <div /> }))
+
+    const wrapper = screen.getByRole('main').closest('.flex-col')
+    expect(wrapper).not.toBeNull()
+    expect(wrapper).toContainElement(screen.getByRole('complementary'))
+    expect(wrapper).toHaveClass('h-dvh', 'overflow-hidden', 'flex-1', 'min-w-0')
+    expect(wrapper).not.toHaveClass('min-h-screen')
+  })
+})
+
 describe('generateMetadata del layout de (app)', () => {
   it('título "%s · <Club>" e íconos del club versionados', async () => {
     const club = { ...CLUB_TEST, colorPrimario: '#8b0000' }

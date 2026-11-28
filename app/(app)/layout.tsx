@@ -41,7 +41,7 @@ export default async function AppLayout({
   return (
     <Providers clubId={club.id}>
       <TemaClub tema={temaDelClub(club)} />
-      <div className="flex flex-col min-h-screen flex-1 min-w-0">
+      <div className="flex flex-col h-dvh overflow-hidden flex-1 min-w-0">
         <AppShell
           navItems={navItems}
           club={{ id: club.id, nombre: club.nombre, logoSrc: urlLogoDelClub(club) }}

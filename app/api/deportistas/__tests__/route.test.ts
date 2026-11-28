@@ -71,6 +71,7 @@ const mockDeportistaListItem = {
   categoria: { id: 'cat-primera', nombre: 'Primera' },
   estado: 'ACTIVO',
   nivelTriage: 'ROJO',
+  fotoKey: null,
 } satisfies DeportistaListItem;
 
 const mockDeportistaFull = {
@@ -161,6 +162,28 @@ describe('GET /api/deportistas', () => {
     expect(body.links.self).toBeDefined();
     expect(body.links.first).toBeDefined();
     expect(body.links.last).toBeDefined();
+  });
+
+  it('devuelve fotoUrl firmada cuando hay fotoKey y null cuando no, sin exponer la key', async () => {
+    setContexto(mockContexto('admin', { userId: 'user1' }));
+    const conFoto = { ...mockDeportistaListItem, id: 'cuid2', fotoKey: 'clubes/club-1/deportistas/foto.jpg' };
+    vi.mocked(getDeportistas).mockResolvedValue({
+      deportistas: [conFoto, mockDeportistaListItem],
+      total: 2,
+      page: 1,
+      pageSize: 20,
+    });
+
+    const res = await GET(makeRequest('http://localhost/api/deportistas'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data[0].attributes.fotoUrl).toBe(
+      'https://signed.example/clubes/club-1/deportistas/foto.jpg',
+    );
+    expect(body.data[1].attributes.fotoUrl).toBeNull();
+    expect(body.data[0].attributes).not.toHaveProperty('fotoKey');
+    expect(getFotoUrl).toHaveBeenCalledWith('clubes/club-1/deportistas/foto.jpg');
   });
 
   it('applies filter[search] param', async () => {

@@ -98,6 +98,7 @@ const mockItem1: DeportistaListAttributes = {
   categoria: { id: 'cat-primera', nombre: 'Primera' },
   estado: 'ACTIVO',
   nivelTriage: 'ROJO',
+  fotoUrl: null,
 };
 
 const mockItem2: DeportistaListAttributes = {
@@ -110,6 +111,7 @@ const mockItem2: DeportistaListAttributes = {
   categoria: { id: 'cat-reserva', nombre: 'Reserva' },
   estado: 'INACTIVO',
   nivelTriage: null,
+  fotoUrl: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -213,6 +215,43 @@ describe('DeportistasTable', () => {
     const avatares = screen.getAllByRole('img', { name: 'García, Juan' });
     expect(avatares.length).toBeGreaterThan(0);
     expect(avatares[0]).toHaveTextContent('JG');
+  });
+
+  test('cada fila muestra la foto del deportista cuando tiene fotoUrl', async () => {
+    const fotoUrl = 'https://s3.example.com/clubes/c1/deportistas/1.jpg';
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '1', attrs: { ...mockItem1, fotoUrl } }]),
+    );
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findAllByText('García, Juan');
+    const fotos = screen.getAllByRole('img', { name: 'García, Juan' });
+    expect(fotos).toHaveLength(2);
+    for (const foto of fotos) {
+      expect(foto.tagName).toBe('IMG');
+      expect(foto).toHaveAttribute('src', fotoUrl);
+    }
+    expect(screen.queryByText('JG')).not.toBeInTheDocument();
+  });
+
+  test('la vista rápida muestra la foto del deportista cuando tiene fotoUrl', async () => {
+    const fotoUrl = 'https://s3.example.com/clubes/c1/deportistas/1.jpg';
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '1', attrs: { ...mockItem1, fotoUrl } }]),
+    );
+    vi.mocked(obtenerVistaRapida).mockResolvedValue({
+      seguimientosRecientes: [],
+      presentismoMes: { registros: 0, asistencias: 0, porcentaje: null },
+      proximoTurno: null,
+    });
+
+    render(<DeportistasTable />, { wrapper });
+    fireEvent.click(await screen.findByRole('button', { name: 'Vista rápida de García, Juan' }));
+
+    expect(await screen.findAllByRole('img', { name: 'García, Juan' })).toHaveLength(3);
+    for (const foto of screen.getAllByRole('img', { name: 'García, Juan' })) {
+      expect(foto).toHaveAttribute('src', fotoUrl);
+    }
   });
 
   test('renderiza la columna lateral recibida', async () => {

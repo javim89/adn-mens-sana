@@ -47,6 +47,7 @@ export type DeportistaListAttributes = {
   categoria: CategoriaRef;
   estado: EstadoDeportista;
   nivelTriage: NivelTriage | null;
+  fotoUrl: string | null;
 };
 
 export type DeportistaDetailAttributes = {

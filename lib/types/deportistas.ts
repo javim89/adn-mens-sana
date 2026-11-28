@@ -103,7 +103,7 @@ export type DeportistaFormData = {
 // Tipo para la fila de la tabla (proyección parcial)
 export type DeportistaListItem = Pick<
   Deportista,
-  'id' | 'nombre' | 'apellido' | 'dni' | 'disciplinaId' | 'categoriaId' | 'estado'
+  'id' | 'nombre' | 'apellido' | 'dni' | 'disciplinaId' | 'categoriaId' | 'estado' | 'fotoKey'
 > & {
   disciplina: { id: string; nombre: string } | null;
   categoria: { id: string; nombre: string } | null;

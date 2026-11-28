@@ -24,6 +24,7 @@ const FILA_1 = {
   categoriaId: 'cat-1',
   categoria: { id: 'cat-1', nombre: 'Primera' },
   estado: 'ACTIVO',
+  fotoKey: null,
 };
 
 const FILA_2 = { ...FILA_1, id: 'd2', nombre: 'Bruno', apellido: 'Benítez', dni: '22222222' };
@@ -65,6 +66,12 @@ describe('getDeportistas — sin filtro de triage', () => {
 
     expect(deportistas[0].nivelTriage).toBe('ROJO');
     expect(deportistas[1].nivelTriage).toBeNull();
+  });
+
+  test('selecciona fotoKey para firmar la foto del listado', async () => {
+    await getDeportistas({});
+
+    expect(mockPrisma.deportista.findMany.mock.calls[0][0].select).toMatchObject({ fotoKey: true });
   });
 
   test('no selecciona fechaIngreso', async () => {
