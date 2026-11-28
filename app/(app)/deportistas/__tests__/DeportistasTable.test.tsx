@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, beforeAll } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DeportistasTable from '../_components/DeportistasTable';
 import type { JsonApiCollection } from '@/lib/types/jsonapi';
@@ -31,7 +32,23 @@ vi.mock('@/lib/api/deportistas', async (importOriginal) => {
   };
 });
 
+vi.mock('../_lib/vista-rapida', () => ({
+  obtenerVistaRapida: vi.fn(),
+}));
+
 import { fetchDeportistas, fetchDisciplinas } from '@/lib/api/deportistas';
+import { obtenerVistaRapida } from '../_lib/vista-rapida';
+
+beforeAll(() => {
+  // cmdk y Radix (FiltroChip) usan APIs que jsdom no trae.
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  Element.prototype.scrollIntoView ??= function () {};
+  Element.prototype.hasPointerCapture ??= () => false;
+});
 
 // El filtro de categoría se anida al de disciplina: cada disciplina trae sus
 // categorías. La tabla usa fetchDisciplinas() (no fetchCategorias).
@@ -155,17 +172,92 @@ describe('DeportistasTable', () => {
     expect(screen.getByPlaceholderText(/buscar por nombre/i)).toBeInTheDocument();
   });
 
-  test('selects de filtro están presentes', async () => {
+  test('los filtros chip están presentes', async () => {
     vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
 
     render(<DeportistasTable />, { wrapper });
     await screen.findByPlaceholderText(/buscar/i);
-    // CustomSelect renderiza triggers como <button>. Los filtros son
-    // Disciplina, Categoría, Triage y Estado, identificables por su placeholder.
-    expect(screen.getByRole('button', { name: /todas las disciplinas/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /todas las categorías/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /todos los triage/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /todos los estados/i })).toBeInTheDocument();
+    for (const label of ['Triage', 'Estado', 'Disciplina', 'Categoría']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
+  });
+
+  test('el chip refleja el filtro activo de la URL', async () => {
+    mockSearchParamsGet.mockImplementation((key: string) =>
+      key === 'filter[estado]' ? 'LESIONADO' : null,
+    );
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findByPlaceholderText(/buscar/i);
+    expect(screen.getByRole('button', { name: 'Estado: Lesionado' })).toHaveClass('bg-primario-suave');
+  });
+
+  test('el encabezado muestra el contador de deportistas', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '1', attrs: mockItem1 }], 42),
+    );
+
+    render(<DeportistasTable />, { wrapper });
+    expect(screen.getByRole('heading', { level: 1, name: 'Deportistas' })).toBeInTheDocument();
+    expect(await screen.findByText('42 deportistas')).toBeInTheDocument();
+  });
+
+  test('cada fila muestra el avatar con las iniciales', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '1', attrs: mockItem1 }]),
+    );
+
+    render(<DeportistasTable />, { wrapper });
+    await screen.findAllByText('García, Juan');
+    const avatares = screen.getAllByRole('img', { name: 'García, Juan' });
+    expect(avatares.length).toBeGreaterThan(0);
+    expect(avatares[0]).toHaveTextContent('JG');
+  });
+
+  test('renderiza la columna lateral recibida', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(makeCollection([]));
+
+    render(<DeportistasTable lateral={<p>Distribución de prueba</p>} />, { wrapper });
+    expect(screen.getByRole('complementary', { name: 'Resumen del plantel' })).toHaveTextContent(
+      'Distribución de prueba',
+    );
+  });
+
+  test('la vista rápida muestra seguimientos, presentismo y próximo turno del deportista', async () => {
+    vi.mocked(fetchDeportistas).mockResolvedValue(
+      makeCollection([{ id: '1', attrs: mockItem1 }]),
+    );
+    vi.mocked(obtenerVistaRapida).mockResolvedValue({
+      seguimientosRecientes: [
+        {
+          id: 's1',
+          titulo: 'Control de rodilla',
+          fecha: new Date('2026-11-20T00:00:00.000Z'),
+          prioridad: 'ALTA',
+          tipoSeguimiento: null,
+        },
+      ],
+      presentismoMes: { registros: 10, asistencias: 8, porcentaje: 80 },
+      proximoTurno: {
+        id: 't1',
+        titulo: 'Nutrición',
+        fecha: new Date('2026-12-02T00:00:00.000Z'),
+        hora: '10:30',
+        lugar: 'Consultorio',
+      },
+    });
+
+    render(<DeportistasTable />, { wrapper });
+    fireEvent.click(await screen.findByRole('button', { name: 'Vista rápida de García, Juan' }));
+
+    expect(obtenerVistaRapida).toHaveBeenCalledWith('1');
+    expect(await screen.findByText('80%')).toBeInTheDocument();
+    expect(screen.getByText('Control de rodilla')).toBeInTheDocument();
+    expect(screen.getByText('02/12 10:30 · Nutrición')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar vista rápida' }));
+    expect(screen.queryByText('Control de rodilla')).not.toBeInTheDocument();
   });
 
   test('muestra mensaje cuando la lista está vacía', async () => {
@@ -274,7 +366,7 @@ describe('DeportistasTable', () => {
     await screen.findByPlaceholderText(/buscar/i);
 
     // Sin disciplina en la URL, el trigger del filtro de categoría está disabled.
-    const categoriaTrigger = screen.getByRole('button', { name: /todas las categorías/i });
+    const categoriaTrigger = screen.getByRole('button', { name: 'Categoría' });
     expect(categoriaTrigger).toBeDisabled();
   });
 
@@ -291,13 +383,14 @@ describe('DeportistasTable', () => {
     await screen.findByPlaceholderText(/buscar/i);
 
     // Esperar a que resuelva fetchDisciplinas y se habilite el filtro de categoría.
-    const categoriaTrigger = screen.getByRole('button', { name: /todas las categorías/i });
+    const categoriaTrigger = screen.getByRole('button', { name: 'Categoría' });
     await waitFor(() => expect(categoriaTrigger).not.toBeDisabled());
 
     // Al abrirlo, muestra SOLO las categorías de la disciplina elegida (Fútbol).
-    fireEvent.click(categoriaTrigger);
-    expect(await screen.findByText('Primera')).toBeInTheDocument();
-    expect(screen.getByText('Reserva')).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(categoriaTrigger);
+    expect(await screen.findByRole('option', { name: 'Primera' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Reserva' })).toBeInTheDocument();
   });
 
   test('pasa page[number] en los params de la query cuando está en la URL', async () => {
@@ -358,9 +451,9 @@ describe('DeportistasTable', () => {
     render(<DeportistasTable />, { wrapper });
     await screen.findByPlaceholderText(/buscar/i);
 
-    // CustomSelect es un <button>: se abre con click y se elige la opción.
-    fireEvent.click(screen.getByRole('button', { name: /todos los triage/i }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Rojo' }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Triage' }));
+    await user.click(await screen.findByRole('option', { name: 'Rojo' }));
 
     await waitFor(() => expect(mockRouterPush).toHaveBeenCalled());
     const url = mockRouterPush.mock.calls.at(-1)![0] as string;

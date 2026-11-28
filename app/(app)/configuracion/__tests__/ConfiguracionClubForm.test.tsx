@@ -77,6 +77,22 @@ describe('ConfiguracionClubForm', () => {
     expect(varRaiz('--club-primario')).toBe('');
   });
 
+  it('layout compacto: los tres colores en una grilla de 3 columnas y la vista previa al costado', () => {
+    renderForm();
+    const filas = ['Primario', 'Secundario', 'Acento'].map(
+      (n) => campo(n as 'Primario').closest('[data-selector-color]') as HTMLElement,
+    );
+    const grilla = filas[0].parentElement as HTMLElement;
+    expect(filas.every((f) => f.parentElement === grilla)).toBe(true);
+    expect(grilla.className).toContain('grid-cols-3');
+
+    const lateral = screen.getByRole('complementary', { name: 'Vista previa' });
+    expect(within(lateral).getByRole('heading', { name: 'Vista previa' })).toBeInTheDocument();
+    expect(lateral.querySelector('[data-vista-previa]')).not.toBeNull();
+    // Guardar y Descartar quedan en el form, no en la columna de la vista previa.
+    expect(within(lateral).queryByRole('button', { name: 'Guardar' })).not.toBeInTheDocument();
+  });
+
   it('el campo vacío muestra el color predeterminado y el badge de contraste', () => {
     renderForm({ colorPrimario: null });
     expect(campo('Primario')).toHaveAttribute('placeholder', `Predeterminado (${TEMA_BIOTEAM.primario})`);

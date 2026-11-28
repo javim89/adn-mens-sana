@@ -1,6 +1,7 @@
 import type { UseFormRegister, UseFormWatch, FieldErrors } from 'react-hook-form';
-import { Sparkles } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 import { computeAntropometriaSumatorias } from '@/lib/utils/antropometria';
+import { ROTULO_CLASES } from '@/app/components/ui/panel';
 import type { SeguimientoExtendedFormValues } from '../SeguimientoForm';
 
 interface Props {
@@ -14,7 +15,9 @@ const inputClass =
 
 const labelClass = 'block text-sm font-medium text-foreground mb-1.5';
 
-const blockTitleClass = 'text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-3';
+const blockTitleClass = `${ROTULO_CLASES} mb-2`;
+
+const gridClass = 'grid grid-cols-2 gap-3 sm:grid-cols-4';
 
 function NumericFieldWithSuffix({
   id,
@@ -32,26 +35,36 @@ function NumericFieldWithSuffix({
   error?: string;
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <label htmlFor={id} className={labelClass}>
-        {label}{' '}
-        <span className="text-xs text-muted-foreground font-normal">({unidad})</span>
+        {label}
+        <span className="sr-only"> ({unidad})</span>
       </label>
-      <input
-        id={id}
-        type="number"
-        min={0}
-        step="0.1"
-        {...register(field, { valueAsNumber: true })}
-        className={inputClass}
-        placeholder="0"
-      />
+      <div className="relative">
+        <input
+          id={id}
+          type="number"
+          inputMode="decimal"
+          min={0}
+          step="0.1"
+          {...register(field, { valueAsNumber: true })}
+          className={`${inputClass} pr-10 font-mono tabular-nums`}
+          placeholder="0"
+          aria-invalid={error ? 'true' : 'false'}
+        />
+        <span
+          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground"
+          aria-hidden
+        >
+          {unidad}
+        </span>
+      </div>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
 }
 
-function SumatoriaCard({
+function Calculado({
   label,
   value,
   suffix,
@@ -62,15 +75,12 @@ function SumatoriaCard({
 }) {
   const hasValue = value !== null && value !== undefined && !Number.isNaN(value);
   return (
-    <div className="rounded-lg border border-gray-100 bg-muted px-4 py-3">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          <Sparkles size={11} className="text-secundario" aria-hidden />
-          auto
-        </span>
+    <div className="min-w-0">
+      <div className="flex items-center gap-1 text-xs font-medium text-secundario">
+        <Calculator size={13} aria-hidden />
+        <span>{label}</span>
       </div>
-      <p className="font-mono text-2xl font-semibold leading-none text-primario">
+      <p className="mt-0.5 font-mono text-xl font-semibold leading-tight tabular-nums text-primario">
         {hasValue ? value : <span className="text-muted-foreground">—</span>}
         {hasValue && suffix ? (
           <span className="ml-1 text-sm font-normal text-muted-foreground">{suffix}</span>
@@ -97,11 +107,11 @@ export function AntropometriaSection({ register, watch, errors }: Props) {
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* BÁSICOS */}
       <div>
         <p className={blockTitleClass}>Básicos</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className={gridClass}>
           <NumericFieldWithSuffix
             id="antropometria_peso"
             label="Peso"
@@ -129,12 +139,10 @@ export function AntropometriaSection({ register, watch, errors }: Props) {
         </div>
       </div>
 
-      <hr className="border-gray-100" />
-
       {/* PERÍMETROS */}
       <div>
         <p className={blockTitleClass}>Perímetros</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className={gridClass}>
           <NumericFieldWithSuffix
             id="antropometria_perimetroBrazo"
             label="Brazo"
@@ -178,12 +186,10 @@ export function AntropometriaSection({ register, watch, errors }: Props) {
         </div>
       </div>
 
-      <hr className="border-gray-100" />
-
       {/* PLIEGUES */}
       <div>
-        <p className={blockTitleClass}>Pliegues</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <p className={blockTitleClass}>Pliegues (mm)</p>
+        <div className={gridClass}>
           <NumericFieldWithSuffix
             id="antropometria_pliegueTriceps"
             label="Tríceps"
@@ -235,15 +241,14 @@ export function AntropometriaSection({ register, watch, errors }: Props) {
         </div>
       </div>
 
-      <hr className="border-gray-100" />
-
-      {/* SUMATORIAS (AUTO-CALCULADAS) */}
-      <div>
-        <p className={blockTitleClass}>Sumatorias (auto-calculadas)</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <SumatoriaCard label="IMC" value={imc} />
-          <SumatoriaCard label="Sumatoria de Pliegues" value={sumatoriaPliegues} suffix="mm" />
-        </div>
+      {/* Calculados en vivo a partir de los campos: no son inputs. */}
+      <div
+        role="group"
+        aria-label="Cálculos automáticos"
+        className="grid grid-cols-2 gap-3 rounded-lg bg-primario-suave p-3"
+      >
+        <Calculado label="IMC" value={imc} />
+        <Calculado label="Suma de pliegues" value={sumatoriaPliegues} suffix="mm" />
       </div>
     </div>
   );

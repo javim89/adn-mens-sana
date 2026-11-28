@@ -1,6 +1,9 @@
 import { getDb } from '@/lib/tenant/db';
-import type { Prisma, EstadoEvento } from '@/lib/generated/prisma/client';
+import type { Prisma, EstadoEvento, EstadoDeportista } from '@/lib/generated/prisma/client';
 import { toDateString } from '@/lib/queries/calendario';
+import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
+import { getFotoUrl } from '@/lib/s3';
+import { condicionPartido, rivalPartido, type CondicionPartido } from '@/lib/utils/partido';
 import type {
   ProximoPartido,
   DeportistaConvocable,
@@ -15,12 +18,14 @@ export interface GetConvocatoriasParams {
   isAdmin: boolean;
 }
 
+const EQUIPO_SELECT = { select: { nombre: true, esPropio: true } } as const;
+
 const CONVOCATORIA_LIST_INCLUDE = {
   evento: {
     include: {
       dia: { select: { fecha: true } },
-      local: { select: { nombre: true } },
-      visitante: { select: { nombre: true } },
+      local: EQUIPO_SELECT,
+      visitante: EQUIPO_SELECT,
     },
   },
   disciplina: { select: { nombre: true } },
@@ -67,6 +72,9 @@ export interface ConvocadoDetail {
   apellido: string;
   nombre: string;
   posicion: string | null;
+  estado: EstadoDeportista;
+  /** URL firmada de la foto, o `null` sin foto o sin S3. */
+  fotoUrl: string | null;
 }
 
 export interface ConvocatoriaDetail {
@@ -78,12 +86,19 @@ export interface ConvocatoriaDetail {
   lugar: string | null;
   observaciones: string | null;
   entrenadorId: string;
+  /** Nombre visible del entrenador a cargo (`getNombresDeUsuarios`); el id si no se resuelve. */
+  entrenadorNombre: string;
   registradoPor: string;
+  disciplina: string;
+  categoria: string;
   partido: {
     fecha: string;
     local: string;
     visitante: string;
     estado: EstadoEvento;
+    condicion: CondicionPartido | null;
+    /** El equipo que no es el propio; `null` si ninguno lo es. */
+    rival: string | null;
   };
   convocados: ConvocadoDetail[];
 }
@@ -98,14 +113,23 @@ export async function getConvocatoriaById(
       evento: {
         include: {
           dia: { select: { fecha: true } },
-          local: { select: { nombre: true } },
-          visitante: { select: { nombre: true } },
+          local: EQUIPO_SELECT,
+          visitante: EQUIPO_SELECT,
         },
       },
+      disciplina: { select: { nombre: true } },
+      categoria: { select: { nombre: true } },
       convocados: {
         include: {
           deportista: {
-            select: { id: true, apellido: true, nombre: true, posicion: true },
+            select: {
+              id: true,
+              apellido: true,
+              nombre: true,
+              posicion: true,
+              estado: true,
+              fotoKey: true,
+            },
           },
         },
         orderBy: [
@@ -118,6 +142,21 @@ export async function getConvocatoriaById(
 
   if (!convocatoria) return null;
 
+  const [nombres, convocados] = await Promise.all([
+    getNombresDeUsuarios([convocatoria.entrenadorId]),
+    Promise.all(
+      convocatoria.convocados.map(async (c) => ({
+        id: c.deportista.id,
+        apellido: c.deportista.apellido,
+        nombre: c.deportista.nombre,
+        posicion: c.deportista.posicion,
+        estado: c.deportista.estado,
+        fotoUrl: await getFotoUrl(c.deportista.fotoKey),
+      })),
+    ),
+  ]);
+  const { evento } = convocatoria;
+
   return {
     id: convocatoria.id,
     eventoTorneoId: convocatoria.eventoTorneoId,
@@ -127,19 +166,19 @@ export async function getConvocatoriaById(
     lugar: convocatoria.lugar,
     observaciones: convocatoria.observaciones,
     entrenadorId: convocatoria.entrenadorId,
+    entrenadorNombre: nombres[convocatoria.entrenadorId] ?? convocatoria.entrenadorId,
     registradoPor: convocatoria.registradoPor,
+    disciplina: convocatoria.disciplina.nombre,
+    categoria: convocatoria.categoria.nombre,
     partido: {
-      fecha: toDateString(convocatoria.evento.dia.fecha),
-      local: convocatoria.evento.local.nombre,
-      visitante: convocatoria.evento.visitante.nombre,
-      estado: convocatoria.evento.estado,
+      fecha: toDateString(evento.dia.fecha),
+      local: evento.local.nombre,
+      visitante: evento.visitante.nombre,
+      estado: evento.estado,
+      condicion: condicionPartido(evento),
+      rival: rivalPartido(evento),
     },
-    convocados: convocatoria.convocados.map((c) => ({
-      id: c.deportista.id,
-      apellido: c.deportista.apellido,
-      nombre: c.deportista.nombre,
-      posicion: c.deportista.posicion,
-    })),
+    convocados,
   };
 }
 

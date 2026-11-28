@@ -4,8 +4,16 @@ import { useMemo, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Plus, Pencil, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
-import { CustomSelect } from '@/app/components/ui/custom-select';
+import { Button } from '@/app/components/ui/button';
+import { EncabezadoPagina } from '@/app/components/ui/encabezado-pagina';
+import { FiltroChip } from '@/app/components/ui/filtro-chip';
+import { Panel } from '@/app/components/ui/panel';
 import type { DisciplinaConCategorias } from '@/lib/queries/disciplinas';
+import type { EstadoEvento } from '@/lib/generated/prisma/enums';
+import type { CondicionPartido } from '@/lib/utils/partido';
+import { ESTADO_EVENTO_BADGE, ESTADO_EVENTO_LABELS } from '@/lib/utils/enum-labels';
+import TileFecha from '../../dashboard/_components/TileFecha';
+import { BADGE, textoConvocados, tileDeClave, tituloPartido } from '../_lib/formato';
 import DeleteConvocatoriaModal from './DeleteConvocatoriaModal';
 
 export interface ConvocatoriaListItem {
@@ -13,7 +21,13 @@ export interface ConvocatoriaListItem {
   fecha: string;
   disciplinaNombre: string;
   categoriaNombre: string;
-  rival: string;
+  local: string;
+  visitante: string;
+  /** El equipo que no es el propio; `null` si ninguno lo es. */
+  rival: string | null;
+  condicion: CondicionPartido | null;
+  estado: EstadoEvento;
+  horaCitacion: string | null;
   totalConvocados: number;
 }
 
@@ -33,6 +47,56 @@ function formatDate(dateStr: string) {
     month: '2-digit',
     year: 'numeric',
   }).format(new Date(dateStr + 'T00:00:00'));
+}
+
+function ChipsPartido({ c }: { c: ConvocatoriaListItem }) {
+  return (
+    <div className="mt-1 flex flex-wrap gap-1.5">
+      {c.condicion && (
+        <span className={`${BADGE} bg-primario-suave text-primario`}>{c.condicion}</span>
+      )}
+      <span className={`${BADGE} ${ESTADO_EVENTO_BADGE[c.estado]}`}>
+        {ESTADO_EVENTO_LABELS[c.estado]}
+      </span>
+    </div>
+  );
+}
+
+function Citacion({ hora }: { hora: string | null }) {
+  if (!hora) return null;
+  return (
+    <p className="text-xs text-muted-foreground whitespace-nowrap">
+      Citación <span className="font-medium text-foreground">{hora}</span>
+    </p>
+  );
+}
+
+function Acciones({ c, onDeleted }: { c: ConvocatoriaListItem; onDeleted: () => void }) {
+  return (
+    <>
+      <Link
+        href={`/convocatorias/${c.id}`}
+        className="text-muted-foreground hover:text-primario transition-colors p-1"
+        title="Ver convocatoria"
+        aria-label={`Ver convocatoria ${tituloPartido(c)}`}
+      >
+        <Eye size={15} />
+      </Link>
+      <Link
+        href={`/convocatorias/${c.id}/editar`}
+        className="text-muted-foreground hover:text-primario transition-colors p-1"
+        title="Editar convocatoria"
+        aria-label={`Editar convocatoria ${tituloPartido(c)}`}
+      >
+        <Pencil size={15} />
+      </Link>
+      <DeleteConvocatoriaModal
+        convocatoriaId={c.id}
+        convocatoriaLabel={`${formatDate(c.fecha)} — ${tituloPartido(c)}`}
+        onDeleted={onDeleted}
+      />
+    </>
+  );
 }
 
 export default function ConvocatoriasTable({
@@ -71,12 +135,12 @@ export default function ConvocatoriasTable({
     startTransition(() => router.push(url));
   }
 
-  function handleDisciplinaChange(value: string) {
-    navigate(buildUrl({ disciplina: value || null, categoria: null, page: null }));
+  function handleDisciplinaChange(value: string | null) {
+    navigate(buildUrl({ disciplina: value, categoria: null, page: null }));
   }
 
-  function handleCategoriaChange(value: string) {
-    navigate(buildUrl({ categoria: value || null, page: null }));
+  function handleCategoriaChange(value: string | null) {
+    navigate(buildUrl({ categoria: value, page: null }));
   }
 
   function goToPage(target: number) {
@@ -91,231 +155,186 @@ export default function ConvocatoriasTable({
   const from = total === 0 ? 0 : currentPage * pageSize + 1;
   const to = Math.min(total, currentPage * pageSize + items.length);
 
+  const vacio = (
+    <>
+      No hay convocatorias cargadas.{' '}
+      <Link href="/convocatorias/nuevo" className="text-primario underline hover:no-underline">
+        Crear la primera
+      </Link>
+    </>
+  );
+
   return (
-    <div>
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
-        <h1
-          className="text-3xl font-bold text-primario"
-          style={{ fontFamily: 'Oswald, sans-serif' }}
-        >
-          Convocatorias
-        </h1>
-        <Link
-          href="/convocatorias/nuevo"
-          className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover transition-colors shrink-0"
-        >
-          <Plus size={16} />
-          Nueva convocatoria
-        </Link>
-      </div>
-      <p className="text-muted-foreground mb-6">
-        Citaciones de plantel para los próximos partidos
-        {total > 0 && (
-          <span className="ml-2 text-xs font-medium bg-gray-100 text-muted-foreground px-2 py-0.5 rounded-full">
-            {total} {total === 1 ? 'convocatoria' : 'convocatorias'}
-          </span>
-        )}
-      </p>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <CustomSelect
-          value={currentDisciplina || '__all__'}
-          onChange={(v) => handleDisciplinaChange(v === '__all__' ? '' : v)}
-          searchable
-          options={[
-            { value: '__all__', label: 'Todas las disciplinas' },
-            ...disciplinas.map((d) => ({ value: d.id, label: d.nombre })),
-          ]}
-          className="min-w-[180px]"
-        />
-        <CustomSelect
-          value={currentCategoria || '__all__'}
-          onChange={(v) => handleCategoriaChange(v === '__all__' ? '' : v)}
-          searchable
-          disabled={!currentDisciplina}
-          options={[
-            { value: '__all__', label: 'Todas las categorías' },
-            ...categorias.map((c) => ({ value: c.id, label: c.nombre })),
-          ]}
-          className="min-w-[160px]"
-        />
-      </div>
-
-      <div
-        className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-opacity ${isPending ? 'opacity-60' : ''}`}
+    <div className="flex flex-col gap-4">
+      <EncabezadoPagina
+        titulo="Convocatorias"
+        contador={total > 0 ? total : undefined}
+        contadorLabel={`${total} ${total === 1 ? 'convocatoria' : 'convocatorias'}`}
+        subtitulo="Citaciones de plantel para los próximos partidos"
+        accion={
+          <Button asChild>
+            <Link href="/convocatorias/nuevo">
+              <Plus />
+              Nueva convocatoria
+            </Link>
+          </Button>
+        }
       >
-        {/* Mobile card list */}
-        <ul className="lg:hidden divide-y divide-gray-100">
+        <div className="flex flex-wrap gap-2">
+          <FiltroChip
+            label="Disciplina"
+            todosLabel="Todas las disciplinas"
+            buscar
+            opciones={disciplinas.map((d) => ({ value: d.id, label: d.nombre }))}
+            valor={currentDisciplina || null}
+            onChange={handleDisciplinaChange}
+          />
+          <FiltroChip
+            label="Categoría"
+            todosLabel="Todas las categorías"
+            buscar
+            disabled={!currentDisciplina}
+            opciones={categorias.map((c) => ({ value: c.id, label: c.nombre }))}
+            valor={currentCategoria || null}
+            onChange={handleCategoriaChange}
+          />
+        </div>
+      </EncabezadoPagina>
+
+      <Panel
+        relleno={false}
+        className={`overflow-hidden transition-opacity ${isPending ? 'opacity-60' : ''}`}
+      >
+        {/* Cards: debajo de lg */}
+        <ul className="lg:hidden divide-y divide-border">
           {items.length === 0 ? (
-            <li className="px-4 py-12 text-center text-sm text-muted-foreground">
-              No hay convocatorias cargadas.{' '}
-              <Link
-                href="/convocatorias/nuevo"
-                className="text-primario underline hover:no-underline"
-              >
-                Crear la primera
-              </Link>
-            </li>
+            <li className="px-4 py-12 text-center text-sm text-muted-foreground">{vacio}</li>
           ) : (
-            items.map((c) => (
-              <li key={c.id} className="px-4 py-4">
-                <div className="flex items-start justify-between gap-2">
-                  <Link href={`/convocatorias/${c.id}`} className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">
-                      {formatDate(c.fecha)}
-                    </p>
-                    <p className="text-xs font-medium text-foreground mt-0.5">
-                      {c.rival}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {c.disciplinaNombre} · {c.categoriaNombre}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {c.totalConvocados}{' '}
-                      {c.totalConvocados === 1 ? 'convocado' : 'convocados'}
-                    </p>
-                  </Link>
-                  <div className="flex items-center gap-1 shrink-0">
+            items.map((c) => {
+              const tile = tileDeClave(c.fecha);
+              return (
+                <li key={c.id} className="flex items-start gap-3 px-4 py-4">
+                  <TileFecha arriba={tile.arriba} abajo={tile.abajo} />
+                  <div className="min-w-0 flex-1">
                     <Link
                       href={`/convocatorias/${c.id}`}
-                      className="text-muted-foreground hover:text-primario transition-colors p-1"
-                      title="Ver convocatoria"
+                      className="block truncate text-sm font-semibold text-foreground hover:text-primario"
                     >
-                      <Eye size={15} />
+                      {tituloPartido(c)}
                     </Link>
-                    <Link
-                      href={`/convocatorias/${c.id}/editar`}
-                      className="text-muted-foreground hover:text-primario transition-colors p-1"
-                      title="Editar convocatoria"
-                    >
-                      <Pencil size={15} />
-                    </Link>
-                    <DeleteConvocatoriaModal
-                      convocatoriaId={c.id}
-                      convocatoriaLabel={`${formatDate(c.fecha)} — ${c.disciplinaNombre}`}
-                      onDeleted={handleDeleted}
-                    />
+                    <ChipsPartido c={c} />
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {c.disciplinaNombre} · {c.categoriaNombre} · {textoConvocados(c.totalConvocados)}
+                    </p>
+                    <Citacion hora={c.horaCitacion} />
                   </div>
-                </div>
-              </li>
-            ))
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Acciones c={c} onDeleted={handleDeleted} />
+                  </div>
+                </li>
+              );
+            })
           )}
         </ul>
 
-        {/* Desktop table */}
+        {/* Tabla: lg+ */}
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-gray-100">
-                <th className="px-5 py-3 text-left">Fecha del partido</th>
+              <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-border">
+                <th className="px-5 py-3 text-left">Fecha</th>
                 <th className="px-5 py-3 text-left">Partido</th>
-                <th className="px-5 py-3 text-left">Disciplina</th>
                 <th className="px-5 py-3 text-left">Categoría</th>
                 <th className="px-5 py-3 text-left">Convocados</th>
-                <th className="px-5 py-3" />
+                <th className="px-5 py-3">
+                  <span className="sr-only">Acciones</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-sm text-muted-foreground">
-                    No hay convocatorias cargadas.{' '}
-                    <Link
-                      href="/convocatorias/nuevo"
-                      className="text-primario underline hover:no-underline"
-                    >
-                      Crear la primera
-                    </Link>
+                  <td colSpan={5} className="px-5 py-12 text-center text-sm text-muted-foreground">
+                    {vacio}
                   </td>
                 </tr>
               ) : (
-                items.map((c) => (
-                  <tr
-                    key={c.id}
-                    className="border-b border-gray-50 hover:bg-muted transition-colors"
-                  >
-                    <td className="px-5 py-3.5 text-sm font-medium text-foreground whitespace-nowrap">
-                      <Link
-                        href={`/convocatorias/${c.id}`}
-                        className="hover:text-primario hover:underline"
-                      >
-                        {formatDate(c.fecha)}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-foreground">
-                      {c.rival}
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-muted-foreground">
-                      {c.disciplinaNombre}
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-muted-foreground">{c.categoriaNombre}</td>
-                    <td className="px-5 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
-                      {c.totalConvocados}{' '}
-                      {c.totalConvocados === 1 ? 'convocado' : 'convocados'}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1 justify-end">
+                items.map((c) => {
+                  const tile = tileDeClave(c.fecha);
+                  return (
+                    <tr
+                      key={c.id}
+                      className="border-b border-border last:border-0 hover:bg-muted transition-colors"
+                    >
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <TileFecha arriba={tile.arriba} abajo={tile.abajo} />
+                          <Citacion hora={c.horaCitacion} />
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 max-w-[280px]">
                         <Link
                           href={`/convocatorias/${c.id}`}
-                          className="text-muted-foreground hover:text-primario transition-colors p-1"
-                          title="Ver convocatoria"
+                          className="block truncate text-sm font-semibold text-foreground hover:text-primario hover:underline"
                         >
-                          <Eye size={15} />
+                          {tituloPartido(c)}
                         </Link>
-                        <Link
-                          href={`/convocatorias/${c.id}/editar`}
-                          className="text-muted-foreground hover:text-primario transition-colors p-1"
-                          title="Editar convocatoria"
-                        >
-                          <Pencil size={15} />
-                        </Link>
-                        <DeleteConvocatoriaModal
-                          convocatoriaId={c.id}
-                          convocatoriaLabel={`${formatDate(c.fecha)} — ${c.disciplinaNombre}`}
-                          onDeleted={handleDeleted}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                        <ChipsPartido c={c} />
+                      </td>
+                      <td className="px-5 py-3 text-sm text-foreground">
+                        {c.disciplinaNombre} · {c.categoriaNombre}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="font-mono text-sm font-semibold tabular-nums text-primario">
+                          {c.totalConvocados}
+                        </span>
+                        <span className="sr-only">
+                          {c.totalConvocados === 1 ? ' convocado' : ' convocados'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-1 justify-end">
+                          <Acciones c={c} onDeleted={handleDeleted} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
-      </div>
+      </Panel>
 
-      {/* Pagination controls */}
       {total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             Mostrando {from}–{to} de {total}
           </p>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage <= 0 || isPending}
-              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página anterior"
             >
-              <ChevronLeft size={14} />
+              <ChevronLeft />
               Anterior
-            </button>
+            </Button>
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               Página {currentPage + 1} de {totalPages}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage >= totalPages - 1 || isPending}
-              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página siguiente"
             >
               Siguiente
-              <ChevronRight size={14} />
-            </button>
+              <ChevronRight />
+            </Button>
           </div>
         </div>
       )}

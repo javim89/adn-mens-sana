@@ -2,53 +2,135 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Loader2, ChevronDown, TriangleAlert } from 'lucide-react';
-import { CustomSelect } from '@/app/components/ui/custom-select';
+import { Check, ChevronDown, Loader2, Mail, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
+import { Avatar } from '@/app/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
+import { Panel } from '@/app/components/ui/panel';
 import { reenviarInvitacion, cambiarRol, asignarLugarRetiro, deshabilitarUsuario, reactivarUsuario, eliminarUsuario } from '@/lib/actions/usuarios';
 import { ROLES_PERMITIDOS, ROL_LABELS } from '@/lib/roles';
+import { hoyEnArgentina, sumarDiasClave } from '@/lib/utils/fecha';
 import { LUGARES_RETIRO } from '@/lib/utils/viandas';
 import { LUGAR_RETIRO_LABELS } from '@/lib/utils/enum-labels';
 import { esInvitacion, type Usuario } from '@/lib/types/usuarios';
 import ConfirmarAccionModal from './ConfirmarAccionModal';
 
 
-function formatLastSignIn(date: Date | null): string {
+const PILDORA =
+  'inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium';
+
+/**
+ * "Hoy" / "Ayer" / `d/m` (con el año si no es el actual), por día calendario en la zona del
+ * club: un ingreso a las 23 h de ayer es "Ayer" aunque hayan pasado menos de 24 h.
+ */
+export function formatUltimoIngreso(date: Date | null, now: Date = new Date()): string {
   if (!date) return '—';
-
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Hoy';
-  if (diffDays === 1) return 'Hace 1 día';
-  if (diffDays < 30) return `Hace ${diffDays} días`;
-
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date);
+  const hoy = hoyEnArgentina(now);
+  const dia = hoyEnArgentina(date);
+  if (dia === hoy) return 'Hoy';
+  if (dia === sumarDiasClave(hoy, -1)) return 'Ayer';
+  const [anio, mes, d] = dia.split('-').map(Number);
+  const corto = `${d}/${mes}`;
+  return anio === Number(hoy.slice(0, 4)) ? corto : `${corto}/${anio}`;
 }
 
-const ROL_BADGE: Record<string, string> = {
-  admin:         'bg-primario text-white',
-  entrenador:    'bg-acento text-foreground',
-  medico:        'bg-secundario text-white',
-  kinesiologo:   'bg-teal-700 text-white',
-  nutricionista: 'bg-violet-600 text-white',
-  psicologo:     'bg-amber-700 text-white',
-  cardiologo:    'bg-red-600 text-white',
-  responsable_viandas: 'bg-cyan-700 text-white',
+function iniciales(usuario: Usuario): string {
+  const ini = `${usuario.firstName.trim().charAt(0)}${usuario.lastName.trim().charAt(0)}`;
+  return (ini || usuario.email.charAt(0)).toUpperCase();
+}
+
+function nombreCompleto(usuario: Usuario): string {
+  return `${usuario.firstName} ${usuario.lastName}`.trim() || usuario.email;
+}
+
+const ROL_PUNTO: Record<string, string> = {
+  admin:         'bg-primario',
+  entrenador:    'bg-acento',
+  medico:        'bg-secundario',
+  kinesiologo:   'bg-teal-700',
+  nutricionista: 'bg-violet-600',
+  psicologo:     'bg-amber-700',
+  cardiologo:    'bg-red-600',
+  responsable_viandas: 'bg-cyan-700',
 };
 
-function RolBadge({ rol }: { rol: string }) {
-  const classes = ROL_BADGE[rol] ?? 'bg-gray-100 text-muted-foreground';
-  const label = (ROL_LABELS as Record<string, string>)[rol] ?? (rol || '—');
+function rolLabel(rol: string): string {
+  return (ROL_LABELS as Record<string, string>)[rol] ?? (rol || '—');
+}
+
+function PuntoRol({ rol }: { rol: string }) {
   return (
-    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${classes}`}>
-      {label}
-    </span>
+    <span
+      aria-hidden
+      data-punto-rol={rol}
+      className={`size-2 shrink-0 rounded-full ${ROL_PUNTO[rol] ?? 'bg-gray-300'}`}
+    />
+  );
+}
+
+/**
+ * El rol en una sola píldora: para el admin es el dropdown que lo cambia; para el resto
+ * (o en una invitación, que todavía no tiene membresía) es solo la etiqueta.
+ */
+function RolPildora({ usuario, editable }: { usuario: Usuario; editable: boolean }) {
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const label = rolLabel(usuario.rol);
+
+  if (!editable) {
+    return (
+      <span className={`${PILDORA} border-border bg-white text-foreground`}>
+        <PuntoRol rol={usuario.rol} />
+        <span className="truncate">{label}</span>
+      </span>
+    );
+  }
+
+  function handleChange(nuevoRol: string) {
+    if (nuevoRol === usuario.rol) return;
+    startTransition(async () => {
+      const result = await cambiarRol(usuario.id, nuevoRol);
+      if (result.ok) {
+        toast.success('Rol actualizado');
+        router.refresh();
+      } else {
+        toast.error(result.error ?? 'Error al actualizar el rol');
+      }
+    });
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        disabled={isPending}
+        aria-label={`Rol de ${nombreCompleto(usuario)}: ${label}`}
+        className={`${PILDORA} border-border bg-white text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secundario/40 disabled:opacity-50 data-[state=open]:border-primario`}
+      >
+        <PuntoRol rol={usuario.rol} />
+        <span className="truncate">{label}</span>
+        {isPending ? (
+          <Loader2 aria-hidden className="size-3 shrink-0 animate-spin" />
+        ) : (
+          <ChevronDown aria-hidden className="size-3 shrink-0 text-muted-foreground" />
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        {ROLES_PERMITIDOS.map((rol) => (
+          <DropdownMenuItem key={rol} onSelect={() => handleChange(rol)}>
+            <Check
+              aria-hidden
+              className={`size-3.5 shrink-0 text-primario ${rol === usuario.rol ? 'opacity-100' : 'opacity-0'}`}
+            />
+            {ROL_LABELS[rol]}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -58,37 +140,31 @@ function RolBadge({ rol }: { rol: string }) {
  * propio usuario se topa con un banner bloqueante en /viandas. Prevenirlo con un
  * wizard no cubriría a quien fue invitado antes de que el campo existiera.
  */
-function LugarRetiroChip({ lugarRetiro }: { lugarRetiro: string | null }) {
-  if (!lugarRetiro) {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
-        <TriangleAlert size={12} aria-hidden="true" />
-        Sin lugar asignado
-      </span>
-    );
-  }
-  const label =
-    (LUGAR_RETIRO_LABELS as Record<string, string>)[lugarRetiro] ?? lugarRetiro;
-  return (
-    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-muted text-foreground border border-gray-200">
-      {label}
-    </span>
-  );
-}
-
-function LugarRetiroSelector({
-  userId,
-  currentLugar,
-}: {
-  userId: string;
-  currentLugar: string | null;
-}) {
+function LugarRetiroPildora({ usuario, editable }: { usuario: Usuario; editable: boolean }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const lugar = usuario.lugarRetiro;
+  const label = lugar
+    ? ((LUGAR_RETIRO_LABELS as Record<string, string>)[lugar] ?? lugar)
+    : 'Sin lugar asignado';
+  const clases = lugar
+    ? 'border-border bg-muted text-foreground'
+    : 'border-amber-200 bg-amber-100 text-amber-800';
+  const contenido = (
+    <>
+      {!lugar && <TriangleAlert aria-hidden className="size-3 shrink-0" />}
+      <span className="truncate">{label}</span>
+    </>
+  );
 
-  function handleChange(lugar: string) {
+  if (!editable) {
+    return <span className={`${PILDORA} ${clases}`}>{contenido}</span>;
+  }
+
+  function handleChange(nuevo: string) {
+    if (nuevo === lugar) return;
     startTransition(async () => {
-      const result = await asignarLugarRetiro(userId, lugar);
+      const result = await asignarLugarRetiro(usuario.id, nuevo);
       if (result.ok) {
         toast.success('Lugar de retiro actualizado');
         router.refresh();
@@ -99,17 +175,69 @@ function LugarRetiroSelector({
   }
 
   return (
-    <CustomSelect
-      value={currentLugar ?? ''}
-      onChange={handleChange}
-      disabled={isPending}
-      placeholder="Elegir lugar..."
-      options={LUGARES_RETIRO.map((lugar) => ({
-        value: lugar,
-        label: LUGAR_RETIRO_LABELS[lugar],
-      }))}
-    />
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        disabled={isPending}
+        aria-label={`Lugar de retiro de ${nombreCompleto(usuario)}: ${label}`}
+        className={`${PILDORA} ${clases} transition-colors hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secundario/40 disabled:opacity-50`}
+      >
+        {contenido}
+        {isPending ? (
+          <Loader2 aria-hidden className="size-3 shrink-0 animate-spin" />
+        ) : (
+          <ChevronDown aria-hidden className="size-3 shrink-0 opacity-70" />
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-44">
+        {LUGARES_RETIRO.map((l) => (
+          <DropdownMenuItem key={l} onSelect={() => handleChange(l)}>
+            <Check
+              aria-hidden
+              className={`size-3.5 shrink-0 text-primario ${l === lugar ? 'opacity-100' : 'opacity-0'}`}
+            />
+            {LUGAR_RETIRO_LABELS[l]}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
+}
+
+function PildorasRol({ usuario, isAdmin }: { usuario: Usuario; isAdmin: boolean }) {
+  const editable = isAdmin && !esInvitacion(usuario);
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+      <RolPildora usuario={usuario} editable={editable} />
+      {usuario.rol === 'responsable_viandas' && (
+        <LugarRetiroPildora usuario={usuario} editable={editable} />
+      )}
+    </div>
+  );
+}
+
+function UsuarioNombre({ usuario }: { usuario: Usuario }) {
+  const nombre = nombreCompleto(usuario);
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <Avatar
+        src={esInvitacion(usuario) ? null : (usuario.imageUrl ?? null)}
+        alt={nombre}
+        iniciales={iniciales(usuario)}
+        className="size-9 text-xs"
+      />
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-foreground">{nombre}</p>
+        <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+          <Mail aria-hidden className="size-3 shrink-0" />
+          <span className="truncate">{usuario.email}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ultimoIngreso(usuario: Usuario): string {
+  return esInvitacion(usuario) ? '—' : formatUltimoIngreso(usuario.lastSignInAt);
 }
 
 interface UsuarioAccionesProps {
@@ -246,62 +374,33 @@ function UsuarioAcciones({ usuario, isAdmin, currentUserId, openConfirm }: Usuar
   );
 }
 
-function RolSelector({ userId, currentRol }: { userId: string; currentRol: string }) {
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter();
-
-  function handleChange(nuevoRol: string) {
-    startTransition(async () => {
-      const result = await cambiarRol(userId, nuevoRol);
-      if (result.ok) {
-        toast.success('Rol actualizado');
-        router.refresh();
-      } else {
-        toast.error(result.error ?? 'Error al actualizar el rol');
-      }
-    });
-  }
-
-  return (
-    <CustomSelect
-      value={currentRol}
-      onChange={handleChange}
-      disabled={isPending}
-      options={ROLES_PERMITIDOS.map((rol) => ({ value: rol, label: ROL_LABELS[rol] }))}
-    />
-  );
-}
+const BADGE = 'inline-flex shrink-0 items-center text-xs font-medium px-2.5 py-1 rounded-full';
 
 function EstadoBadge({ usuario }: { usuario: Usuario }) {
   if (usuario.status === 'inactivo') {
     return (
-      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-700">
-        Inactivo
+      <span
+        className={`${BADGE} bg-gray-100 text-muted-foreground`}
+        title="No puede entrar a este club hasta que lo reactiven"
+      >
+        Deshabilitado
       </span>
     );
   }
   if (usuario.status === 'activo') {
-    return (
-      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700">
-        Activo
-      </span>
-    );
+    return <span className={`${BADGE} bg-green-100 text-green-700`}>Activo</span>;
   }
   if (usuario.status === 'vencida') {
     return (
       <span
-        className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-muted-foreground"
+        className={`${BADGE} bg-gray-100 text-muted-foreground`}
         title="La invitación venció: reenviala para que pueda entrar"
       >
         Vencida
       </span>
     );
   }
-  return (
-    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
-      Pendiente
-    </span>
-  );
+  return <span className={`${BADGE} bg-amber-100 text-amber-800`}>Pendiente</span>;
 }
 
 interface UsuariosTableProps {
@@ -410,10 +509,8 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-
-        {/* Mobile card list — hidden on lg+ */}
-        <ul className="lg:hidden divide-y divide-gray-100">
+      <Panel relleno={false} className="overflow-hidden">
+        <ul className="lg:hidden divide-y divide-border">
           {usuarios.length === 0 ? (
             <li className="px-4 py-12 text-center text-sm text-muted-foreground">
               No hay usuarios registrados
@@ -424,15 +521,10 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
               return (
                 <li
                   key={usuario.id}
-                  className={`px-4 py-4 flex flex-col gap-2${isDisabled ? ' opacity-60' : ''}`}
+                  className={`px-4 py-4 flex flex-col gap-2.5${isDisabled ? ' opacity-60' : ''}`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {usuario.firstName} {usuario.lastName}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{usuario.email}</p>
-                    </div>
+                    <UsuarioNombre usuario={usuario} />
                     <UsuarioAcciones
                       usuario={usuario}
                       isAdmin={isAdmin}
@@ -440,33 +532,12 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
                       openConfirm={openConfirm}
                     />
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <RolBadge rol={usuario.rol} />
-                    {usuario.rol === 'responsable_viandas' && (
-                      <LugarRetiroChip lugarRetiro={usuario.lugarRetiro} />
-                    )}
+                  <div className="flex flex-wrap items-center gap-1.5 pl-12">
+                    <PildorasRol usuario={usuario} isAdmin={isAdmin} />
                     <EstadoBadge usuario={usuario} />
                   </div>
-                  {isAdmin && !esInvitacion(usuario) && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Rol:</span>
-                      <RolSelector userId={usuario.id} currentRol={usuario.rol} />
-                    </div>
-                  )}
-                  {isAdmin &&
-                    !esInvitacion(usuario) &&
-                    usuario.rol === 'responsable_viandas' && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Lugar:</span>
-                        <LugarRetiroSelector
-                          userId={usuario.id}
-                          currentLugar={usuario.lugarRetiro}
-                        />
-                      </div>
-                    )}
-                  <p className="text-xs text-muted-foreground">
-                    Último ingreso:{' '}
-                    {!esInvitacion(usuario) ? formatLastSignIn(usuario.lastSignInAt) : '—'}
+                  <p className="pl-12 text-xs text-muted-foreground">
+                    Último ingreso: {ultimoIngreso(usuario)}
                   </p>
                 </li>
               );
@@ -474,25 +545,22 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
           )}
         </ul>
 
-        {/* Desktop table — hidden below lg */}
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-gray-100">
-                <th className="px-4 py-3 text-left">Nombre</th>
-                <th className="px-4 py-3 text-left">Email</th>
-                <th className="px-4 py-3 text-left">Rol</th>
-                <th className="hidden xl:table-cell px-4 py-3 text-left">Último ingreso</th>
-                <th className="px-4 py-3 text-left">Estado</th>
-                {isAdmin && <th className="hidden xl:table-cell px-4 py-3 text-left">Cambiar rol</th>}
-                <th className="px-4 py-3 text-left">Acciones</th>
+              <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-border">
+                <th className="px-4 py-3 text-left font-medium">Nombre</th>
+                <th className="px-4 py-3 text-left font-medium">Rol</th>
+                <th className="px-4 py-3 text-left font-medium whitespace-nowrap">Último ingreso</th>
+                <th className="px-4 py-3 text-left font-medium">Estado</th>
+                {isAdmin && <th className="px-4 py-3 text-left font-medium">Acciones</th>}
               </tr>
             </thead>
             <tbody>
               {usuarios.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={isAdmin ? 7 : 6}
+                    colSpan={isAdmin ? 5 : 4}
                     className="px-5 py-12 text-center text-sm text-muted-foreground"
                   >
                     No hay usuarios registrados
@@ -504,53 +572,30 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
                   return (
                     <tr
                       key={usuario.id}
-                      className={`border-b border-gray-50 hover:bg-muted transition-colors${isDisabled ? ' opacity-60' : ''}`}
+                      className={`border-b border-border last:border-0 hover:bg-muted/60 transition-colors${isDisabled ? ' opacity-60' : ''}`}
                     >
-                      <td className="px-4 py-3.5 text-sm font-medium text-foreground">
-                        {usuario.firstName} {usuario.lastName}
+                      <td className="max-w-0 w-[40%] px-4 py-3">
+                        <UsuarioNombre usuario={usuario} />
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-muted-foreground">{usuario.email}</td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <RolBadge rol={usuario.rol} />
-                          {usuario.rol === 'responsable_viandas' && (
-                            <LugarRetiroChip lugarRetiro={usuario.lugarRetiro} />
-                          )}
-                        </div>
+                      <td className="px-4 py-3">
+                        <PildorasRol usuario={usuario} isAdmin={isAdmin} />
                       </td>
-                      <td className="hidden xl:table-cell px-4 py-3.5 text-sm text-muted-foreground">
-                        {!esInvitacion(usuario)
-                          ? formatLastSignIn(usuario.lastSignInAt)
-                          : '—'}
+                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                        {ultimoIngreso(usuario)}
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3">
                         <EstadoBadge usuario={usuario} />
                       </td>
                       {isAdmin && (
-                        <td className="hidden xl:table-cell px-4 py-3.5">
-                          {!esInvitacion(usuario) ? (
-                            <div className="flex flex-col gap-1.5">
-                              <RolSelector userId={usuario.id} currentRol={usuario.rol} />
-                              {usuario.rol === 'responsable_viandas' && (
-                                <LugarRetiroSelector
-                                  userId={usuario.id}
-                                  currentLugar={usuario.lugarRetiro}
-                                />
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
+                        <td className="px-4 py-3">
+                          <UsuarioAcciones
+                            usuario={usuario}
+                            isAdmin={isAdmin}
+                            currentUserId={currentUserId}
+                            openConfirm={openConfirm}
+                          />
                         </td>
                       )}
-                      <td className="px-4 py-3.5">
-                        <UsuarioAcciones
-                          usuario={usuario}
-                          isAdmin={isAdmin}
-                          currentUserId={currentUserId}
-                          openConfirm={openConfirm}
-                        />
-                      </td>
                     </tr>
                   );
                 })
@@ -558,7 +603,7 @@ export default function UsuariosTable({ usuarios, rol, currentUserId }: Usuarios
             </tbody>
           </table>
         </div>
-      </div>
+      </Panel>
 
       <ConfirmarAccionModal
         open={confirmModal.open}

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Database, Palette, Save } from 'lucide-react';
+import { BarChart3, Database, LineChart, Palette, PieChart, Save, Table } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { CustomSelect } from '@/app/components/ui/custom-select';
+import { cn } from '@/lib/utils';
 import { fetchInsightsQuery, insightsQueryKey } from '@/lib/api/insights';
 import { CLIENT_DATASETS } from '@/lib/insights/catalog-client';
 import {
@@ -67,6 +68,16 @@ function emptyDraft(): WidgetDraft {
 }
 
 const GROUP_ORDER: VizGroup[] = ['metrica', 'tendencia', 'comparacion', 'distribucion', 'tabla'];
+
+/** Los cuatro tipos de uso diario, como botones con ícono. El resto, en "Otros". */
+const TIPOS_RAPIDOS = [
+  { id: 'bar', label: 'Barras', Icono: BarChart3 },
+  { id: 'line', label: 'Líneas', Icono: LineChart },
+  { id: 'pie', label: 'Torta', Icono: PieChart },
+  { id: 'table', label: 'Tabla', Icono: Table },
+] as const satisfies ReadonlyArray<{ id: VizId; label: string; Icono: unknown }>;
+
+const ES_RAPIDO = (tipo: VizId) => TIPOS_RAPIDOS.some((t) => t.id === tipo);
 
 /**
  * Modal de creación/edición de widget: panel de configuración a la izquierda y
@@ -165,6 +176,71 @@ export default function WidgetEditorDialog({
 
   const puedeGuardar = draft.titulo.trim().length > 0 && specIsQueryable;
 
+  const selectorGrafico = (
+    <div>
+      <p id="widget-grafico" className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+        Gráfico
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <div role="group" aria-labelledby="widget-grafico" className="grid grid-cols-4 gap-1">
+          {TIPOS_RAPIDOS.map(({ id, label, Icono }) => {
+            const check = compatibility.get(id);
+            const incompatible = Boolean(check && !check.compatible);
+            const activo = draft.tipo === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-label={label}
+                aria-pressed={activo}
+                title={incompatible ? `${label} — ${check?.reason}` : label}
+                disabled={incompatible}
+                onClick={() => setTipo(id)}
+                className={cn(
+                  'flex h-9 w-11 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40',
+                  activo
+                    ? 'border-secundario bg-secundario/10 text-secundario'
+                    : 'border-border bg-background text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <Icono aria-hidden className="size-4" />
+              </button>
+            );
+          })}
+        </div>
+        <select
+          id="widget-tipo"
+          aria-label="Otros tipos de gráfico"
+          value={ES_RAPIDO(draft.tipo) ? '' : draft.tipo}
+          onChange={(e) => e.target.value && setTipo(e.target.value as VizId)}
+          className={cn(
+            'h-9 min-w-0 flex-1 rounded-lg border px-2 text-sm bg-background',
+            ES_RAPIDO(draft.tipo) ? 'border-border text-muted-foreground' : 'border-secundario text-secundario',
+          )}
+        >
+          <option value="">Otros…</option>
+          {GROUP_ORDER.map((group) => (
+            <optgroup key={group} label={VIZ_GROUP_LABELS[group]}>
+              {VISUALIZATIONS.filter((v) => v.group === group).map((viz) => {
+                const check = compatibility.get(viz.id);
+                const incompatible = check && !check.compatible;
+                return (
+                  <option key={viz.id} value={viz.id} disabled={incompatible}>
+                    {viz.label}
+                    {incompatible ? ` — ${check?.reason}` : ''}
+                  </option>
+                );
+              })}
+            </optgroup>
+          ))}
+        </select>
+      </div>
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        {VISUALIZATIONS.find((v) => v.id === draft.tipo)?.description}
+      </p>
+    </div>
+  );
+
   const columnas = preview.data?.columns ?? [];
   const medidas = columnas.filter((c) => c.role === 'measure');
   const dimensiones = columnas.filter((c) => c.role === 'dimension');
@@ -173,7 +249,7 @@ export default function WidgetEditorDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-100">
-          <DialogTitle style={{ fontFamily: 'Oswald, sans-serif' }}>
+          <DialogTitle className="font-[family-name:var(--font-oswald)]">
             {widget ? 'Editar widget' : 'Crear widget'}
           </DialogTitle>
           <DialogDescription>
@@ -187,7 +263,7 @@ export default function WidgetEditorDialog({
             <div className="grid grid-cols-2 gap-1 p-1 bg-muted rounded-lg">
               {(
                 [
-                  ['data', 'Datos', Database],
+                  ['data', 'Configuración', Database],
                   ['custom', 'Apariencia', Palette],
                 ] as const
               ).map(([id, label, Icon]) => (
@@ -207,39 +283,6 @@ export default function WidgetEditorDialog({
 
             {tab === 'data' ? (
               <>
-                <div>
-                  <label
-                    htmlFor="widget-tipo"
-                    className="block text-sm font-medium text-foreground mb-1.5"
-                  >
-                    Tipo de visualización
-                  </label>
-                  <select
-                    id="widget-tipo"
-                    value={draft.tipo}
-                    onChange={(e) => setTipo(e.target.value as VizId)}
-                    className="h-9 w-full rounded-md border border-gray-200 px-2 text-sm bg-white"
-                  >
-                    {GROUP_ORDER.map((group) => (
-                      <optgroup key={group} label={VIZ_GROUP_LABELS[group]}>
-                        {VISUALIZATIONS.filter((v) => v.group === group).map((viz) => {
-                          const check = compatibility.get(viz.id);
-                          const incompatible = check && !check.compatible;
-                          return (
-                            <option key={viz.id} value={viz.id} disabled={incompatible}>
-                              {viz.label}
-                              {incompatible ? ` — ${check?.reason}` : ''}
-                            </option>
-                          );
-                        })}
-                      </optgroup>
-                    ))}
-                  </select>
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    {VISUALIZATIONS.find((v) => v.id === draft.tipo)?.description}
-                  </p>
-                </div>
-
                 <div>
                   <label
                     htmlFor="widget-titulo"
@@ -307,6 +350,7 @@ export default function WidgetEditorDialog({
                   <VisualBuilder
                     spec={draft.querySpec as QuerySpec}
                     onChange={(spec) => setSpec(spec)}
+                    grafico={selectorGrafico}
                   />
                 ) : (
                   <>
@@ -320,6 +364,7 @@ export default function WidgetEditorDialog({
                       onChange={(sql) => setSpec({ mode: 'sql', sql })}
                       readOnly={!permiteSql}
                     />
+                    {selectorGrafico}
                   </>
                 )}
               </>
@@ -412,6 +457,29 @@ export default function WidgetEditorDialog({
                       placeholder={medidas[0]?.label ?? 'Etiqueta'}
                       className="h-9 w-full rounded-md border border-gray-200 px-2 text-sm"
                     />
+                    <label className="mt-3 flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={draft.vizConfig.compararPeriodo ?? false}
+                        onChange={(e) => setVizConfig({ compararPeriodo: e.target.checked || undefined })}
+                        className="rounded border-gray-300 text-primario focus:ring-secundario"
+                      />
+                      Variación contra el período anterior
+                    </label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Requiere un filtro de fecha &quot;este mes&quot; o &quot;en los últimos N días&quot;.
+                    </p>
+                    {draft.vizConfig.compararPeriodo && (
+                      <label className="mt-2 flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={draft.vizConfig.invertDelta ?? false}
+                          onChange={(e) => setVizConfig({ invertDelta: e.target.checked || undefined })}
+                          className="rounded border-gray-300 text-primario focus:ring-secundario"
+                        />
+                        Bajar es bueno (ej. ausencias)
+                      </label>
+                    )}
                   </div>
                 )}
 

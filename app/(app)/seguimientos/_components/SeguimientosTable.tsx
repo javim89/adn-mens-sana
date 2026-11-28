@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Plus, Pencil, Search, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -9,13 +9,20 @@ import type {
   TipoSeguimiento,
   PrioridadSeguimiento,
 } from '@/lib/types/seguimientos';
-import DeleteSeguimientoModal from './DeleteSeguimientoModal';
-import { CustomSelect } from '@/app/components/ui/custom-select';
+import { Avatar } from '@/app/components/ui/avatar';
+import { Button } from '@/app/components/ui/button';
+import { EncabezadoPagina } from '@/app/components/ui/encabezado-pagina';
+import { FiltroChip } from '@/app/components/ui/filtro-chip';
+import { LayoutConLateral } from '@/app/components/ui/layout-con-lateral';
+import { Panel } from '@/app/components/ui/panel';
 import {
   getTipoSeguimientoMeta,
   PRIORIDAD_LABELS,
   PRIORIDAD_STYLES,
+  TIPO_SEGUIMIENTO_META,
 } from '@/lib/utils/seguimiento-tipo';
+import DeleteSeguimientoModal from './DeleteSeguimientoModal';
+import { fechaCorta, fechaLarga, inicialesDe } from '../_lib/formato';
 
 interface ProfesionalOption {
   id: string;
@@ -32,50 +39,58 @@ interface Props {
   currentUserId: string;
   profesionales: ProfesionalOption[];
   disciplinas: { id: string; nombre: string; categorias: { id: string; nombre: string }[] }[];
-  currentPrioridad: string;
+  currentPrioridades: PrioridadSeguimiento[];
+  currentTipo: TipoSeguimiento | null;
   currentArea: string;
   currentDisciplina: string;
   currentCategoria: string;
   currentSearch: string;
+  /** Columna derecha (paneles server-side: por tipo, próximos turnos). */
+  lateral?: ReactNode;
 }
+
+const BADGE =
+  'inline-flex w-fit shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap';
+
+const PRIORIDAD_OPCIONES = (['BAJA', 'MEDIA', 'ALTA', 'URGENTE'] as const).map((p) => ({
+  value: p,
+  label: PRIORIDAD_LABELS[p],
+}));
+
+const TIPO_OPCIONES = (Object.keys(TIPO_SEGUIMIENTO_META) as TipoSeguimiento[]).map((t) => ({
+  value: t,
+  label: TIPO_SEGUIMIENTO_META[t].label,
+}));
 
 function TipoBadge({ tipo }: { tipo: TipoSeguimiento | null }) {
   const meta = getTipoSeguimientoMeta(tipo);
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${meta.badge}`}
-    >
-      {meta.label}
-    </span>
-  );
+  return <span className={`${BADGE} ${meta.badge}`}>{meta.label}</span>;
 }
 
 function PrioridadBadge({ prioridad }: { prioridad: PrioridadSeguimiento }) {
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PRIORIDAD_STYLES[prioridad] ?? 'bg-gray-100 text-gray-600'}`}
-    >
+    <span className={`${BADGE} ${PRIORIDAD_STYLES[prioridad] ?? 'bg-gray-100 text-gray-600'}`}>
       {PRIORIDAD_LABELS[prioridad] ?? prioridad}
     </span>
   );
 }
 
-function formatDeportistas(deportistas: SeguimientoListItem['deportistas']) {
+/** Avatar del primer deportista + su nombre y, si hay más, "+N" (que nunca se trunca). */
+function DeportistaCelda({ deportistas }: { deportistas: SeguimientoListItem['deportistas'] }) {
+  const primero = deportistas[0];
   const nombres = deportistas.map((d) => `${d.apellido}, ${d.nombre}`);
-  const full = nombres.join(' · ');
-  return {
-    first: nombres[0] ?? '—',
-    othersCount: nombres.length > 1 ? nombres.length - 1 : 0,
-    title: full || '—',
-  };
-}
-
-function formatDate(dateStr: string) {
-  return new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(dateStr + 'T00:00:00'));
+  const resto = deportistas.length - 1;
+  return (
+    <div className="flex min-w-0 items-center gap-2.5" title={nombres.join(' · ') || undefined}>
+      {primero ? (
+        <Avatar alt={nombres[0]} iniciales={inicialesDe(primero)} className="size-8 text-xs" />
+      ) : (
+        <span className="size-8 shrink-0 rounded-full bg-muted" aria-hidden />
+      )}
+      <span className="truncate text-sm font-medium text-foreground">{nombres[0] ?? '—'}</span>
+      {resto > 0 && <span className="shrink-0 text-xs text-muted-foreground">+{resto}</span>}
+    </div>
+  );
 }
 
 export default function SeguimientosTable({
@@ -88,11 +103,13 @@ export default function SeguimientosTable({
   currentUserId,
   profesionales,
   disciplinas,
-  currentPrioridad,
+  currentPrioridades,
+  currentTipo,
   currentArea,
   currentDisciplina,
   currentCategoria,
   currentSearch,
+  lateral,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -118,6 +135,10 @@ export default function SeguimientosTable({
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
 
+  const hayFiltros =
+    currentPrioridades.length > 0 ||
+    Boolean(currentTipo || currentArea || currentDisciplina || currentCategoria || currentSearch);
+
   /** Construye una nueva URL a partir de los searchParams actuales con overrides. */
   function buildUrl(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams?.toString() ?? '');
@@ -134,22 +155,6 @@ export default function SeguimientosTable({
       if (replace) router.replace(url);
       else router.push(url);
     });
-  }
-
-  function handlePrioridadChange(value: string) {
-    navigate(buildUrl({ prioridad: value || null, page: null }));
-  }
-
-  function handleAreaChange(value: string) {
-    navigate(buildUrl({ area: value || null, page: null }));
-  }
-
-  function handleDisciplinaChange(value: string) {
-    navigate(buildUrl({ disciplina: value || null, categoria: null, page: null }));
-  }
-
-  function handleCategoriaChange(value: string) {
-    navigate(buildUrl({ categoria: value || null, page: null }));
   }
 
   function handleSearchChange(value: string) {
@@ -178,336 +183,319 @@ export default function SeguimientosTable({
 
   const from = total === 0 ? 0 : currentPage * pageSize + 1;
   const to = Math.min(total, currentPage * pageSize + seguimientos.length);
+  const sustantivo = total === 1 ? 'seguimiento' : 'seguimientos';
 
-  return (
-    <div>
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
-        <h1
-          className="text-3xl font-bold text-primario"
-          style={{ fontFamily: 'Oswald, sans-serif' }}
+  function renderAcciones(s: SeguimientoListItem) {
+    const canModifyRow = isAdmin || s.profesionalId === currentUserId;
+    return (
+      <div className="flex shrink-0 items-center justify-end gap-1">
+        <Link
+          href={`/seguimientos/${s.id}`}
+          className="p-1 text-muted-foreground transition-colors hover:text-primario"
+          title="Ver seguimiento"
         >
-          Seguimientos
-        </h1>
-        {canWrite && (
-          <Link
-            href="/seguimientos/nuevo"
-            className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover transition-colors shrink-0"
-          >
-            <Plus size={16} />
-            Nuevo seguimiento
-          </Link>
+          <Eye size={15} />
+        </Link>
+        {canModifyRow && (
+          <>
+            <Link
+              href={`/seguimientos/${s.id}/editar`}
+              className="p-1 text-muted-foreground transition-colors hover:text-primario"
+              title="Editar seguimiento"
+            >
+              <Pencil size={15} />
+            </Link>
+            <DeleteSeguimientoModal
+              seguimientoId={s.id}
+              seguimientoTitulo={s.titulo}
+              onDeleted={handleDeleted}
+            />
+          </>
         )}
       </div>
-      <p className="text-muted-foreground mb-6">
-        Evaluaciones y seguimiento clínico de deportistas
-        {total > 0 && (
-          <span className="ml-2 text-xs font-medium bg-gray-100 text-muted-foreground px-2 py-0.5 rounded-full">
-            {total} {total === 1 ? 'seguimiento' : 'seguimientos'}
-          </span>
-        )}
-      </p>
+    );
+  }
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Buscar por título o deportista..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secundario/30 bg-white"
-          />
+  const vacio = (
+    <>
+      No hay seguimientos.{' '}
+      {canWrite && (
+        <Link href="/seguimientos/nuevo" className="text-primario underline hover:no-underline">
+          Crear el primero
+        </Link>
+      )}
+    </>
+  );
+
+  const tabla = (
+    <div className="flex min-w-0 flex-col gap-4">
+      {/* Total honesto: es lo que matchea los filtros, no "abiertos" (no hay estado de cierre). */}
+      <div className="flex items-center gap-4 rounded-2xl bg-primario px-5 py-4 text-white md:gap-5 md:px-6 md:py-5">
+        <p
+          className="font-[family-name:var(--font-oswald)] text-4xl font-semibold leading-none tabular-nums md:text-5xl"
+          aria-hidden
+        >
+          {total}
+        </p>
+        <div className="min-w-0 space-y-0.5">
+          <p className="text-sm font-medium text-white/85">
+            <span className="sr-only">{total} </span>
+            {total === 1 ? 'Seguimiento' : 'Seguimientos'}
+            {hayFiltros ? ' con los filtros aplicados' : ' registrados'}
+          </p>
+          <p className="text-xs text-white/70">
+            Médicos, psicológicos, nutricionales y sociales, de todo el plantel.
+          </p>
         </div>
-
-        <CustomSelect
-          value={currentPrioridad}
-          onChange={handlePrioridadChange}
-          options={[
-            { value: '', label: 'Todas las prioridades' },
-            { value: 'BAJA', label: 'Baja' },
-            { value: 'MEDIA', label: 'Media' },
-            { value: 'ALTA', label: 'Alta' },
-            { value: 'URGENTE', label: 'Urgente' },
-          ]}
-          className="min-w-[160px]"
-        />
-
-        <CustomSelect
-          value={currentDisciplina}
-          onChange={handleDisciplinaChange}
-          searchable
-          options={[
-            { value: '', label: 'Todas las disciplinas' },
-            ...disciplinas.map((d) => ({ value: d.id, label: d.nombre })),
-          ]}
-          className="min-w-[160px]"
-        />
-
-        <CustomSelect
-          value={currentCategoria}
-          onChange={handleCategoriaChange}
-          searchable
-          disabled={!currentDisciplina}
-          options={[
-            { value: '', label: 'Todas las categorías' },
-            ...categoriasFiltro.map((c) => ({ value: c.id, label: c.nombre })),
-          ]}
-          className="min-w-[160px]"
-        />
-
-        {isAdmin && profesionales.length > 0 && (
-          <CustomSelect
-            value={currentArea}
-            onChange={handleAreaChange}
-            searchable
-            options={[
-              { value: '', label: 'Todas las áreas' },
-              ...profesionales.map((p) => ({ value: p.id, label: p.nombre })),
-            ]}
-            className="min-w-[160px]"
-          />
-        )}
       </div>
 
-      <div
-        className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-opacity ${isPending ? 'opacity-60' : ''}`}
+      <Panel
+        relleno={false}
+        className={`overflow-hidden transition-opacity ${isPending ? 'opacity-60' : ''}`}
       >
         {/* Mobile card list */}
-        <ul className="lg:hidden divide-y divide-gray-100">
+        <ul className="divide-y divide-gray-100 lg:hidden">
           {seguimientos.length === 0 ? (
-            <li className="px-4 py-12 text-center text-sm text-muted-foreground">
-              No hay seguimientos.{' '}
-              {canWrite && (
-                <Link href="/seguimientos/nuevo" className="text-primario underline hover:no-underline">
-                  Crear el primero
-                </Link>
-              )}
-            </li>
+            <li className="px-4 py-12 text-center text-sm text-muted-foreground">{vacio}</li>
           ) : (
-            seguimientos.map((s) => {
-              const canModifyRow = isAdmin || s.profesionalId === currentUserId;
-              return (
-                <li key={s.id} className="px-4 py-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                        <Link
-                          href={`/seguimientos/${s.id}`}
-                          className="text-sm font-semibold text-foreground hover:text-primario truncate transition-colors"
-                        >
-                          {s.titulo}
-                        </Link>
+            seguimientos.map((s) => (
+              <li key={s.id} className="px-4 py-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <DeportistaCelda deportistas={s.deportistas} />
+                      <span
+                        className="shrink-0 text-xs text-muted-foreground"
+                        title={fechaLarga(s.fecha)}
+                      >
+                        {fechaCorta(s.fecha)}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 pl-[2.625rem]">
+                      <Link
+                        href={`/seguimientos/${s.id}`}
+                        className="block truncate text-sm text-foreground transition-colors hover:text-primario"
+                      >
+                        {s.titulo}
+                      </Link>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
                         <PrioridadBadge prioridad={s.prioridad} />
                         <TipoBadge tipo={s.tipoSeguimiento} />
                       </div>
-                      {(() => {
-                        const dep = formatDeportistas(s.deportistas);
-                        return (
-                          <p
-                            className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5"
-                            title={dep.title}
-                          >
-                            <span className="truncate">{dep.first}</span>
-                            {dep.othersCount > 0 && (
-                              <span className="shrink-0 text-muted-foreground">
-                                +{dep.othersCount}
-                              </span>
-                            )}
-                            <span className="shrink-0">· {formatDate(s.fecha)}</span>
-                          </p>
-                        );
-                      })()}
                       {isAdmin && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
                           Profesional: {s.profesionalNombre}
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Link
-                        href={`/seguimientos/${s.id}`}
-                        className="text-muted-foreground hover:text-primario transition-colors p-1"
-                        title="Ver seguimiento"
-                      >
-                        <Eye size={15} />
-                      </Link>
-                      {canModifyRow && (
-                        <>
-                          <Link
-                            href={`/seguimientos/${s.id}/editar`}
-                            className="text-muted-foreground hover:text-primario transition-colors p-1"
-                            title="Editar seguimiento"
-                          >
-                            <Pencil size={15} />
-                          </Link>
-                          <DeleteSeguimientoModal
-                            seguimientoId={s.id}
-                            seguimientoTitulo={s.titulo}
-                            onDeleted={handleDeleted}
-                          />
-                        </>
-                      )}
-                    </div>
                   </div>
-                </li>
-              );
-            })
+                  {renderAcciones(s)}
+                </div>
+              </li>
+            ))
           )}
         </ul>
 
         {/* Desktop table */}
-        <div className="hidden lg:block overflow-x-auto">
+        <div className="hidden overflow-x-auto lg:block">
           <table className="w-full">
             <thead>
-              <tr className="text-xs uppercase text-muted-foreground bg-muted border-b border-gray-100">
-                <th className="px-5 py-3 text-left">Deportista</th>
-                <th className="px-5 py-3 text-left">Fecha</th>
-                <th className="px-5 py-3 text-left">Título</th>
-                <th className="px-5 py-3 text-left">Prioridad</th>
-                <th className="hidden xl:table-cell px-5 py-3 text-left">Tipo</th>
-                {isAdmin && <th className="px-5 py-3 text-left">Área responsable</th>}
-                <th className="px-5 py-3" />
+              <tr className="border-b border-gray-100 bg-muted text-xs uppercase text-muted-foreground">
+                <th className="px-4 py-3 text-left font-medium">Deportista</th>
+                <th className="px-4 py-3 text-left font-medium">Título</th>
+                <th className="px-4 py-3 text-left font-medium">Fecha</th>
+                <th className="px-4 py-3 text-left font-medium">Prioridad</th>
+                {isAdmin && (
+                  <th className="hidden px-4 py-3 text-left font-medium xl:table-cell">
+                    Profesional
+                  </th>
+                )}
+                <th className="px-4 py-3">
+                  <span className="sr-only">Acciones</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {seguimientos.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={isAdmin ? 7 : 6}
-                    className="px-5 py-12 text-center text-sm text-muted-foreground"
+                    colSpan={isAdmin ? 6 : 5}
+                    className="px-4 py-12 text-center text-sm text-muted-foreground"
                   >
-                    No hay seguimientos.{' '}
-                    {canWrite && (
-                      <Link
-                        href="/seguimientos/nuevo"
-                        className="text-primario underline hover:no-underline"
-                      >
-                        Crear el primero
-                      </Link>
-                    )}
+                    {vacio}
                   </td>
                 </tr>
               ) : (
-                seguimientos.map((s) => {
-                  const canModifyRow = isAdmin || s.profesionalId === currentUserId;
-                  return (
-                    <tr
-                      key={s.id}
-                      className="border-b border-gray-50 hover:bg-muted transition-colors"
-                    >
-                      <td className="px-5 py-3.5 text-sm text-muted-foreground max-w-[180px]">
-                        {(() => {
-                          const dep = formatDeportistas(s.deportistas);
-                          return (
-                            <div className="flex items-center gap-1" title={dep.title}>
-                              <span className="truncate">{dep.first}</span>
-                              {dep.othersCount > 0 && (
-                                <span className="shrink-0 text-muted-foreground">
-                                  +{dep.othersCount}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-5 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
-                        {formatDate(s.fecha)}
-                      </td>
-                      <td className="px-5 py-3.5 text-sm font-medium text-foreground max-w-[200px]">
-                        <Link
-                          href={`/seguimientos/${s.id}`}
-                          className="block truncate hover:text-primario transition-colors"
-                          title={s.titulo}
-                        >
-                          {s.titulo}
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <PrioridadBadge prioridad={s.prioridad} />
-                      </td>
-                      <td className="hidden xl:table-cell px-5 py-3.5">
+                seguimientos.map((s) => (
+                  <tr key={s.id} className="border-b border-gray-50 transition-colors hover:bg-muted">
+                    <td className="max-w-[220px] px-4 py-3">
+                      <DeportistaCelda deportistas={s.deportistas} />
+                    </td>
+                    <td className="max-w-[280px] px-4 py-3">
+                      <Link
+                        href={`/seguimientos/${s.id}`}
+                        className="block truncate text-sm text-foreground transition-colors hover:text-primario"
+                        title={s.titulo}
+                      >
+                        {s.titulo}
+                      </Link>
+                      <div className="mt-1">
                         <TipoBadge tipo={s.tipoSeguimiento} />
+                      </div>
+                    </td>
+                    <td
+                      className="whitespace-nowrap px-4 py-3 text-sm tabular-nums text-muted-foreground"
+                      title={fechaLarga(s.fecha)}
+                    >
+                      {fechaCorta(s.fecha)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <PrioridadBadge prioridad={s.prioridad} />
+                    </td>
+                    {isAdmin && (
+                      <td className="hidden max-w-[160px] px-4 py-3 text-sm text-muted-foreground xl:table-cell">
+                        <span className="block truncate" title={s.profesionalNombre}>
+                          {s.profesionalNombre}
+                        </span>
                       </td>
-                      {isAdmin && (
-                        <td className="px-5 py-3.5 text-sm text-muted-foreground max-w-[160px]">
-                          <span className="block truncate" title={s.profesionalNombre}>
-                            {s.profesionalNombre}
-                          </span>
-                        </td>
-                      )}
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Link
-                            href={`/seguimientos/${s.id}`}
-                            className="text-muted-foreground hover:text-primario transition-colors p-1"
-                            title="Ver seguimiento"
-                          >
-                            <Eye size={15} />
-                          </Link>
-                          {canModifyRow && (
-                            <>
-                              <Link
-                                href={`/seguimientos/${s.id}/editar`}
-                                className="text-muted-foreground hover:text-primario transition-colors p-1"
-                                title="Editar seguimiento"
-                              >
-                                <Pencil size={15} />
-                              </Link>
-                              <DeleteSeguimientoModal
-                                seguimientoId={s.id}
-                                seguimientoTitulo={s.titulo}
-                                onDeleted={handleDeleted}
-                              />
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                    )}
+                    <td className="px-4 py-3">
+                      {renderAcciones(s)}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
-      </div>
+      </Panel>
 
-      {/* Pagination controls */}
       {total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             Mostrando {from}–{to} de {total}
           </p>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage <= 0 || isPending}
-              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página anterior"
             >
               <ChevronLeft size={14} />
               Anterior
-            </button>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
+            </Button>
+            <span className="whitespace-nowrap text-xs text-muted-foreground">
               Página {currentPage + 1} de {totalPages}
             </span>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage >= totalPages - 1 || isPending}
-              className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Página siguiente"
             >
               Siguiente
               <ChevronRight size={14} />
-            </button>
+            </Button>
           </div>
         </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <EncabezadoPagina
+        titulo="Seguimientos"
+        contador={total}
+        contadorLabel={`${total} ${sustantivo}`}
+        subtitulo="Evaluaciones y seguimiento clínico de deportistas."
+        accion={
+          canWrite && (
+            <Link
+              href="/seguimientos/nuevo"
+              className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primario px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primario-hover"
+            >
+              <Plus size={16} />
+              Nuevo seguimiento
+            </Link>
+          )
+        }
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full sm:w-64">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Buscar por título o deportista..."
+              aria-label="Buscar seguimientos"
+              className="h-9 w-full rounded-full border border-border bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-secundario/30"
+            />
+          </div>
+
+          <FiltroChip
+            label="Prioridad"
+            modo="multiple"
+            todosLabel="Todas"
+            opciones={PRIORIDAD_OPCIONES}
+            valor={currentPrioridades}
+            onChange={(v) => navigate(buildUrl({ prioridad: v.join(',') || null, page: null }))}
+          />
+
+          <FiltroChip
+            label="Tipo"
+            opciones={TIPO_OPCIONES}
+            valor={currentTipo}
+            onChange={(v) => navigate(buildUrl({ tipo: v, page: null }))}
+          />
+
+          {isAdmin && profesionales.length > 0 && (
+            <FiltroChip
+              label="Profesional"
+              buscar
+              opciones={profesionales.map((p) => ({ value: p.id, label: p.nombre }))}
+              valor={currentArea || null}
+              onChange={(v) => navigate(buildUrl({ area: v, page: null }))}
+            />
+          )}
+
+          <FiltroChip
+            label="Disciplina"
+            buscar
+            todosLabel="Todas"
+            opciones={disciplinas.map((d) => ({ value: d.id, label: d.nombre }))}
+            valor={currentDisciplina || null}
+            onChange={(v) => navigate(buildUrl({ disciplina: v, categoria: null, page: null }))}
+          />
+
+          <FiltroChip
+            label="Categoría"
+            buscar
+            todosLabel="Todas"
+            disabled={!currentDisciplina}
+            opciones={categoriasFiltro.map((c) => ({ value: c.id, label: c.nombre }))}
+            valor={currentCategoria || null}
+            onChange={(v) => navigate(buildUrl({ categoria: v, page: null }))}
+          />
+        </div>
+      </EncabezadoPagina>
+
+      {lateral ? (
+        <LayoutConLateral lateral={lateral} lateralLabel="Resumen de seguimientos">
+          {tabla}
+        </LayoutConLateral>
+      ) : (
+        tabla
       )}
     </div>
   );

@@ -3,8 +3,8 @@
 import { useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Plus, Pencil, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
-import { CustomSelect } from '@/app/components/ui/custom-select';
+import { Pencil, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Panel } from '@/app/components/ui/panel';
 import { TIPO_SESION_LABELS } from '@/lib/utils/asistencia';
 import type { TipoSesion } from '@/lib/types/presentismo';
 import DeleteEntrenamientoModal from './DeleteEntrenamientoModal';
@@ -19,19 +19,11 @@ export interface EntrenamientoListItem {
   presentes: number;
 }
 
-interface DisciplinaOption {
-  id: string;
-  nombre: string;
-}
-
 interface Props {
   items: EntrenamientoListItem[];
   total: number;
   page: number; // 0-based
   pageSize: number;
-  disciplinas: DisciplinaOption[];
-  currentDisciplina: string;
-  currentTipoSesion: string;
 }
 
 function formatDate(dateStr: string) {
@@ -47,9 +39,6 @@ export default function PresentismoTable({
   total,
   page,
   pageSize,
-  disciplinas,
-  currentDisciplina,
-  currentTipoSesion,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -73,14 +62,6 @@ export default function PresentismoTable({
     startTransition(() => router.push(url));
   }
 
-  function handleDisciplinaChange(value: string) {
-    navigate(buildUrl({ disciplina: value || null, page: null }));
-  }
-
-  function handleTipoSesionChange(value: string) {
-    navigate(buildUrl({ tipo: value || null, page: null }));
-  }
-
   function goToPage(target: number) {
     const clamped = Math.max(0, Math.min(target, totalPages - 1));
     navigate(buildUrl({ page: clamped === 0 ? null : String(clamped) }));
@@ -95,56 +76,9 @@ export default function PresentismoTable({
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
-        <h1
-          className="text-3xl font-bold text-primario"
-          style={{ fontFamily: 'Oswald, sans-serif' }}
-        >
-          Presentismo
-        </h1>
-        <Link
-          href="/presentismo/nuevo"
-          className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover transition-colors shrink-0"
-        >
-          <Plus size={16} />
-          Nuevo entrenamiento
-        </Link>
-      </div>
-      <p className="text-muted-foreground mb-6">
-        Registro de asistencia a entrenamientos
-        {total > 0 && (
-          <span className="ml-2 text-xs font-medium bg-gray-100 text-muted-foreground px-2 py-0.5 rounded-full">
-            {total} {total === 1 ? 'entrenamiento' : 'entrenamientos'}
-          </span>
-        )}
-      </p>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <CustomSelect
-          value={currentDisciplina || '__all__'}
-          onChange={(v) => handleDisciplinaChange(v === '__all__' ? '' : v)}
-          searchable
-          options={[
-            { value: '__all__', label: 'Todas las disciplinas' },
-            ...disciplinas.map((d) => ({ value: d.id, label: d.nombre })),
-          ]}
-          className="min-w-[180px]"
-        />
-        <CustomSelect
-          value={currentTipoSesion || '__all__'}
-          onChange={(v) => handleTipoSesionChange(v === '__all__' ? '' : v)}
-          options={[
-            { value: '__all__', label: 'Todos los tipos' },
-            ...Object.entries(TIPO_SESION_LABELS).map(([value, label]) => ({ value, label })),
-          ]}
-          className="min-w-[160px]"
-        />
-      </div>
-
-      <div
-        className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-opacity ${isPending ? 'opacity-60' : ''}`}
+      <Panel
+        relleno={false}
+        className={`overflow-hidden transition-opacity ${isPending ? 'opacity-60' : ''}`}
       >
         {/* Mobile card list */}
         <ul className="lg:hidden divide-y divide-gray-100">
@@ -277,7 +211,7 @@ export default function PresentismoTable({
             </tbody>
           </table>
         </div>
-      </div>
+      </Panel>
 
       {/* Pagination controls */}
       {total > 0 && (

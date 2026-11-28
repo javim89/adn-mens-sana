@@ -24,13 +24,15 @@ test.describe('Usuarios — Admin', () => {
 
   test.skip('Admin puede abrir modal y enviar invitación', async ({ page }) => {
     await page.goto('/usuarios')
-    await page.getByRole('button', { name: 'Nuevo usuario' }).click()
+    await page.getByRole('button', { name: 'Invitar usuario' }).click()
     await expect(page.getByRole('dialog', { name: 'Invitar usuario' })).toBeVisible()
 
     await page.getByLabel('Nombre').fill('Juan')
     await page.getByLabel('Apellido').fill('Pérez')
     await page.getByLabel('Email').fill('juan.perez@gimnasia.org.ar')
-    await page.getByLabel('Rol').selectOption('entrenador')
+    // "Rol" es un CustomSelect (botón + lista), no un <select> nativo.
+    await page.getByLabel('Rol').click()
+    await page.getByRole('option', { name: 'Entrenador' }).click()
     await page.getByRole('button', { name: 'Enviar invitación' }).click()
 
     await expect(page.getByText(/invitación enviada/i)).toBeVisible()
@@ -48,33 +50,42 @@ test.describe('Usuarios — Admin', () => {
 
   test.skip('Admin puede cambiar el rol de un usuario activo', async ({ page }) => {
     await page.goto('/usuarios')
-    await expect(page.getByText('Cambiar rol')).toBeVisible()
-    const roleSelector = page.getByRole('combobox', { name: /cambiar rol/i }).first()
-    await expect(roleSelector).toBeVisible()
-    await roleSelector.selectOption('medico')
+    // El rol es una píldora "Rol de <nombre>: <rol>" que abre un menú con los roles.
+    // La lista mobile y la tabla desktop se renderizan las dos: tomar la visible.
+    const pildora = page
+      .getByRole('button', { name: /^Rol de .+: / })
+      .locator('visible=true')
+      .first()
+    await expect(pildora).toBeVisible()
+    await pildora.click()
+    await page.getByRole('menuitem', { name: 'Médico' }).click()
+    await expect(page.getByText('Rol actualizado')).toBeVisible()
   })
 
-  test.skip('Admin puede seleccionar kinesiologo en el selector de cambio de rol', async ({ page }) => {
+  test.skip('Admin puede seleccionar kinesiologo en el menú de rol', async ({ page }) => {
     // Requires: authenticated admin session
     await page.goto('/usuarios')
-    await expect(page.getByText('Cambiar rol')).toBeVisible()
-    const roleSelector = page.getByRole('combobox', { name: /cambiar rol/i }).first()
-    await expect(roleSelector).toBeVisible()
-    await roleSelector.selectOption('kinesiologo')
+    const pildora = page
+      .getByRole('button', { name: /^Rol de .+: / })
+      .locator('visible=true')
+      .first()
+    await pildora.click()
+    await expect(page.getByRole('menuitem', { name: 'Kinesiólogo' })).toBeVisible()
+    await page.getByRole('menuitem', { name: 'Kinesiólogo' }).click()
   })
 })
 
 test.describe('Usuarios — No-admin', () => {
-  test.skip('No-admin no ve el botón "Nuevo usuario"', async ({ page }) => {
-    // This test requires a storageState fixture with a non-admin role (entrenador, medico, kinesiologo, etc.)
+  test.skip('No-admin no ve el botón "Invitar usuario"', async ({ page }) => {
+    // /usuarios exige rol admin (requireContexto(['admin'])): un no-admin no llega a la página.
     await page.goto('/usuarios')
-    await expect(page.getByRole('button', { name: 'Nuevo usuario' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Invitar usuario' })).not.toBeVisible()
   })
 
-  test.skip('No-admin no ve la columna "Cambiar rol"', async ({ page }) => {
+  test.skip('No-admin no puede editar el rol (sin menú de rol)', async ({ page }) => {
     // This test requires a storageState fixture with a non-admin role (entrenador, medico, kinesiologo, etc.)
     await page.goto('/usuarios')
-    await expect(page.getByText('Cambiar rol')).not.toBeVisible()
+    await expect(page.getByRole('button', { name: /^Rol de .+: / })).toHaveCount(0)
   })
 })
 

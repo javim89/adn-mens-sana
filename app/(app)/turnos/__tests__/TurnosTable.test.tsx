@@ -1,18 +1,29 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, test, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import TurnosTable from '../_components/TurnosTable';
-import type { TurnoListItem } from '@/lib/types/turnos';
+import TurnosTable, { type TurnoFila } from '../_components/TurnosTable';
+
+beforeAll(() => {
+  // cmdk y Radix (FiltroChip) usan APIs que jsdom no trae.
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  Element.prototype.scrollIntoView ??= function () {};
+  Element.prototype.hasPointerCapture ??= () => false;
+});
 
 // Mock next/navigation (URL-driven filtering + pagination)
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
 const mockRefresh = vi.fn();
+let mockSearch = '';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace, refresh: mockRefresh }),
   usePathname: () => '/turnos',
-  useSearchParams: () => new URLSearchParams(''),
+  useSearchParams: () => new URLSearchParams(mockSearch),
 }));
 
 // Mock next/link
@@ -31,7 +42,7 @@ vi.mock('../_components/DeleteTurnoModal', () => ({
   ),
 }));
 
-const makeTurno = (overrides: Partial<TurnoListItem> = {}): TurnoListItem => ({
+const makeTurno = (overrides: Partial<TurnoFila> = {}): TurnoFila => ({
   id: 'turno-1',
   titulo: 'Evaluación kinésica',
   fecha: '2026-07-01',
@@ -40,9 +51,13 @@ const makeTurno = (overrides: Partial<TurnoListItem> = {}): TurnoListItem => ({
   descripcion: null,
   profesionalId: 'prof-medico-123',
   profesionalNombre: 'Dr. García',
-  deportistas: [{ id: 'dep-1', nombre: 'Juan', apellido: 'Pérez' }],
+  deportistas: [
+    { id: 'dep-1', nombre: 'Juan', apellido: 'Pérez', categoria: { id: 'c6', nombre: '6ta división' } },
+  ],
   ...overrides,
 });
+
+const SEMANA = { desdeClave: '2026-11-09', hastaClave: '2026-11-15' };
 
 // Helper con defaults para las props obligatorias
 function renderTable(props: Partial<React.ComponentProps<typeof TurnosTable>> = {}) {
@@ -57,6 +72,10 @@ function renderTable(props: Partial<React.ComponentProps<typeof TurnosTable>> = 
       profesionales={props.profesionales ?? []}
       currentArea={props.currentArea ?? ''}
       currentSearch={props.currentSearch ?? ''}
+      semana={props.semana === undefined ? SEMANA : props.semana}
+      vista={props.vista}
+      porProfesional={props.porProfesional}
+      lateral={props.lateral}
     />,
   );
 }
@@ -65,6 +84,7 @@ beforeEach(() => {
   mockPush.mockClear();
   mockReplace.mockClear();
   mockRefresh.mockClear();
+  mockSearch = '';
 });
 
 describe('TurnosTable', () => {
@@ -112,29 +132,41 @@ describe('TurnosTable', () => {
     expect(url).toContain('q=rodilla');
   });
 
-  test('la columna "Área responsable" aparece solo cuando isAdmin=true', () => {
-    const data = [makeTurno()];
-
-    const { rerender } = renderTable({ initialTurnos: data, total: 1 });
-    expect(screen.queryByText('Área responsable')).toBeNull();
-
-    rerender(
-      <TurnosTable
-        initialTurnos={data}
-        total={1}
-        page={0}
-        pageSize={50}
-        isAdmin={true}
-        profesionales={[]}
-        currentArea=""
-        currentSearch=""
-      />,
-    );
-    expect(screen.getByText('Área responsable')).toBeDefined();
+  test('muestra el profesional debajo del título, también para no-admin', () => {
+    renderTable({ initialTurnos: [makeTurno({ profesionalNombre: 'Lic. Romero' })], total: 1 });
+    expect(screen.getAllByText('Lic. Romero').length).toBeGreaterThan(0);
   });
 
-  test('cambiar el filtro de área (admin) navega actualizando la URL y reseteando page', async () => {
+  test('la fecha va en un TileFecha con día y hora', () => {
+    renderTable({ initialTurnos: [makeTurno({ fecha: '2026-07-01', hora: '10:00' })], total: 1 });
+    expect(screen.getAllByText('MIÉ 1/7').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('10:00').length).toBeGreaterThan(0);
+  });
+
+  test('los deportistas se resumen por categoría', () => {
+    const turno = makeTurno({
+      deportistas: [
+        { id: 'a', nombre: 'A', apellido: 'A', categoria: { id: 'c6', nombre: '6ta división' } },
+        { id: 'b', nombre: 'B', apellido: 'B', categoria: { id: 'c6', nombre: '6ta división' } },
+        { id: 'c', nombre: 'C', apellido: 'C', categoria: { id: 'c5', nombre: '5ta división' } },
+      ],
+    });
+    renderTable({ initialTurnos: [turno], total: 1 });
+    expect(screen.getAllByText('6ta división (2) · 5ta división (1)').length).toBeGreaterThan(0);
+  });
+
+  test('el filtro "Profesional" aparece solo para admin', () => {
+    const profesionales = [{ id: 'prof-A', nombre: 'Dr. A' }];
+    const { unmount } = renderTable({ initialTurnos: [makeTurno()], total: 1, profesionales });
+    expect(screen.queryByRole('button', { name: 'Profesional' })).toBeNull();
+    unmount();
+    renderTable({ initialTurnos: [makeTurno()], total: 1, isAdmin: true, profesionales });
+    expect(screen.getByRole('button', { name: 'Profesional' })).toBeInTheDocument();
+  });
+
+  test('cambiar el filtro de profesional (admin) navega actualizando la URL y reseteando page', async () => {
     const user = userEvent.setup();
+    mockSearch = 'page=2';
     const data = [makeTurno({ profesionalId: 'prof-A', profesionalNombre: 'Dr. A' })];
     renderTable({
       initialTurnos: data,
@@ -146,8 +178,8 @@ describe('TurnosTable', () => {
       ],
     });
 
-    await user.click(screen.getByRole('button', { name: 'Todas las áreas' }));
-    await user.click(screen.getByRole('button', { name: 'Dr. B' }));
+    await user.click(screen.getByRole('button', { name: 'Profesional' }));
+    await user.click(screen.getByRole('option', { name: 'Dr. B' }));
 
     expect(mockPush).toHaveBeenCalledTimes(1);
     const url = mockPush.mock.calls[0][0] as string;
@@ -155,7 +187,7 @@ describe('TurnosTable', () => {
     expect(url).not.toContain('page=');
   });
 
-  test('el select de área usa la lista completa de profesionales (no derivada de la página)', async () => {
+  test('el filtro de profesional usa la lista completa (no derivada de la página)', async () => {
     const user = userEvent.setup();
     const data = [makeTurno({ profesionalId: 'prof-A', profesionalNombre: 'Dr. A' })];
     renderTable({
@@ -168,9 +200,8 @@ describe('TurnosTable', () => {
       ],
     });
 
-    await user.click(screen.getByRole('button', { name: 'Todas las áreas' }));
-    // Ambos profesionales aparecen aunque solo prof-A esté en la página actual
-    expect(screen.getByRole('button', { name: 'Dr. B' })).toBeDefined();
+    await user.click(screen.getByRole('button', { name: 'Profesional' }));
+    expect(screen.getByRole('option', { name: 'Dr. B' })).toBeInTheDocument();
   });
 
   test('muestra botones Editar y Eliminar por fila', () => {
@@ -178,6 +209,89 @@ describe('TurnosTable', () => {
     renderTable({ initialTurnos: data, total: 1 });
     expect(screen.getAllByTitle('Editar turno').length).toBeGreaterThan(0);
     expect(screen.getAllByTestId('delete-btn').length).toBeGreaterThan(0);
+  });
+
+  describe('semana', () => {
+    test('el subtítulo dice la semana mostrada', () => {
+      renderTable({ initialTurnos: [], total: 0 });
+      expect(screen.getByText('Semana del 9 al 15 de noviembre')).toBeInTheDocument();
+    });
+
+    test('las flechas navegan a la semana anterior y siguiente', async () => {
+      const user = userEvent.setup();
+      renderTable({ initialTurnos: [], total: 0 });
+      await user.click(screen.getByRole('button', { name: 'Semana siguiente' }));
+      expect(mockPush.mock.calls.at(-1)![0]).toContain('semana=2026-11-16');
+      await user.click(screen.getByRole('button', { name: 'Semana anterior' }));
+      expect(mockPush.mock.calls.at(-1)![0]).toContain('semana=2026-11-02');
+    });
+
+    test('"Todos" pasa a todas las fechas y vuelve a la semana', async () => {
+      const user = userEvent.setup();
+      const { unmount } = renderTable({ initialTurnos: [], total: 0 });
+      const todos = screen.getByRole('button', { name: 'Todos' });
+      expect(todos).toHaveAttribute('aria-pressed', 'false');
+      await user.click(todos);
+      expect(mockPush.mock.calls.at(-1)![0]).toContain('semana=todos');
+      unmount();
+
+      mockSearch = 'semana=todos';
+      renderTable({ initialTurnos: [], total: 0, semana: null });
+      expect(screen.getByText('Todos los turnos')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Semana siguiente' })).toBeDisabled();
+      const activo = screen.getByRole('button', { name: 'Todos' });
+      expect(activo).toHaveAttribute('aria-pressed', 'true');
+      await user.click(activo);
+      expect(mockPush.mock.calls.at(-1)![0]).not.toContain('semana=');
+    });
+  });
+
+  describe('vista por profesional', () => {
+    const porProfesional = [
+      { profesionalId: 'prof-A', nombre: 'Dra. Gómez', area: 'Kinesióloga', cantidad: 3 },
+      { profesionalId: 'prof-B', nombre: 'Lic. Paz', area: 'Sin área', cantidad: 1 },
+    ];
+
+    test('el toggle de vista aparece solo para admin', () => {
+      const { unmount } = renderTable({ initialTurnos: [], total: 0 });
+      expect(screen.queryByRole('button', { name: 'Por profesional' })).toBeNull();
+      unmount();
+      renderTable({ initialTurnos: [], total: 0, isAdmin: true });
+      expect(screen.getByRole('button', { name: 'Por profesional' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    test('elegir "Por profesional" navega con vista=profesional', async () => {
+      const user = userEvent.setup();
+      renderTable({ initialTurnos: [], total: 0, isAdmin: true });
+      await user.click(screen.getByRole('button', { name: 'Por profesional' }));
+      expect(mockPush.mock.calls.at(-1)![0]).toContain('vista=profesional');
+    });
+
+    test('muestra una tarjeta por profesional con área y cantidad, que linkea a su lista', () => {
+      mockSearch = 'vista=profesional';
+      renderTable({ initialTurnos: [], total: 0, isAdmin: true, vista: 'profesional', porProfesional });
+      const lista = screen.getByRole('list', { name: 'Turnos por profesional' });
+      const tarjetas = within(lista).getAllByRole('listitem');
+      expect(tarjetas).toHaveLength(2);
+      expect(within(tarjetas[0]).getByText('Kinesióloga')).toBeInTheDocument();
+      expect(within(tarjetas[0]).getByText('3 turnos')).toBeInTheDocument();
+      expect(within(tarjetas[1]).getByText('1 turno')).toBeInTheDocument();
+      const link = within(tarjetas[0]).getByRole('link', { name: 'Dra. Gómez' });
+      expect(link.getAttribute('href')).toContain('area=prof-A');
+      expect(link.getAttribute('href')).not.toContain('vista=');
+      expect(screen.queryByRole('table')).toBeNull();
+    });
+
+    test('un no-admin nunca ve la vista por profesional', () => {
+      renderTable({ initialTurnos: [makeTurno()], total: 1, vista: 'profesional', porProfesional });
+      expect(screen.queryByRole('list', { name: 'Turnos por profesional' })).toBeNull();
+      expect(screen.getByRole('table')).toBeInTheDocument();
+    });
+  });
+
+  test('renderiza la columna lateral', () => {
+    renderTable({ initialTurnos: [], total: 0, lateral: <p>Lateral de prueba</p> });
+    expect(screen.getByRole('complementary', { name: 'Próximos turnos' })).toHaveTextContent('Lateral de prueba');
   });
 
   // -------------------------------------------------------------------------

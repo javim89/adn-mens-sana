@@ -12,6 +12,8 @@ export type UsuarioActivo = {
   rol: string
   /** `Membresia.lugarRetiro`. Solo lo usan los `responsable_viandas`. */
   lugarRetiro: string | null
+  /** Avatar de Clerk. Opcional para no romper fixtures; `getUsuarios` siempre lo manda. */
+  imageUrl?: string | null
   lastSignInAt: Date | null
   createdAt: Date
   status: 'activo' | 'inactivo'

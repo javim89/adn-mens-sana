@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { EncabezadoPagina } from '@/app/components/ui/encabezado-pagina';
 import { requireContexto } from '@/lib/tenant/contexto';
 import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
@@ -21,12 +22,7 @@ export default async function NuevoSeguimientoPage() {
           ← Seguimientos
         </Link>
       </div>
-      <h1
-        className="text-3xl font-bold text-primario mb-6"
-        style={{ fontFamily: 'Oswald, sans-serif' }}
-      >
-        Nuevo seguimiento
-      </h1>
+      <EncabezadoPagina className="mb-6" titulo="Nuevo seguimiento" subtitulo="Elegí el tipo y completá la evaluación." />
       <SeguimientoForm mode="create" isAdmin={isAdmin} role={role} profesionales={profesionales} disciplinas={disciplinas} />
     </div>
   );

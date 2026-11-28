@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -101,6 +101,17 @@ function swMobile(name: RegExp) {
   return within(screen.getByRole('list')).getByRole('switch', { name });
 }
 
+beforeAll(() => {
+  // cmdk y Radix (los FiltroChip) usan APIs que jsdom no trae.
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  Element.prototype.scrollIntoView ??= function () {};
+  Element.prototype.hasPointerCapture ??= () => false;
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   urlActual.qs = 'disciplina=disc-1&categoria=cat-1';
@@ -145,15 +156,21 @@ describe('estados bloqueantes', () => {
   });
 });
 
-describe('tags de elegibilidad — los cuatro casos', () => {
+describe('fila: avatar y lo que prevé la ficha — los cuatro casos', () => {
   test.each([
-    [{ recibeAlmuerzo: false, recibeCena: false }, 'No recibe vianda'],
-    [{ recibeAlmuerzo: true, recibeCena: false }, 'Recibe solo almuerzo'],
-    [{ recibeAlmuerzo: false, recibeCena: true }, 'Recibe solo cena'],
-    [{ recibeAlmuerzo: true, recibeCena: true }, 'Recibe almuerzo y cena'],
+    [{ recibeAlmuerzo: false, recibeCena: false }, 'Ficha: sin almuerzo ni cena'],
+    [{ recibeAlmuerzo: true, recibeCena: false }, 'Ficha: solo almuerzo'],
+    [{ recibeAlmuerzo: false, recibeCena: true }, 'Ficha: solo cena'],
+    [{ recibeAlmuerzo: true, recibeCena: true }, 'Ficha: almuerzo y cena'],
   ])('%o muestra "%s"', (flags, label) => {
     renderPanel({ plantel: [deportista(flags)] });
     expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+  });
+
+  test('cada fila lleva el avatar con las iniciales', () => {
+    renderPanel();
+    const avatar = within(screen.getByRole('table')).getByRole('img', { name: 'Pérez, Juan' });
+    expect(avatar).toHaveTextContent('JP');
   });
 });
 
@@ -365,12 +382,9 @@ describe('cruce de medianoche', () => {
 });
 
 describe('contadores', () => {
+  const resumen = () => screen.getByRole('group', { name: /resumen por comida/i });
   const chipDe = (comida: string) =>
-    within(
-      within(screen.getByRole('group', { name: /resumen por comida/i }))
-        .getByText(comida)
-        .closest('div') as HTMLElement,
-    );
+    within(resumen()).getByText(comida).closest('div') as HTMLElement;
 
   test('"esperadas" sale de la ficha y es de esta categoría, no del club', () => {
     renderPanel({
@@ -381,9 +395,10 @@ describe('contadores', () => {
     });
 
     // Desayuno: los 2 lo tienen previsto. Almuerzo: solo d1. Cena: ninguno.
-    expect(chipDe('Desayuno').getByText(/2 esperadas/)).toBeInTheDocument();
-    expect(chipDe('Almuerzo').getByText(/1 esperadas/)).toBeInTheDocument();
-    expect(chipDe('Cena').getByText(/0 esperadas/)).toBeInTheDocument();
+    expect(chipDe('Desayuno')).toHaveTextContent('0 retiradas / 2 esperadas');
+    expect(chipDe('Almuerzo')).toHaveTextContent('0 retiradas / 1 esperadas');
+    // Nadie espera cena ni la retiró: la tarjeta sobra.
+    expect(within(resumen()).queryByText('Cena')).not.toBeInTheDocument();
   });
 
   test('una entrega fuera de ficha suma a "retiradas" y se muestra aparte', () => {
@@ -402,11 +417,11 @@ describe('contadores', () => {
 
     // Sin esto, la cena entregada desaparecería del resumen justo por no estar
     // prevista — que es el caso que hay que poder ver.
+    // Con 0 esperadas la tarjeta igual aparece: hay algo retirado fuera de ficha.
     const cena = chipDe('Cena');
-    expect(cena.getByText(/1 retiradas/)).toBeInTheDocument();
-    expect(cena.getByText(/0 esperadas/)).toBeInTheDocument();
-    expect(cena.getByText(/1 fuera de ficha/)).toBeInTheDocument();
-    expect(cena.queryByText(/pendientes/)).not.toBeInTheDocument();
+    expect(cena).toHaveTextContent('1 retiradas / 0 esperadas');
+    expect(cena).toHaveTextContent('1 fuera de ficha');
+    expect(cena).not.toHaveTextContent(/pendientes/);
   });
 
   test('"pendientes" nunca queda negativo si se entregó más de lo previsto', () => {
@@ -423,8 +438,7 @@ describe('contadores', () => {
       ],
     });
 
-    expect(chipDe('Almuerzo').queryByText(/-1 pendientes/)).not.toBeInTheDocument();
-    expect(chipDe('Almuerzo').queryByText(/pendientes/)).not.toBeInTheDocument();
+    expect(chipDe('Almuerzo')).not.toHaveTextContent(/pendientes/);
   });
 
   test('aclara que el alcance es la categoría, no el club', () => {
@@ -441,20 +455,28 @@ describe('contadores', () => {
       deportista({ id: 'd2', apellido: 'Gómez', recibeMerienda: false }),
     ];
 
-    test('la merienda no suma esperadas ni pendientes; el desayuno sí', () => {
+    test('la merienda no suma esperadas: se esconde su tarjeta, pero la columna sigue para marcarla fuera de ficha', () => {
       renderPanel({ plantel: plantel5ta() });
 
-      expect(chipDe('Merienda').getByText(/0 esperadas/)).toBeInTheDocument();
-      expect(chipDe('Merienda').queryByText(/pendientes/)).not.toBeInTheDocument();
-      expect(chipDe('Desayuno').getByText(/2 esperadas/)).toBeInTheDocument();
+      expect(within(resumen()).queryByText('Merienda')).not.toBeInTheDocument();
+      expect(chipDe('Desayuno')).toHaveTextContent('2 esperadas');
+      // La ficha no restringe entregas: la merienda se puede registrar aunque nadie la tenga.
+      expect(
+        within(screen.getByRole('table')).getByRole('columnheader', { name: 'Merienda' }),
+      ).toBeInTheDocument();
+      expect(sw(/merienda de pérez, juan \(fuera de su ficha\)/i)).toBeEnabled();
+      expect(sw(/^desayuno de pérez, juan$/i)).toBeEnabled();
     });
 
-    test('la celda de merienda se marca fuera de ficha pero sigue habilitada', () => {
-      renderPanel({ plantel: plantel5ta() });
+    test('con una merienda ya retirada la columna vuelve, marcada fuera de ficha y habilitada', () => {
+      renderPanel({
+        plantel: plantel5ta({
+          MERIENDA: { lugar: 'SEDE', entregadoPor: 'u1', createdAt: '2026-03-14T20:00:00.000Z' },
+        }),
+      });
 
-      const celda = sw(/merienda de pérez, juan \(fuera de su ficha\)/i);
+      const celda = sw(/merienda de gómez, juan \(fuera de su ficha\)/i);
       expect(celda).toBeEnabled();
-      expect(sw(/^desayuno de pérez, juan$/i)).toBeEnabled();
     });
 
     test('una merienda entregada cuenta como fuera de ficha', () => {
@@ -465,31 +487,32 @@ describe('contadores', () => {
       });
 
       const merienda = chipDe('Merienda');
-      expect(merienda.getByText(/1 retiradas/)).toBeInTheDocument();
-      expect(merienda.getByText(/0 esperadas/)).toBeInTheDocument();
-      expect(merienda.getByText(/1 fuera de ficha/)).toBeInTheDocument();
+      expect(merienda).toHaveTextContent('1 retiradas / 0 esperadas');
+      expect(merienda).toHaveTextContent('1 fuera de ficha');
     });
 
     test('marcar la merienda llega a la action: la regla no bloquea el registro', async () => {
       const user = userEvent.setup();
-      renderPanel({ plantel: plantel5ta() });
+      renderPanel({
+        plantel: plantel5ta({
+          MERIENDA: { lugar: 'SEDE', entregadoPor: 'u1', createdAt: '2026-03-14T20:00:00.000Z' },
+        }),
+      });
 
-      await user.click(sw(/merienda de pérez, juan/i));
+      await user.click(sw(/merienda de gómez, juan/i));
 
-      expect(mockMarcar).toHaveBeenCalledWith({ deportistaId: 'd1', comida: 'MERIENDA' });
+      expect(mockMarcar).toHaveBeenCalledWith({ deportistaId: 'd2', comida: 'MERIENDA' });
     });
   });
 });
 
 describe('filtros en la URL', () => {
-  // `CustomSelect` es un <button> sin role="combobox", así que se lo busca por su
-  // texto visible (el placeholder, cuando todavía no hay selección).
   test('elegir disciplina la escribe en la URL y resetea la categoría', async () => {
     const user = userEvent.setup();
     renderPanel({ disciplinaId: '', categoriaId: '', plantel: [] });
 
-    await user.click(screen.getByText('Seleccioná una disciplina'));
-    await user.click(screen.getByText('Fútbol'));
+    await user.click(screen.getByRole('button', { name: 'Disciplina' }));
+    await user.click(screen.getByRole('option', { name: 'Fútbol' }));
 
     expect(mockPush).toHaveBeenCalledTimes(1);
     const url = mockPush.mock.calls[0][0] as string;
@@ -504,8 +527,8 @@ describe('filtros en la URL', () => {
     urlActual.qs = 'categoria=cat-1&comida=CENA';
     renderPanel({ disciplinaId: '', categoriaId: '', plantel: [], filtroComida: 'CENA' });
 
-    await user.click(screen.getByText('Seleccioná una disciplina'));
-    await user.click(screen.getByText('Fútbol'));
+    await user.click(screen.getByRole('button', { name: 'Disciplina' }));
+    await user.click(screen.getByRole('option', { name: 'Fútbol' }));
 
     expect(mockPush).toHaveBeenCalledTimes(1);
     const url = mockPush.mock.calls[0][0] as string;
@@ -516,19 +539,22 @@ describe('filtros en la URL', () => {
 
   test('la categoría queda deshabilitada mientras no haya disciplina', () => {
     renderPanel({ disciplinaId: '', categoriaId: '', plantel: [] });
-    expect(screen.getByText('Seleccioná una categoría').closest('button')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Categoría' })).toBeDisabled();
   });
 
-  // El trigger toma su nombre del <label> ("Comida"). Las opciones son <button> y
-  // los toggles de la grilla role="switch", así que `name: 'Cena'` no choca.
+  test('los chips activos dicen qué está elegido', () => {
+    renderPanel({ filtroComida: 'AMBAS' });
+    expect(screen.getByRole('button', { name: 'Disciplina: Fútbol' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Categoría: Sub 17' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Comida: Almuerzo y cena' })).toBeInTheDocument();
+  });
+
   test('elegir una comida la escribe en la URL y conserva disciplina y categoría', async () => {
     const user = userEvent.setup();
     renderPanel();
 
-    const trigger = screen.getByRole('button', { name: 'Comida' });
-    expect(trigger).toHaveTextContent('Todas las comidas');
-    await user.click(trigger);
-    await user.click(screen.getByRole('button', { name: 'Cena' }));
+    await user.click(screen.getByRole('button', { name: 'Comida' }));
+    await user.click(screen.getByRole('option', { name: 'Cena' }));
 
     expect(mockPush).toHaveBeenCalledTimes(1);
     const url = mockPush.mock.calls[0][0] as string;
@@ -542,16 +568,53 @@ describe('filtros en la URL', () => {
     urlActual.qs = 'disciplina=disc-1&categoria=cat-1&comida=CENA';
     renderPanel({ filtroComida: 'CENA' });
 
-    const trigger = screen.getByRole('button', { name: 'Comida' });
-    expect(trigger).toHaveTextContent('Cena');
-    await user.click(trigger);
-    await user.click(screen.getByRole('button', { name: 'Todas las comidas' }));
+    await user.click(screen.getByRole('button', { name: 'Comida: Cena' }));
+    await user.click(screen.getByRole('option', { name: 'Todas las comidas' }));
 
     expect(mockPush).toHaveBeenCalledTimes(1);
     const url = mockPush.mock.calls[0][0] as string;
     expect(url).not.toContain('comida=');
     expect(url).toContain('disciplina=disc-1');
     expect(url).toContain('categoria=cat-1');
+  });
+
+  test('el admin elige el lugar de retiro con un chip', async () => {
+    const user = userEvent.setup();
+    renderPanel({ isAdmin: true, lugarActivo: null });
+
+    await user.click(screen.getByRole('button', { name: 'Lugar de retiro' }));
+    await user.click(screen.getByRole('option', { name: 'Sede' }));
+
+    const url = mockPush.mock.calls[0][0] as string;
+    expect(url).toContain('lugar=SEDE');
+    expect(url).toContain('disciplina=disc-1');
+  });
+});
+
+describe('encabezado', () => {
+  test('el subtítulo dice el día, la disciplina y la categoría', () => {
+    renderPanel();
+    expect(screen.getByText('Hoy, sábado 14/03 · Fútbol · Sub 17')).toBeInTheDocument();
+  });
+
+  test('en histórico el subtítulo nombra el día que se mira', () => {
+    renderPanel({ isAdmin: true, lugarActivo: 'SEDE', fechaActiva: AYER });
+    expect(screen.getByText('Viernes 13/03 (solo lectura) · Fútbol · Sub 17')).toBeInTheDocument();
+  });
+
+  test('el responsable ve su lugar de retiro en una píldora', () => {
+    renderPanel({ isAdmin: false, lugarActivo: 'SEDE' });
+    expect(screen.getByText(/Lugar de retiro: Sede/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /lugar de retiro/i })).not.toBeInTheDocument();
+  });
+
+  test('renderiza la columna derecha que arma la página', () => {
+    renderPanel({ lateral: <p>Resumen semanal</p> });
+    expect(
+      within(screen.getByRole('complementary', { name: 'Resumen de la semana' })).getByText(
+        'Resumen semanal',
+      ),
+    ).toBeInTheDocument();
   });
 });
 
@@ -808,12 +871,38 @@ describe('filtro por comida', () => {
     deportista({ id: 'd4', apellido: 'Ambos', nombre: 'Cuatro', recibeAlmuerzo: true, recibeCena: true }),
   ];
 
-  /** Apellidos visibles en la tabla, en orden. */
+  /** Apellidos visibles en la tabla, en orden (del primer toggle de cada fila). */
   function apellidosEnTabla() {
     return within(screen.getByRole('table'))
-      .getAllByRole('switch', { name: /^desayuno de/i })
-      .map((s) => s.getAttribute('aria-label')!.replace(/^desayuno de /i, '').split(',')[0]);
+      .getAllByRole('row')
+      .slice(1)
+      .map((fila) =>
+        within(fila)
+          .getAllByRole('switch')[0]
+          .getAttribute('aria-label')!
+          .replace(/^\S+ de /i, '')
+          .split(',')[0],
+      );
   }
+
+  function columnas() {
+    return within(screen.getByRole('table'))
+      .getAllByRole('columnheader')
+      .slice(1)
+      .map((th) => th.textContent);
+  }
+
+  test.each([
+    [null, ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']],
+    ['ALMUERZO', ['Almuerzo']],
+    ['CENA', ['Cena']],
+    ['AMBAS', ['Almuerzo', 'Cena']],
+  ] as const)('con %s la grilla muestra solo %o', (filtroComida, esperadas) => {
+    renderPanel({ plantel: PLANTEL, filtroComida });
+    expect(columnas()).toEqual(esperadas);
+    const primera = within(screen.getByRole('list')).getAllByRole('listitem')[0];
+    expect(within(primera).getAllByRole('switch')).toHaveLength(esperadas.length);
+  });
 
   test.each([
     [null, ['Nadie', 'Mediodía', 'Noche', 'Ambos']],
@@ -852,11 +941,10 @@ describe('filtro por comida', () => {
     renderPanel({ plantel: PLANTEL, filtroComida: 'AMBAS' });
 
     const resumen = screen.getByRole('group', { name: /resumen por comida/i });
-    const chip = (comida: string) =>
-      within(within(resumen).getByText(comida).closest('div') as HTMLElement);
-    expect(chip('Desayuno').getByText(/4 esperadas/)).toBeInTheDocument();
-    expect(chip('Almuerzo').getByText(/2 esperadas/)).toBeInTheDocument();
-    expect(chip('Cena').getByText(/2 esperadas/)).toBeInTheDocument();
+    const chip = (comida: string) => within(resumen).getByText(comida).closest('div');
+    expect(chip('Desayuno')).toHaveTextContent('4 esperadas');
+    expect(chip('Almuerzo')).toHaveTextContent('2 esperadas');
+    expect(chip('Cena')).toHaveTextContent('2 esperadas');
   });
 
   test.each([

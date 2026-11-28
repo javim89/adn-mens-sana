@@ -55,8 +55,8 @@ describe('getCalendarioData', () => {
         estado: 'PROGRAMADO',
         dia: { fecha: new Date('2026-03-07T00:00:00.000Z') },
         categoria: { nombre: '4ta' },
-        local: { nombre: 'GIMNASIA (LP)' },
-        visitante: { nombre: 'GIMNASIA' },
+        local: { nombre: 'GIMNASIA (LP)', esPropio: true },
+        visitante: { nombre: 'GIMNASIA', esPropio: false },
       },
     ]);
   });
@@ -82,6 +82,7 @@ describe('getCalendarioData', () => {
         grupo: 'CUARTA_QUINTA_SEXTA',
         local: 'GIMNASIA (LP)',
         visitante: 'GIMNASIA',
+        rival: 'GIMNASIA',
         estado: 'PROGRAMADO',
       },
     ]);
@@ -100,6 +101,31 @@ describe('getCalendarioData', () => {
         include: { dia: true, categoria: true, local: true, visitante: true },
       }),
     );
+  });
+
+  test('el rival es el equipo que no es el propio; sin equipo propio queda null', async () => {
+    mockPrisma.eventoTorneo.findMany.mockResolvedValueOnce([
+      {
+        id: 'ev-v',
+        categoriaId: 'cat-4',
+        estado: 'SUSPENDIDO',
+        dia: { fecha: new Date('2026-03-14T00:00:00.000Z') },
+        categoria: { nombre: '4ta' },
+        local: { nombre: 'ESTUDIANTES', esPropio: false },
+        visitante: { nombre: 'GIMNASIA (LP)', esPropio: true },
+      },
+      {
+        id: 'ev-n',
+        categoriaId: 'cat-4',
+        estado: 'PROGRAMADO',
+        dia: { fecha: new Date('2026-03-21T00:00:00.000Z') },
+        categoria: { nombre: '4ta' },
+        local: { nombre: 'A', esPropio: false },
+        visitante: { nombre: 'B', esPropio: false },
+      },
+    ]);
+    const data = await getCalendarioData();
+    expect(data.eventos.map((e) => e.rival)).toEqual(['ESTUDIANTES', null]);
   });
 
   test('serializa la fecha del evento desde el día relacionado', async () => {

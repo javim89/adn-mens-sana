@@ -12,6 +12,7 @@ import type {
   AntecedenteEnfermedadFamiliar,
 } from '@/lib/generated/prisma/enums';
 import {
+  ESTADO_BADGE,
   ESTADO_LABELS,
   GENERO_LABELS,
   ACTIVIDAD_COMPLEMENTARIA_LABELS,
@@ -25,6 +26,7 @@ import {
   ENFERMEDAD_PREEXISTENTE_LABELS,
   ANTECEDENTE_ENFERMEDAD_FAMILIAR_LABELS,
 } from '@/lib/utils/enum-labels';
+import { tieneAlergias } from '@/lib/utils/salud';
 
 // ---------------------------------------------------------------------------
 // Helpers compartidos (reutilizados por las secciones de cada tab)
@@ -81,13 +83,6 @@ export function FieldRow({
     </div>
   );
 }
-
-export const ESTADO_BADGE: Record<string, string> = {
-  ACTIVO: 'bg-green-100 text-green-700',
-  INACTIVO: 'bg-gray-100 text-muted-foreground',
-  LESIONADO: 'bg-amber-100 text-amber-700',
-  SUSPENDIDO: 'bg-red-100 text-red-700',
-};
 
 /** Estado vacío para tabs cuya relación de datos no existe. */
 export function EmptySection({ label }: { label?: string }) {
@@ -351,6 +346,7 @@ export function DatosSaludSection({ deportista: d }: SectionProps) {
         value={val(d.datosSalud.obraSocial)}
         className="sm:col-span-2"
       />
+      <FieldRow label="Alergias" value={tieneAlergias(d.datosSalud) ? 'Sí' : 'No registradas'} />
 
       {d.datosSalud.enfermedadesPreexistentes.length > 0 && (
         <div className="sm:col-span-2">
@@ -406,14 +402,12 @@ export function DatosSaludSection({ deportista: d }: SectionProps) {
         </div>
       )}
 
-      {d.datosSalud.medicacionCronica && (
-        <div className="sm:col-span-2">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">
-            Medicación / tratamientos crónicos
-          </p>
-          <p className="text-sm text-foreground whitespace-pre-wrap">{d.datosSalud.medicacionCronica}</p>
-        </div>
-      )}
+      <div className="sm:col-span-2">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Medicación habitual</p>
+        <p className="text-sm text-foreground whitespace-pre-wrap">
+          {d.datosSalud.medicacionCronica?.trim() || 'No registrada'}
+        </p>
+      </div>
 
       {d.datosSalud.historialLesiones && (
         <div className="sm:col-span-2">

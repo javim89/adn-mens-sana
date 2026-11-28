@@ -1,25 +1,27 @@
 import Link from 'next/link';
+import { ArrowLeft, Pencil } from 'lucide-react';
+import { Avatar } from '@/app/components/ui/avatar';
+import { Button } from '@/app/components/ui/button';
 import { getDeportistaById } from '@/lib/queries/deportistas';
-import { getSeguimientos } from '@/lib/queries/seguimientos';
+import { getConteoSeguimientosDeportista, getSeguimientos } from '@/lib/queries/seguimientos';
 import { getTrayectoria } from '@/lib/queries/trayectoria';
+import { getTriageDeportista } from '@/lib/queries/triage';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { getCategorias } from '@/lib/queries/categorias';
-import DeportistaDetailTabs from '../_components/DeportistaDetailTabs';
-import DeleteDeportistaModal from '../_components/DeleteDeportistaModal';
-import { ESTADO_LABELS } from '@/lib/utils/enum-labels';
-import { getDb } from '@/lib/tenant/db';
 import { requireContexto } from '@/lib/tenant/contexto';
 import { getFotoUrl } from '@/lib/s3';
-import { Avatar } from '@/app/components/ui/avatar';
-import type { EstadoDeportista } from '@/lib/generated/prisma/enums';
-import type { TriageContribucion } from '@/lib/types/triage';
+import {
+  ESTADO_BADGE,
+  ESTADO_LABELS,
+  NIVEL_TRIAGE_BADGE,
+  NIVEL_TRIAGE_LABELS,
+} from '@/lib/utils/enum-labels';
+import DeportistaDetailTabs from '../_components/DeportistaDetailTabs';
+import DeleteDeportistaModal from '../_components/DeleteDeportistaModal';
+import { calcEdad } from '../_components/DeportistaDetail';
+import { subtituloFicha } from '../_lib/ficha';
 
-const ESTADO_BADGE: Record<string, string> = {
-  ACTIVO: 'bg-green-100 text-green-700',
-  INACTIVO: 'bg-gray-100 text-muted-foreground',
-  LESIONADO: 'bg-amber-100 text-amber-700',
-  SUSPENDIDO: 'bg-red-100 text-red-700',
-};
+const BADGE = 'inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap';
 
 export default async function DeportistaDetailPage({
   params,
@@ -31,9 +33,11 @@ export default async function DeportistaDetailPage({
   await requireContexto();
   const deportista = await getDeportistaById(id);
 
-  const [{ items: seguimientosRaw }, fotoUrl] = await Promise.all([
+  const [{ items: seguimientosRaw }, fotoUrl, seguimientosTotal, triageDeportista] = await Promise.all([
     getSeguimientos({ deportistaId: id, pageSize: 500 }),
     getFotoUrl(deportista.fotoKey),
+    getConteoSeguimientosDeportista(id),
+    getTriageDeportista(id),
   ]);
   const seguimientos = seguimientosRaw.map((s) => ({
     id: s.id,
@@ -50,72 +54,65 @@ export default async function DeportistaDetailPage({
   const disciplinas = disciplinasCatalogo.map((d) => ({ id: d.id, nombre: d.nombre }));
   const categorias = categoriasCatalogo.map((c) => ({ id: c.id, nombre: c.nombre }));
 
-  const db = await getDb();
-  const triageRow = await db.triage.findFirst({
-    where: { deportistaId: id },
-    orderBy: { calculatedAt: 'desc' },
-  });
-  const triage = triageRow
+  const triage = triageDeportista
     ? {
-        nivel: triageRow.nivel,
-        puntajeTotal: triageRow.puntajeTotal,
-        desglose: (triageRow.desglose as unknown as TriageContribucion[]) ?? [],
-        calculatedAt: triageRow.calculatedAt.toISOString(),
+        nivel: triageDeportista.nivel,
+        puntajeTotal: triageDeportista.puntaje,
+        desglose: triageDeportista.desglose,
+        calculatedAt: triageDeportista.calculatedAt,
       }
     : null;
 
   const nombreCompleto = `${deportista.apellido}, ${deportista.nombre}`;
+  const subtitulo = subtituloFicha({
+    disciplina: deportista.disciplina?.nombre,
+    categoria: deportista.categoria?.nombre,
+    posicion: deportista.posicion,
+    edad: calcEdad(deportista.fechaNacimiento),
+  });
 
   return (
     <div className="p-4 md:p-8">
-      {/* Breadcrumb */}
-      <div className="mb-2">
-        <Link
-          href="/deportistas"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          ← Deportistas
-        </Link>
-      </div>
+      <Link
+        href="/deportistas"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" aria-hidden />
+        Deportistas
+      </Link>
 
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between mb-6 gap-4">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-          <Avatar
-            src={fotoUrl}
-            alt={nombreCompleto}
-            iniciales={`${deportista.nombre.charAt(0)}${deportista.apellido.charAt(0)}`}
-            className="size-16 text-xl sm:size-20 sm:text-2xl"
-          />
-          <div className="flex min-w-0 items-center gap-3 flex-wrap">
-            <h1
-              className="min-w-0 break-words text-3xl font-bold text-primario"
-              style={{ fontFamily: 'Oswald, sans-serif' }}
-            >
-              {nombreCompleto}
-            </h1>
-            <span
-              className={[
-                'text-xs font-medium px-2.5 py-1 rounded-full',
-                ESTADO_BADGE[deportista.estado] ?? 'bg-gray-100 text-muted-foreground',
-              ].join(' ')}
-            >
-              {ESTADO_LABELS[deportista.estado as EstadoDeportista]}
+      <div className="mt-2 mb-6 flex flex-wrap items-center gap-3 sm:gap-4">
+        <Avatar
+          src={fotoUrl}
+          alt={nombreCompleto}
+          iniciales={`${deportista.nombre.charAt(0)}${deportista.apellido.charAt(0)}`}
+          className="size-16 text-xl sm:size-20 sm:text-2xl"
+        />
+        <div className="min-w-0 flex-1">
+          <h1 className="min-w-0 break-words font-[family-name:var(--font-oswald)] text-2xl font-bold text-primario md:text-3xl">
+            {nombreCompleto}
+          </h1>
+          {subtitulo && <p className="text-sm text-muted-foreground">{subtitulo}</p>}
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <span className={`${BADGE} ${ESTADO_BADGE[deportista.estado]}`}>
+              {ESTADO_LABELS[deportista.estado]}
             </span>
+            {triage && (
+              <span className={`${BADGE} ${NIVEL_TRIAGE_BADGE[triage.nivel]}`}>
+                Triage {NIVEL_TRIAGE_LABELS[triage.nivel]}
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Link
-            href={`/deportistas/${id}/editar`}
-            className="flex items-center gap-2 bg-primario text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primario-hover transition-colors"
-          >
-            Editar
-          </Link>
-          <DeleteDeportistaModal
-            deportistaId={deportista.id}
-            deportistaNombre={nombreCompleto}
-          />
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href={`/deportistas/${id}/editar`}>
+              <Pencil aria-hidden />
+              Editar
+            </Link>
+          </Button>
+          <DeleteDeportistaModal deportistaId={deportista.id} deportistaNombre={nombreCompleto} />
         </div>
       </div>
 
@@ -127,6 +124,7 @@ export default async function DeportistaDetailPage({
         disciplinas={disciplinas}
         categorias={categorias}
         triage={triage}
+        seguimientosTotal={seguimientosTotal}
       />
     </div>
   );

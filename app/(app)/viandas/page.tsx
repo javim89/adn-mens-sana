@@ -4,10 +4,13 @@ import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
 import type { AppRole } from '@/lib/roles';
 import { getDisciplinasConCategorias } from '@/lib/queries/disciplinas';
 import { getPlantelViandas } from '@/lib/queries/viandas';
-import { hoyEnArgentina, resolverFechaActiva } from '@/lib/utils/fecha';
+import { getResumenViandas } from '@/lib/queries/dashboard';
+import { hoyEnArgentina, resolverFechaActiva, semanaActual } from '@/lib/utils/fecha';
 import { esFiltroComida, esLugarRetiro } from '@/lib/utils/viandas';
-import ViandasPanel from './_components/ViandasPanel';
+import { LUGAR_RETIRO_LABELS } from '@/lib/utils/enum-labels';
 import type { DeportistaVianda } from '@/lib/types/viandas';
+import ViandasPanel from './_components/ViandasPanel';
+import ViandasSemana from './_components/ViandasSemana';
 
 export const metadata: Metadata = { title: 'Viandas' };
 
@@ -68,7 +71,18 @@ export default async function ViandasPage({
   const ids = plantel.flatMap((d) => Object.values(d.entregas).map((e) => e!.entregadoPor));
   const entregadores = ids.length > 0 ? await getNombresDeUsuarios(ids) : {};
 
-  const disciplinas = await getDisciplinasConCategorias();
+  // La semana con el mismo alcance que el panel: el admin, el lugar elegido o todos;
+  // el responsable, solo el suyo (sin lugar asignado no hay nada que mostrarle).
+  const semana = semanaActual();
+  const [disciplinas, resumenSemana] = await Promise.all([
+    getDisciplinasConCategorias(),
+    isAdmin || lugarResponsable
+      ? getResumenViandas({
+          rango: { desdeDb: semana.desdeDb, finExclusivoDb: semana.finExclusivoDb },
+          lugar: lugarActivo,
+        })
+      : Promise.resolve(null),
+  ]);
 
   return (
     <ViandasPanel
@@ -83,6 +97,16 @@ export default async function ViandasPage({
       filtroComida={filtroComida}
       plantel={plantel}
       entregadores={entregadores}
+      lateral={
+        resumenSemana && (
+          <ViandasSemana
+            resumen={resumenSemana}
+            desdeClave={semana.desdeClave}
+            hastaClave={semana.hastaClave}
+            alcance={lugarActivo ? LUGAR_RETIRO_LABELS[lugarActivo] : 'Todos los lugares'}
+          />
+        )
+      }
     />
   );
 }

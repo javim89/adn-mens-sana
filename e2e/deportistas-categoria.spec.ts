@@ -172,12 +172,12 @@ test.describe('Deportistas — Filtro por categoría (FK)', () => {
 
     // El filtro de categoría ahora se anida al de disciplina: primero se elige la
     // disciplina (habilita el filtro y define qué categorías se ofrecen).
-    await page.getByRole('button', { name: /todas las disciplinas/i }).click();
-    await page.getByRole('button', { name: 'Fútbol', exact: true }).click();
+    await page.getByRole('button', { name: 'Disciplina', exact: true }).click();
+    await page.getByRole('option', { name: 'Fútbol', exact: true }).click();
 
     // Abrir el filtro de categoría (ya habilitado) y ver sus categorías.
-    await page.getByRole('button', { name: /todas las categorías/i }).click();
-    await expect(page.getByRole('button', { name: 'Primera', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Categoría', exact: true }).click();
+    await expect(page.getByRole('option', { name: 'Primera', exact: true })).toBeVisible();
   });
 
   test('aplicar el filtro agrega filter[categoriaId]=<cuid> a la URL', async ({ page }) => {
@@ -185,11 +185,11 @@ test.describe('Deportistas — Filtro por categoría (FK)', () => {
     await page.waitForSelector('table');
 
     // Elegir disciplina primero (habilita la categoría anidada).
-    await page.getByRole('button', { name: /todas las disciplinas/i }).click();
-    await page.getByRole('button', { name: 'Fútbol', exact: true }).click();
+    await page.getByRole('button', { name: 'Disciplina', exact: true }).click();
+    await page.getByRole('option', { name: 'Fútbol', exact: true }).click();
 
-    await page.getByRole('button', { name: /todas las categorías/i }).click();
-    await page.getByRole('button', { name: 'Primera', exact: true }).click();
+    await page.getByRole('button', { name: 'Categoría', exact: true }).click();
+    await page.getByRole('option', { name: 'Primera', exact: true }).click();
 
     // La URL contiene el filtro JSON:API con un id (cuid/uuid), no el enum viejo.
     await expect(page).toHaveURL(/filter%5BcategoriaId%5D=[a-z0-9-]+/i);
@@ -199,7 +199,8 @@ test.describe('Deportistas — Filtro por categoría (FK)', () => {
     await page.goto('/deportistas?filter%5BcategoriaId%5D=abc123&page%5Bnumber%5D=1&page%5Bsize%5D=20');
     await page.waitForSelector('table');
 
-    await page.getByRole('button', { name: 'Limpiar' }).click();
+    // exact: con 0 resultados también aparece "Limpiar filtros" en el estado vacío.
+    await page.getByRole('button', { name: 'Limpiar', exact: true }).click();
 
     await expect(page).toHaveURL('/deportistas');
   });
@@ -223,9 +224,9 @@ test.describe('Calendario — smoke de regresión tras rename del modelo', () =>
 
   test('/calendario sigue cargando correctamente tras el rename y la eliminación de grupo', async ({ page }) => {
     await page.goto('/calendario');
-    // El heading "Calendario" y el grid mensual de FullCalendar deben renderizar
+    // El h1 "Temporada {año}" y el grid mensual de FullCalendar deben renderizar
     // sin errores de datos (getCalendarioData() funciona con el modelo renombrado).
-    await expect(page.getByRole('heading', { name: 'Calendario' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: /^Temporada \d{4}$/ })).toBeVisible();
     await expect(page.locator('.fc-dayGridMonth-view')).toBeVisible();
   });
 });

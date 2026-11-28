@@ -5,7 +5,9 @@ import type { PrioridadSeguimiento, TipoSeguimiento } from '@/lib/types/seguimie
 export interface GetSeguimientosParams {
   profesionalId?: string;
   deportistaId?: string;
-  prioridad?: PrioridadSeguimiento;
+  /** Uno o varios valores (`{ in }`). Un array vacío es "sin filtro". */
+  prioridad?: PrioridadSeguimiento | readonly PrioridadSeguimiento[];
+  /** `GENERICO` incluye también los `null` (seguimientos viejos sin tipo). */
   tipoSeguimiento?: TipoSeguimiento;
   disciplinaId?: string;
   categoriaId?: string;
@@ -36,7 +38,63 @@ export type SeguimientoRow = Prisma.SeguimientoGetPayload<{
   select: typeof SEGUIMIENTO_SELECT;
 }>;
 
-function buildWhere(params: GetSeguimientosParams): Prisma.SeguimientoWhereInput {
+export const PRIORIDADES_SEGUIMIENTO: readonly PrioridadSeguimiento[] = [
+  'BAJA',
+  'MEDIA',
+  'ALTA',
+  'URGENTE',
+];
+
+export const TIPOS_SEGUIMIENTO: readonly TipoSeguimiento[] = [
+  'GENERICO',
+  'TRAUMATOLOGIA',
+  'HISTORIA_CLINICA',
+  'EVALUACION_PSICOLOGICA',
+  'EVALUACION_CARDIOLOGICA',
+  'ANTROPOMETRIA',
+];
+
+type SearchParamValue = string | string[] | undefined;
+
+/**
+ * Prioridades pedidas en la URL. Acepta el parámetro repetido
+ * (`?prioridad=ALTA&prioridad=MEDIA`), separado por comas (`?prioridad=ALTA,MEDIA`)
+ * o un solo valor, como lo arman los links del dashboard. Descarta lo inválido y
+ * los duplicados; conserva el orden canónico BAJA → URGENTE.
+ */
+export function parsePrioridades(valor: SearchParamValue): PrioridadSeguimiento[] {
+  const crudos = (Array.isArray(valor) ? valor : valor ? [valor] : [])
+    .flatMap((v) => v.split(','))
+    .map((v) => v.trim().toUpperCase());
+  return PRIORIDADES_SEGUIMIENTO.filter((p) => crudos.includes(p));
+}
+
+/** Tipo de seguimiento pedido en la URL (`?tipo=`), o `undefined` si falta o es inválido. */
+export function parseTipoSeguimiento(valor: SearchParamValue): TipoSeguimiento | undefined {
+  const crudo = (Array.isArray(valor) ? valor[0] : valor)?.trim().toUpperCase();
+  return TIPOS_SEGUIMIENTO.find((t) => t === crudo);
+}
+
+function filtroPrioridad(
+  prioridad: GetSeguimientosParams['prioridad'],
+): Prisma.SeguimientoWhereInput {
+  if (!prioridad) return {};
+  if (typeof prioridad === 'string') return { prioridad };
+  if (prioridad.length === 0) return {};
+  if (prioridad.length === 1) return { prioridad: prioridad[0] };
+  return { prioridad: { in: [...prioridad] } };
+}
+
+function filtroTipo(tipo: TipoSeguimiento | undefined): Prisma.SeguimientoWhereInput[] {
+  if (!tipo) return [];
+  // Los seguimientos sin tipo se muestran y se cuentan como GENÉRICO.
+  if (tipo === 'GENERICO') {
+    return [{ OR: [{ tipoSeguimiento: 'GENERICO' }, { tipoSeguimiento: null }] }];
+  }
+  return [{ tipoSeguimiento: tipo }];
+}
+
+export function buildWhere(params: GetSeguimientosParams): Prisma.SeguimientoWhereInput {
   const search = params.search?.trim();
 
   // Cada filtro que referencia la relación N:M `deportistas` se agrega como una
@@ -64,6 +122,8 @@ function buildWhere(params: GetSeguimientosParams): Prisma.SeguimientoWhereInput
     });
   }
 
+  and.push(...filtroTipo(params.tipoSeguimiento));
+
   if (search) {
     and.push({
       OR: [
@@ -88,8 +148,7 @@ function buildWhere(params: GetSeguimientosParams): Prisma.SeguimientoWhereInput
 
   return {
     ...(params.profesionalId ? { profesionalId: params.profesionalId } : {}),
-    ...(params.prioridad ? { prioridad: params.prioridad } : {}),
-    ...(params.tipoSeguimiento ? { tipoSeguimiento: params.tipoSeguimiento } : {}),
+    ...filtroPrioridad(params.prioridad),
     ...(and.length > 0 ? { AND: and } : {}),
   };
 }
@@ -118,6 +177,53 @@ export async function getSeguimientos(
   ]);
 
   return { items, total };
+}
+
+export type FiltrosConteoTipo = Omit<
+  GetSeguimientosParams,
+  'page' | 'pageSize' | 'tipoSeguimiento'
+>;
+
+export interface ConteoPorTipoSeguimiento {
+  /** Los 6 tipos, con zero-fill. Los seguimientos sin tipo suman en GENERICO. */
+  porTipo: Record<TipoSeguimiento, number>;
+  total: number;
+}
+
+/**
+ * Cuántos seguimientos hay de cada tipo con los mismos filtros que el listado
+ * (prioridad, profesional, disciplina, categoría, búsqueda), para que cada fila
+ * del panel coincida con la lista que abre su link. El filtro de tipo se ignora a
+ * propósito: el panel es justamente el desglose por tipo.
+ */
+export async function getConteoPorTipoSeguimiento(
+  filtros: FiltrosConteoTipo = {},
+): Promise<ConteoPorTipoSeguimiento> {
+  const db = await getDb();
+  const grupos = await db.seguimiento.groupBy({
+    by: ['tipoSeguimiento'],
+    where: buildWhere({ ...filtros, tipoSeguimiento: undefined }),
+    _count: { _all: true },
+  });
+
+  const porTipo = Object.fromEntries(TIPOS_SEGUIMIENTO.map((t) => [t, 0])) as Record<
+    TipoSeguimiento,
+    number
+  >;
+  let total = 0;
+  for (const g of grupos) {
+    const tipo = g.tipoSeguimiento ?? 'GENERICO';
+    if (!(tipo in porTipo)) continue;
+    porTipo[tipo] += g._count._all;
+    total += g._count._all;
+  }
+  return { porTipo, total };
+}
+
+/** Total de seguimientos en los que participa un deportista (tarjeta de la ficha). */
+export async function getConteoSeguimientosDeportista(deportistaId: string): Promise<number> {
+  const db = await getDb();
+  return db.seguimiento.count({ where: buildWhere({ deportistaId }) });
 }
 
 export async function getSeguimientoById(id: string) {

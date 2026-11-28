@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { EncabezadoPagina } from '@/app/components/ui/encabezado-pagina';
 import { requireContexto } from '@/lib/tenant/contexto';
 import { getSeguimientoById } from '@/lib/queries/seguimientos';
 import { getProfesionalesSeguimientos } from '@/lib/actions/seguimientos';
@@ -132,12 +133,7 @@ export default async function EditarSeguimientoPage({ params }: Props) {
           ← Volver al seguimiento
         </Link>
       </div>
-      <h1
-        className="text-3xl font-bold text-primario mb-6"
-        style={{ fontFamily: 'Oswald, sans-serif' }}
-      >
-        Editar seguimiento
-      </h1>
+      <EncabezadoPagina className="mb-6" titulo="Editar seguimiento" />
       <SeguimientoForm
         mode="edit"
         isAdmin={isAdmin}

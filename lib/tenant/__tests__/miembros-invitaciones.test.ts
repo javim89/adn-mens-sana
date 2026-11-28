@@ -62,6 +62,27 @@ describe('getMiembrosDelClub', () => {
     ]);
   });
 
+  it('mapea el avatar (imageUrl) y el último ingreso de Clerk', async () => {
+    mockPrisma.membresia.findMany.mockResolvedValue([
+      { userId: 'u1', rol: 'medico', lugarRetiro: null, activo: true },
+      { userId: 'u2', rol: 'admin', lugarRetiro: null, activo: true },
+    ]);
+    mockClerk.users.getUserList.mockResolvedValue({
+      data: [
+        usuarioClerk('u1', { imageUrl: 'https://img.clerk.com/u1', lastSignInAt: 1_700_000_500_000 }),
+        usuarioClerk('u2', { imageUrl: '' }),
+      ],
+    });
+
+    const miembros = await getMiembrosDelClub();
+    const porId = new Map(miembros.map((m) => [m.userId, m]));
+
+    expect(porId.get('u1')?.imageUrl).toBe('https://img.clerk.com/u1');
+    expect(porId.get('u1')?.lastSignInAt).toEqual(new Date(1_700_000_500_000));
+    expect(porId.get('u2')?.imageUrl).toBeNull();
+    expect(porId.get('u2')?.lastSignInAt).toBeNull();
+  });
+
   it('filtra por roles y puede incluir inactivos y otro club explícito', async () => {
     mockPrisma.membresia.findMany.mockResolvedValue([]);
     await getMiembrosDelClub({ roles: ['medico', 'kinesiologo'], incluirInactivos: true, clubId: 'club_b' });

@@ -60,8 +60,8 @@ test.describe('Insights — flujos de admin', () => {
     await expect(page.getByText('Crear widget')).toBeVisible();
 
     await page.getByLabel('Título').fill('Deportistas por estado');
-    await page.getByLabel('Tipo de visualización').selectOption('bar');
     await page.getByLabel('Estado', { exact: true }).check();
+    await page.getByRole('button', { name: 'Barras', exact: true }).click();
 
     // El preview ejecuta la query real contra la API.
     await expect(page.getByText('Vista previa')).toBeVisible();
@@ -134,8 +134,7 @@ test.describe('Insights — flujos de admin', () => {
     await page.getByRole('link').first().click();
 
     const descarga = page.waitForEvent('download');
-    await page.getByLabel(/Acciones de/).first().click();
-    await page.getByText('Exportar CSV').click();
+    await page.getByRole('button', { name: /Exportar CSV de/ }).first().click();
 
     expect((await descarga).suggestedFilename()).toMatch(/\.csv$/);
   });

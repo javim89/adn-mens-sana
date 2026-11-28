@@ -429,15 +429,15 @@ describe('getResumenPresentismo', () => {
         { deportistaId: 'd2', _count: { deportistaId: 2 } },
       ]);
     mockPrisma.deportista.findMany.mockResolvedValue([
-      { id: 'd1', nombre: 'Ana', apellido: 'Torres' },
-      { id: 'd2', nombre: 'Luis', apellido: 'Paz' },
+      { id: 'd1', nombre: 'Ana', apellido: 'Torres', categoria: { nombre: '4ta' } },
+      { id: 'd2', nombre: 'Luis', apellido: 'Paz', categoria: null },
     ]);
 
     const r = await getResumenPresentismo({ rango: SEMANA, rangoPrevio: SEMANA_PREVIA });
 
     expect(r.ausentismoReiterado).toEqual([
-      { id: 'd1', nombre: 'Ana', apellido: 'Torres', ausencias: 3 },
-      { id: 'd2', nombre: 'Luis', apellido: 'Paz', ausencias: 2 },
+      { id: 'd1', nombre: 'Ana', apellido: 'Torres', categoria: '4ta', ausencias: 3 },
+      { id: 'd2', nombre: 'Luis', apellido: 'Paz', categoria: null, ausencias: 2 },
     ]);
   });
 
@@ -519,11 +519,11 @@ describe('getResumenPresentismo', () => {
       });
     });
 
-    test('no agrega round trips: siguen siendo 3 groupBy', async () => {
+    test('no agrega round trips: siguen siendo 3 groupBy (+ porDia y porCategoria en SQL)', async () => {
       await getResumenPresentismo({ rango: SEMANA, rangoPrevio: SEMANA_PREVIA });
 
       expect(mockPrisma.asistencia.groupBy).toHaveBeenCalledTimes(3);
-      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -905,8 +905,8 @@ describe('getProximosEventos', () => {
         estado: 'PROGRAMADO',
         dia: { fecha: new Date('2026-03-14T00:00:00.000Z') },
         categoria: { nombre: '4ta' },
-        local: { nombre: 'Gimnasia LP' },
-        visitante: { nombre: 'Estudiantes' },
+        local: { nombre: 'Gimnasia LP', esPropio: true },
+        visitante: { nombre: 'Estudiantes', esPropio: false },
         convocatoria: { id: 'c1' },
       },
       {
@@ -930,7 +930,170 @@ describe('getProximosEventos', () => {
       visitante: 'Estudiantes',
       estado: 'PROGRAMADO',
       tieneConvocatoria: true,
+      condicion: 'Local',
+      rival: 'Estudiantes',
     });
     expect(r[1].tieneConvocatoria).toBe(false);
+    // Sin `esPropio` en ninguno de los dos equipos no hay condición ni rival.
+    expect(r[1].condicion).toBeNull();
+    expect(r[1].rival).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('getResumenPresentismo — porCategoria, variación y filtros', () => {
+  beforeEach(() => {
+    mockPrisma.asistencia.groupBy.mockResolvedValue([]);
+    mockPrisma.deportista.findMany.mockResolvedValue([]);
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+  });
+
+  function grupos(pares: [string, number][]) {
+    return pares.map(([estado, n]) => ({ estado, _count: { _all: n } }));
+  }
+
+  test('porCategoria arma el % por categoría de la semana', async () => {
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { categoria_id: 'c4', categoria: '4ta', registros: 10, asistencias: 9 },
+        { categoria_id: 'c5', categoria: '5ta', registros: 3, asistencias: 2 },
+        { categoria_id: 'c6', categoria: '6ta', registros: 0, asistencias: 0 },
+      ]);
+
+    const r = await getResumenPresentismo({ rango: SEMANA, rangoPrevio: SEMANA_PREVIA });
+
+    expect(r.porCategoria).toEqual([
+      { categoriaId: 'c4', categoria: '4ta', registros: 10, asistencias: 9, porcentaje: 90 },
+      { categoriaId: 'c5', categoria: '5ta', registros: 3, asistencias: 2, porcentaje: 67 },
+      { categoriaId: 'c6', categoria: '6ta', registros: 0, asistencias: 0, porcentaje: null },
+    ]);
+  });
+
+  test('el SQL de porCategoria agrupa por la categoría del entrenamiento, acotado al club y a la semana', async () => {
+    await getResumenPresentismo({ rango: SEMANA, rangoPrevio: SEMANA_PREVIA });
+
+    const [query] = mockPrisma.$queryRaw.mock.calls[1];
+    const sql = query.sql.replace(/\s+/g, ' ');
+    expect(sql).toContain('JOIN categorias c ON c.id = en.categoria_id');
+    expect(sql).toContain('WHERE en.club_id = ? AND en.fecha >= ? AND en.fecha < ?');
+    expect(sql).toContain('GROUP BY c.id, c.nombre, c.orden');
+    expect(sql).toContain('COUNT(*)::int AS registros');
+    expect(query.values).toEqual([
+      'PRESENTE',
+      'LLEGO_TARDE',
+      'SE_RETIRO_ANTES',
+      CLUB_TEST.id,
+      SEMANA.desdeDb,
+      SEMANA.finExclusivoDb,
+    ]);
+  });
+
+  test('variación = puntos porcentuales contra la semana anterior', async () => {
+    mockPrisma.asistencia.groupBy
+      .mockResolvedValueOnce(grupos([['PRESENTE', 8], ['AUSENTE', 2]]))
+      .mockResolvedValueOnce(grupos([['PRESENTE', 7], ['AUSENTE', 3]]))
+      .mockResolvedValueOnce([]);
+
+    const r = await getResumenPresentismo({ rango: SEMANA, rangoPrevio: SEMANA_PREVIA });
+
+    expect(r.variacion).toBe(10);
+  });
+
+  test('sin registros en la semana anterior la variación es null', async () => {
+    mockPrisma.asistencia.groupBy
+      .mockResolvedValueOnce(grupos([['PRESENTE', 8]]))
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const r = await getResumenPresentismo({ rango: SEMANA, rangoPrevio: SEMANA_PREVIA });
+
+    expect(r.variacion).toBeNull();
+  });
+
+  test('disciplina y categoría filtran el entrenamiento en los groupBy y en el SQL', async () => {
+    await getResumenPresentismo({
+      rango: SEMANA,
+      rangoPrevio: SEMANA_PREVIA,
+      disciplinaId: 'disc_1',
+      categoriaId: 'cat_1',
+      entrenadorId: 'user_e',
+    });
+
+    for (const [args] of mockPrisma.asistencia.groupBy.mock.calls) {
+      expect(args.where.entrenamiento).toMatchObject({
+        disciplinaId: 'disc_1',
+        categoriaId: 'cat_1',
+        entrenadorId: 'user_e',
+      });
+    }
+    for (const [query] of mockPrisma.$queryRaw.mock.calls) {
+      expect(query.sql).toContain('AND en.disciplina_id = ?');
+      expect(query.sql).toContain('AND en.categoria_id = ?');
+      expect(query.values.slice(-3)).toEqual(['disc_1', 'cat_1', 'user_e']);
+    }
+  });
+
+  test('sin filtros no hay disciplina ni categoría en el where', async () => {
+    await getResumenPresentismo({ rango: SEMANA, rangoPrevio: SEMANA_PREVIA });
+
+    for (const [args] of mockPrisma.asistencia.groupBy.mock.calls) {
+      expect(args.where.entrenamiento).not.toHaveProperty('disciplinaId');
+      expect(args.where.entrenamiento).not.toHaveProperty('categoriaId');
+    }
+  });
+
+  test('ausentismo reiterado trae la categoría en el select', async () => {
+    mockPrisma.asistencia.groupBy
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ deportistaId: 'd1', _count: { deportistaId: 2 } }]);
+
+    await getResumenPresentismo({ rango: SEMANA, rangoPrevio: SEMANA_PREVIA });
+
+    expect(mockPrisma.deportista.findMany.mock.calls[0][0].select.categoria).toEqual({
+      select: { nombre: true },
+    });
+  });
+});
+
+describe('getProximosEventos — condición y categoría', () => {
+  beforeEach(() => {
+    mockPrisma.eventoTorneo.findMany.mockResolvedValue([]);
+  });
+
+  test('pide esPropio de los dos equipos', async () => {
+    await getProximosEventos({ desdeHoyDb: HOY_DB });
+
+    const [args] = mockPrisma.eventoTorneo.findMany.mock.calls[0];
+    expect(args.select.local).toEqual({ select: { nombre: true, esPropio: true } });
+    expect(args.select.visitante).toEqual({ select: { nombre: true, esPropio: true } });
+  });
+
+  test('visitante propio: condición Visitante y rival el local', async () => {
+    mockPrisma.eventoTorneo.findMany.mockResolvedValue([
+      {
+        id: 'e1',
+        estado: 'PROGRAMADO',
+        dia: { fecha: HOY_DB },
+        categoria: { nombre: '4ta' },
+        local: { nombre: 'Talleres', esPropio: false },
+        visitante: { nombre: 'Gimnasia LP', esPropio: true },
+        convocatoria: null,
+      },
+    ]);
+
+    const [e] = await getProximosEventos({ desdeHoyDb: HOY_DB });
+
+    expect(e.condicion).toBe('Visitante');
+    expect(e.rival).toBe('Talleres');
+  });
+
+  test('filtra por categoría cuando se pide', async () => {
+    await getProximosEventos({ desdeHoyDb: HOY_DB, categoriaId: 'cat_4' });
+
+    const [args] = mockPrisma.eventoTorneo.findMany.mock.calls[0];
+    expect(args.where).toEqual({ dia: { fecha: { gte: HOY_DB } }, categoriaId: 'cat_4' });
   });
 });

@@ -1,37 +1,23 @@
 import Link from 'next/link';
-import { CalendarDays } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import { Calculator, CalendarDays } from 'lucide-react';
 import { requireContexto } from '@/lib/tenant/contexto';
 import { getNombresDeUsuarios } from '@/lib/tenant/miembros';
 import { getSeguimientoById } from '@/lib/queries/seguimientos';
+import { Avatar } from '@/app/components/ui/avatar';
+import { EncabezadoPagina } from '@/app/components/ui/encabezado-pagina';
+import { ROTULO_CLASES } from '@/app/components/ui/panel';
+import {
+  getTipoSeguimientoMeta,
+  PRIORIDAD_LABELS,
+  PRIORIDAD_STYLES,
+} from '@/lib/utils/seguimiento-tipo';
 import DeleteSeguimientoModal from '../_components/DeleteSeguimientoModal';
+import { inicialesDe } from '../_lib/formato';
 
 interface Props {
   params: Promise<{ id: string }>;
 }
-
-const PRIORIDAD_LABELS: Record<string, string> = {
-  BAJA: 'Baja',
-  MEDIA: 'Media',
-  ALTA: 'Alta',
-  URGENTE: 'Urgente',
-};
-
-const PRIORIDAD_STYLES: Record<string, string> = {
-  BAJA: 'bg-emerald-100 text-emerald-800',
-  MEDIA: 'bg-yellow-100 text-yellow-900',
-  ALTA: 'bg-orange-200 text-orange-900',
-  URGENTE: 'bg-red-100 text-red-900',
-};
-
-const TIPO_LABELS: Record<string, string> = {
-  GENERICO: 'Genérico',
-  TRAUMATOLOGIA: 'Traumatología',
-  HISTORIA_CLINICA: 'Historia Clínica',
-  EVALUACION_PSICOLOGICA: 'Evaluación Psicológica',
-  EVALUACION_CARDIOLOGICA: 'Evaluación Cardiológica',
-  ANTROPOMETRIA: 'Antropometría',
-};
 
 function formatDatetime(isoStr: string) {
   return new Intl.DateTimeFormat('es-AR', {
@@ -54,7 +40,7 @@ function formatDate(dateStr: string) {
 function DetailCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
-      <h2 className="text-xs font-semibold uppercase text-muted-foreground mb-2 tracking-wide">{title}</h2>
+      <h2 className={`${ROTULO_CLASES} mb-2`}>{title}</h2>
       {children}
     </div>
   );
@@ -78,9 +64,12 @@ function FieldGrid({ items }: { items: { label: string; value: string | null | u
 function SumatoriaReadout({ label, value, suffix }: { label: string; value: number | null | undefined; suffix?: string }) {
   const hasValue = value !== null && value !== undefined;
   return (
-    <div className="rounded-lg bg-muted px-4 py-3">
-      <dt className="text-xs font-medium text-muted-foreground mb-1">{label}</dt>
-      <dd className="font-mono text-2xl font-semibold leading-none text-primario">
+    <div className="min-w-0">
+      <dt className="flex items-center gap-1 text-xs font-medium text-secundario mb-0.5">
+        <Calculator size={13} aria-hidden />
+        {label}
+      </dt>
+      <dd className="font-mono text-xl font-semibold leading-tight tabular-nums text-primario">
         {hasValue ? value : <span className="text-muted-foreground">—</span>}
         {hasValue && suffix ? <span className="ml-1 text-sm font-normal text-muted-foreground">{suffix}</span> : null}
       </dd>
@@ -115,14 +104,11 @@ export default async function SeguimientoDetallePage({ params }: Props) {
     (await getNombresDeUsuarios([seguimiento.profesionalId]))[seguimiento.profesionalId] ??
     seguimiento.profesionalId;
 
-  const prioridad = String(seguimiento.prioridad);
+  const prioridad = seguimiento.prioridad;
   const tipo = seguimiento.tipoSeguimiento ?? 'GENERICO';
+  const tipoMeta = getTipoSeguimientoMeta(tipo);
   const fechaStr = seguimiento.fecha.toISOString().split('T')[0];
 
-  const nombresDeportistas = seguimiento.deportistas
-    .map((x) => `${x.deportista.apellido}, ${x.deportista.nombre}`)
-    .join(' · ');
-  const deportistasLabel = nombresDeportistas || 'Sin deportistas';
 
   const t = seguimiento.traumatologia;
   const hc = seguimiento.historiaClinica;
@@ -142,49 +128,63 @@ export default async function SeguimientoDetallePage({ params }: Props) {
         </Link>
       </div>
 
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-3 mb-1">
-            <h1
-              className="text-3xl font-bold text-primario"
-              style={{ fontFamily: 'Oswald, sans-serif' }}
-            >
-              {seguimiento.titulo}
-            </h1>
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${PRIORIDAD_STYLES[prioridad] ?? 'bg-gray-100 text-gray-600'}`}
-            >
-              {PRIORIDAD_LABELS[prioridad] ?? prioridad}
-            </span>
-            {tipo !== 'GENERICO' && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                {TIPO_LABELS[tipo] ?? tipo}
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {deportistasLabel} · {formatDate(fechaStr)}
-          </p>
-          <p className="text-sm text-muted-foreground">Profesional: {profesionalNombre}</p>
+      <EncabezadoPagina
+        className="mb-6"
+        titulo={seguimiento.titulo}
+        subtitulo={`${formatDate(fechaStr)} · Profesional: ${profesionalNombre}`}
+        accion={
+          canModify && (
+            <>
+              <Link
+                href={`/seguimientos/${id}/editar`}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Editar
+              </Link>
+              <DeleteSeguimientoModal
+                seguimientoId={id}
+                seguimientoTitulo={seguimiento.titulo}
+                redirectAfterDelete="/seguimientos"
+              />
+            </>
+          )
+        }
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PRIORIDAD_STYLES[prioridad] ?? 'bg-gray-100 text-gray-600'}`}
+          >
+            Prioridad {(PRIORIDAD_LABELS[prioridad] ?? prioridad).toLowerCase()}
+          </span>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${tipoMeta.badge}`}
+          >
+            <span className={`size-1.5 rounded-full ${tipoMeta.dot}`} aria-hidden />
+            {tipoMeta.label}
+          </span>
         </div>
-
-        {canModify && (
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href={`/seguimientos/${id}/editar`}
-              className="text-sm font-medium px-4 py-2 border border-gray-200 text-muted-foreground hover:text-foreground rounded-lg transition-colors"
-            >
-              Editar
-            </Link>
-            <DeleteSeguimientoModal
-              seguimientoId={id}
-              seguimientoTitulo={seguimiento.titulo}
-              redirectAfterDelete="/seguimientos"
-            />
-          </div>
+        {seguimiento.deportistas.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin deportistas</p>
+        ) : (
+          <ul className="flex flex-wrap gap-2" aria-label="Deportistas">
+            {seguimiento.deportistas.map(({ deportista: d }) => (
+              <li key={d.id}>
+                <Link
+                  href={`/deportistas/${d.id}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-background py-1 pl-1 pr-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  <Avatar
+                    alt={`${d.apellido}, ${d.nombre}`}
+                    iniciales={inicialesDe(d)}
+                    className="size-7 text-[11px]"
+                  />
+                  {d.apellido}, {d.nombre}
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
+      </EncabezadoPagina>
 
       {/* Content cards */}
       <div className="space-y-4">
@@ -360,15 +360,13 @@ export default async function SeguimientoDetallePage({ params }: Props) {
         {/* Antropometría */}
         {tipo === 'ANTROPOMETRIA' && an && (
           <>
-            <DetailCard title="Sumatorias">
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <SumatoriaReadout label="IMC" value={an.imc} />
-                <SumatoriaReadout label="Sumatoria de Pliegues" value={an.sumatoriaPliegues} suffix="mm" />
-              </dl>
-            </DetailCard>
+            <dl className="grid grid-cols-2 gap-3 rounded-xl bg-primario-suave p-4">
+              <SumatoriaReadout label="IMC" value={an.imc} />
+              <SumatoriaReadout label="Suma de pliegues" value={an.sumatoriaPliegues} suffix="mm" />
+            </dl>
 
             <DetailCard title="Básicos">
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+              <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3">
                 <NumericField label="Peso" value={an.peso} suffix="kg" />
                 <NumericField label="Talla" value={an.talla} suffix="cm" />
                 <NumericField label="Tsen" value={an.tsen} suffix="cm" />
@@ -376,7 +374,7 @@ export default async function SeguimientoDetallePage({ params }: Props) {
             </DetailCard>
 
             <DetailCard title="Perímetros">
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+              <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3">
                 <NumericField label="Brazo" value={an.perimetroBrazo} suffix="cm" />
                 <NumericField label="Muslo Medio" value={an.perimetroMusloMedio} suffix="cm" />
                 <NumericField label="Pantorrilla" value={an.perimetroPantorrilla} suffix="cm" />
@@ -386,7 +384,7 @@ export default async function SeguimientoDetallePage({ params }: Props) {
             </DetailCard>
 
             <DetailCard title="Pliegues">
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+              <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3">
                 <NumericField label="Tríceps" value={an.pliegueTriceps} suffix="mm" />
                 <NumericField label="Subescapular" value={an.pliegueSubescapular} suffix="mm" />
                 <NumericField label="Supraespinal" value={an.pliegueSupraespinal} suffix="mm" />

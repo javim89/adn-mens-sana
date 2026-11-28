@@ -136,8 +136,12 @@ test.describe('Seguimientos — admin', () => {
   test('filtrar por prioridad URGENTE', async ({ page }) => {
     await page.goto('/seguimientos');
 
-    // Seleccionar "Urgente" en el filtro de prioridad
-    await page.getByRole('combobox', { name: /prioridades/i }).selectOption('URGENTE');
+    // "Prioridad" es un FiltroChip multiple: elegir "Urgente" y cerrar el popover.
+    await page.getByRole('button', { name: 'Prioridad', exact: true }).click();
+    await page.getByRole('option', { name: 'Urgente', exact: true }).click();
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/prioridad=URGENTE/);
+    await expect(page.getByRole('button', { name: 'Prioridad: Urgente' })).toBeVisible();
 
     // Solo seguimientos URGENTE son visibles (verificar que el badge aparece)
     const urgenteBadges = await page.getByText('Urgente').all();

@@ -20,6 +20,8 @@ export type Miembro = {
   nombre: string;
   apellido: string;
   email: string;
+  /** Avatar de Clerk (foto subida o el generado por defecto); `null` si no viene. */
+  imageUrl: string | null;
   lastSignInAt: Date | null;
   createdAt: Date;
 };
@@ -71,6 +73,7 @@ export async function getMiembrosDelClub(opciones: Opciones = {}): Promise<Miemb
       nombre: u.firstName || String(meta.firstName ?? ''),
       apellido: u.lastName || String(meta.lastName ?? ''),
       email: u.emailAddresses[0]?.emailAddress ?? '',
+      imageUrl: u.imageUrl || null,
       lastSignInAt: u.lastSignInAt != null ? new Date(u.lastSignInAt) : null,
       createdAt: new Date(u.createdAt),
     });
