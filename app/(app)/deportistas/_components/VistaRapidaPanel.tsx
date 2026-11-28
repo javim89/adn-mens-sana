@@ -18,6 +18,7 @@ export interface DeportistaSeleccionado {
   disciplina: string | null;
   categoria: string | null;
   nivelTriage: NivelTriage | null;
+  fotoUrl?: string | null;
 }
 
 const BADGE = 'inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap';
@@ -60,6 +61,7 @@ export default function VistaRapidaPanel({
     >
       <div className="flex items-center gap-3">
         <Avatar
+          src={deportista.fotoUrl}
           alt={nombre}
           iniciales={`${deportista.nombre.charAt(0)}${deportista.apellido.charAt(0)}`}
           className="size-11 text-sm"

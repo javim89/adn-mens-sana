@@ -170,9 +170,9 @@ const postBodySchema = z.object({
 // Serializers
 // ---------------------------------------------------------------------------
 
-function serializeListItem(
+async function serializeListItem(
   item: DeportistaListItem,
-): JsonApiResource<DeportistaListAttributes> {
+): Promise<JsonApiResource<DeportistaListAttributes>> {
   return {
     type: 'deportistas',
     id: item.id,
@@ -186,6 +186,7 @@ function serializeListItem(
       categoria: item.categoria ?? null,
       estado: item.estado,
       nivelTriage: item.nivelTriage,
+      fotoUrl: await getFotoUrl(item.fotoKey),
     },
   };
 }
@@ -381,7 +382,7 @@ export async function GET(request: Request) {
   const nextUrl = pageNumber < totalPages ? buildPageUrl(url, pageNumber + 1, pageSize) : null;
 
   const responseBody = {
-    data: result.deportistas.map(serializeListItem),
+    data: await Promise.all(result.deportistas.map(serializeListItem)),
     links: {
       self: selfUrl,
       first: firstUrl,

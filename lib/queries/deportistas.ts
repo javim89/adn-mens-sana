@@ -79,6 +79,7 @@ export async function getDeportistas(
         categoriaId: true,
         categoria: { select: { id: true, nombre: true } },
         estado: true,
+        fotoKey: true,
       },
       orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
       skip: (page - 1) * pageSize,
