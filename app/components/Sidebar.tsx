@@ -86,7 +86,7 @@ export default function Sidebar({
         {club && <ClubSelector clubes={misClubes} clubActual={club} />}
 
         {/* Navegación */}
-        <nav className="flex-1 px-3 py-6 space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-6 space-y-1">
           {navItems.map(({ href, label, icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
             const Icon = ICON_MAP[icon];

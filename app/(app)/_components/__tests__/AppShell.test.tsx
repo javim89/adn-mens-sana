@@ -106,3 +106,16 @@ describe('AppShell', () => {
     expect(screen.getByRole('complementary')).toBeInTheDocument();
   });
 });
+
+describe('AppShell: scroll', () => {
+  it('el <main> es el contenedor que scrollea, acotado por la fila flex (el sidebar no se estira)', () => {
+    render(<AppShell navItems={getNavItemsForRole('admin')} club={CLUB}><div /></AppShell>);
+
+    const main = screen.getByRole('main');
+    expect(main).toHaveClass('overflow-y-auto', 'overscroll-contain', 'min-h-0', 'flex-1');
+
+    const fila = main.parentElement;
+    expect(fila).toHaveClass('flex', 'flex-1', 'min-h-0');
+    expect(fila).toContainElement(screen.getByRole('complementary'));
+  });
+});
