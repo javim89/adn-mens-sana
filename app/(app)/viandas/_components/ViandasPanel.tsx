@@ -83,7 +83,7 @@ function comidasDeLaGrilla(filtro: FiltroComida | null): TipoComida[] {
     case null:
       // Todas, merienda incluida aunque nadie la tenga en la ficha: la ficha no
       // restringe entregas, así que siempre se tiene que poder marcar.
-      return COMIDAS;
+      return [...COMIDAS];
   }
 }
 
